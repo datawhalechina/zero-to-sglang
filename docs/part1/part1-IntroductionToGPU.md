@@ -1030,8 +1030,6 @@ PagedAttention 将显存管理从**以请求为单位的静态圈地转变为以
 
 ## 五、总结与测试题
 
-## 五、总结与测试题
-
 ### 5.1 课程总结
 
 本节课围绕 **GPU 硬件架构** 与 **大语言模型推理在 GPU 上的执行流程** 两大主线展开，核心内容可归纳为：
@@ -1073,7 +1071,6 @@ GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计�
 
 ### 5.2 测试题
 
-
 1. **假设你在单卡 A100（80GB HBM，2TB/s 带宽）上部署一个 70B 参数的 Llama 类模型（FP16 格式，模型权重约 140GB）。**  
 
 - （a）直接加载 FP16 模型会遇到什么问题？  
@@ -1088,3 +1085,11 @@ GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计�
 3. 描述 LLM 推理的 Prefill 和 Decode 两个阶段在计算类型、瓶颈资源以及典型优化手段上的不同。
 
 4. 解释什么是“屋顶线模型”，并说明为什么 Decode 阶段落在“内存受限”区域。结合至少两种优化策略，说明如何将 Decode 阶段向屋顶线右侧移动。
+
+## 参考资料
+
+- [https://datawhalechina.github.io/diy-llm/chapter6/chapter6_GPU和GPU相关的优化.html](https://datawhalechina.github.io/diy-llm/chapter6/chapter6_%E7%AC%AC%E5%85%AD%E7%AB%A0GPU%E5%92%8CGPU%E7%9B%B8%E5%85%B3%E7%9A%84%E4%BC%98%E5%8C%96.html)
+- [https://cs336.stanford.edu/](https://cs336.stanford.edu/)
+- [FlashAttention原理](https://arxiv.org/pdf/2205.14135)
+- [PagedAttention原理](https://arxiv.org/pdf/2309.06180)
+- [(https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
