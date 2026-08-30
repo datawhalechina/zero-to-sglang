@@ -10,7 +10,7 @@
 
 当我们打开游戏里面的3D模型，可以发现3D模型都是由一个一个**小三角形**构成，三角形由三根线构成，为了节省存储的空间，我们只存储三角形的三个顶点坐标，构成线的像素点坐标我们不储存，而是实时计算出来。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-0-3D模型和三角形的计算.png" width="800" alt="6-0-3D模型和三角形的计算">
+<img src="images/6-0-3D模型和三角形的计算.png" width="800" alt="6-0-3D模型和三角形的计算">
 
 由两个点构成一个直线就可以发现，一根线我们只存储**两个端点的信息**，中间的像素点再时时计算渲染。我们可以由两个顶点坐标计算斜率和截距，就可以算出两条线中间的点的位置。虽然都是简单计算，只有大量简单的乘法和加法。但是 CPU 天生时执行复杂逻辑的，只能逐个计算，所以**计算时间非常长**。
 
@@ -26,7 +26,7 @@ CPU设计初衷是用来最小化单任务延迟，快速响应复杂逻辑，�
 
 GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大部分晶体管用于算术逻辑单元（ALU），核心多而简，可以达到数万个。优化**延迟**，追求单个任务最快完成。配备大型控制单元、分支预测器，核心数量少（4-32个）但时钟频率极高。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-1-GPU和CPU的结构.png" width="800" alt="6-1-GPU和CPU的结构">
+<img src="images/6-1-GPU和CPU的结构.png" width="800" alt="6-1-GPU和CPU的结构">
 
 上面这幅图可以看到：**CPU的计算单元**（绿色部分）少，大部分用来**控制（Control）**和**缓存（Cache）**这决定了它可以进行**复杂的逻辑运算**，GPU则不同，他的**控制单元少（黄色部分）**,大部分都是**绿色的计算单元**，这决定了它可以进行**大量并行计算简单的乘法和加法运算**，复杂的逻辑和复杂的计算就不行了。GPU主要就是优化**吞吐量**，追求所有任务整体最快完成。控制逻辑仅占芯片面积的极小部分，计算单元（ALU）占绝大多数。所以我们在使用GPU时还要**CPU的调度**，一个好的GPU要配上好的CPU才能发挥作用。
 
@@ -36,7 +36,7 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 
 我们使用A100 来介绍GPU的具体结构
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-2-GPU的结构.png" width="800" alt="6-1-GPU的结构">
+<img src="images/6-2-GPU的结构.png" width="800" alt="6-1-GPU的结构">
 
 一张英伟达的的显卡剖面图如图，一张显卡由**供电、显卡核心、显存、显示接口和金手指**组成。
 
@@ -61,7 +61,7 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 
 #### 1.3.3 GA100 GPU核心架构（芯片内部宏观结构）
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-3-GPU核心的架构.png" width="800" alt="6-3-GPU核心的架构.png">
+<img src="images/6-3-GPU核心的架构.png" width="800" alt="6-3-GPU核心的架构.png">
 
 NVIDIA Ampere架构是NVIDIA于2020年发布的GPU架构，是其第八代GPU架构。它采用7纳米（nm）制程工艺，集成了高达540亿个晶体管，是当时世界上最大的7纳米芯片。该架构主要面向数据中心、人工智能（AI）、高性能计算（HPC）及专业图形等领域
 
@@ -101,7 +101,7 @@ A100的SM是Ampere架构核心，相比消费级GPU有本质增强：
 
 SM是将线程块（Thread Block）映射到物理硬件并完成实际计算的根本单元。当GPU内核（Kernel）启动时，线程块被分配到空闲的SM上，SM负责将其内部的线程束（Warp，32线程）解码并派发至CUDA核心（处理通用运算）或Tensor Core（处理矩阵乘加运算）执行。没有SM的调度，CUDA核心和Tensor Core无法自主运行。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-4-SM的架构.png" width="800" alt="6-4-SM的架构.png">
+<img src="images/6-4-SM的架构.png" width="800" alt="6-4-SM的架构.png">
 
 ```
 ┌──────────────────────────────
@@ -177,11 +177,11 @@ SM内置**192KB的L1缓存/共享内存**，供本SM内所有CUDA核心快速存
 
 ### 2.2 执行模型的核心名词详解
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-5-SM的执行.png" width="800" alt="6-5-SM的执行.png">
+<img src="images/6-5-SM的执行.png" width="800" alt="6-5-SM的执行.png">
 
 在GPU运行中，我们划分三个粒度层级来思考：**块（block）、线程束（warp）和线程（thread）**，这是粒度逐级细化的顺序。块是大型线程组，**每个块会被分配给一个SM处理**。可以把每个SM想象成**独立工作**的单元，而块就是分配给它的**处理单元**。在每个块内部包含**大量线程**，每个线程代表待执行的任务单元。这些线程在执行时会分组运行，这种分组称为线程束。每个线程束由32个连续编号的线程组成，从块中提取出来同步执行。通过这个示意图可以看到：多个块被分配给不同的SM，每个块内包含多个线程束，每个线程束又由大量线程组成。所有这些线程都会在不同数据上执行相同的指令，这就是基本执行模型。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-28-内存模型.png" width="800" alt="6-28-内存模型.png">
+<img src="images/6-28-内存模型.png" width="800" alt="6-28-内存模型.png">
 
 #### 1. Warp（线程束）
 
@@ -229,7 +229,7 @@ SIMT模型是**GPU高吞吐量的底层逻辑**,它将硬件上**SIMD式的密�
 
 ### 2.3 GPU的内存模型
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-6-GPU的内存模型.png" width="800" alt="6-6-GPU的内存模型.png">
+<img src="images/6-6-GPU的内存模型.png" width="800" alt="6-6-GPU的内存模型.png">
 
 
 **内存距离SM越近，访问速度越快**。因此存在**极高速的内存类型（如L1缓存和共享内存）**，它们位于SM内部，具有**极快的读写速度**。像**寄存器这类需要频繁读写的元件，就应该放置在L1和共享内存中**。
@@ -588,19 +588,19 @@ Decode阶段是**内存密集型（Memory-Bound）** 任务，优化重点在于
 
 ### 3.1 我们希望矩阵运算又快又好
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-8-矩阵运算在各个设备的速度.png" width="800" alt="6-8-矩阵运算在各个设备的速度.png">
+<img src="images/6-8-矩阵运算在各个设备的速度.png" width="800" alt="6-8-矩阵运算在各个设备的速度.png">
 
 从上图可以看出GPU的世系从P100开始，蓝色的非矩阵运算和黄色的矩阵运算就开始分道扬镳，展现了巨大的差异，这主要原因是GPU厂商特意为矩阵运算优化的张量核心（tensor core）是专门用于矩阵乘法的电路。
 
 ### 3.2 计算与内存扩展不平衡
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-9-计算速度扩展的比内存扩展速度更快.png" width="800" alt="6-9-计算速度扩展的比内存扩展速度更快.png">
+<img src="images/6-9-计算速度扩展的比内存扩展速度更快.png" width="800" alt="6-9-计算速度扩展的比内存扩展速度更快.png">
 
 1980-2000年遵循**登纳德缩放定律**，即晶体管缩小，频率提升，功耗下降的趋势发展，但是**现状**是单线程性能**2000年后趋于平缓**，无法依靠频率提升。**现代扩展方式**是**并行扩展**（增加SM数量），从K20到H100，整数运算性能呈**超指数增长**（1-10万倍提升）。
 
 但是其中的**核心矛盾**还没有解决---**内存扩展速度远低于计算扩展**。计算性能（灰线）是10万倍提升；内存带宽（绿线）大约100倍提升（GDDR-HBM2E）；互联带宽（蓝线）增长最缓慢。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-10-屋顶线模型.png" width="800" alt="6-10-屋顶线模型.png">
+<img src="images/6-10-屋顶线模型.png" width="800" alt="6-10-屋顶线模型.png">
 
 这是一个屋顶线模型，横轴是**操作强度（Operational Intensity）**，表示计算与数据移动的比率。当操作强度高时，意味着计算设备在进行大量计算而数据移动相对较少；当操作强度低时，意味着数据移动占主导。纵轴是**吞吐量（Throughput）**，表示计算设备每秒可以完成的浮点运算次数。
 
@@ -689,7 +689,7 @@ LLM推理（尤其是长文本）的硬件瓶颈，**不是GPU的算力（FLOPS�
 
 **TPU**是Google自2015年起自主研发的ASIC芯片（专用集成电路），专为神经网络计算而生。如果说GPU是"图形计算王者转职AI"，那TPU就是"生来只为AI"的纯粹战士。TPU从电路设计第一天起，只干一件事：那就是加速张量（Tensor）运算。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-7-TPU的抽象模型.png" width="800" alt="6-7-TPU的抽象模型.png">
+<img src="images/6-7-TPU的抽象模型.png" width="800" alt="6-7-TPU的抽象模型.png">
 
 #### TPU与GPU的相似性
 
@@ -733,7 +733,7 @@ GPU采用SIMT（单指令多线程）执行架构，**同一线程束（Warp）�
 
 **精度提升GPU速度**的本质是用**精度**换取更快的**计算**和"省得多"的**带宽**。这背后是硬件电路简化、存储数据量减少、专用加速单元三重优化叠加。最明显的是计算数据和权重等所有元素的比特数减少时，需要移动的比特量就会大幅降低。即便从全局内存访问这些比特，其影响也会变得微乎其微。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-11-低精度提升速度.png" width="800" alt="6-11-低精度提升速度.png">
+<img src="images/6-11-低精度提升速度.png" width="800" alt="6-11-低精度提升速度.png">
 
 ##### 一、常见的低精度格式
 
@@ -793,7 +793,7 @@ Tensor Core是NVIDIA为低精度矩阵乘设计的**专用电路**，它不是�
 
 ---
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-12-张量核心可进行的操作.png" width="800" alt="6-12-张量核心可进行的操作.png">
+<img src="images/6-12-张量核心可进行的操作.png" width="800" alt="6-12-张量核心可进行的操作.png">
 
 关键在于并非所有网络组件和训练算法**都适合低精度处理**。以矩阵乘法为例，混合精度矩阵乘法通常将输入设为16位低精度，但乘法运算会保持**全32位精度**。这是因为在**累加部分和**时，**中间计算需要高精度保障**，因此采用FP32累加器。张量核心最终输出FP32结果，可按需降回16位。由此可见输入数据可采用16位存储，但累加等操作需32位精度；某些运算（如指数函数）需要更大动态范围，可能适合bf16格式。要确保低精度训练时模型稳定性，需要大量精细的工程优化。但若能实现，当内存成为瓶颈时，从32位转为16位可直接使吞吐量翻倍。
 
@@ -801,7 +801,7 @@ Tensor Core是NVIDIA为低精度矩阵乘设计的**专用电路**，它不是�
 
 算子融合通过**消除中间结果内存读写和减少Kernel启动开销**，实现2-5倍速度提升。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-13-算子融合演示.png" width="800" alt="6-13-算子融合演示.png">
+<img src="images/6-13-算子融合演示.png" width="800" alt="6-13-算子融合演示.png">
 
 我们可以将**GPU计算单元**视为工厂，输入方形部件输出三角部件。**若计算能力增强但内存传输带宽有限**（好比传送带容量固定），新增的工厂设备将无法充分利用，整体性能仍受限于**内存到计算的传输速率**。
 
@@ -811,7 +811,7 @@ Tensor Core是NVIDIA为低精度矩阵乘设计的**专用电路**，它不是�
 
 这其实就是**融合核函数**的思维模型，当一系列运算需要按顺序处理同一数据时，与其每次都将中间结果写回存储，不如尽可能在单个计算单元完成所有操作，直到**必须传回内存时才进行传输**。这就是**核融合的核心思想**。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-14-算子融合示例.png" width="800" alt="6-14-算子融合示例.png">
+<img src="images/6-14-算子融合示例.png" width="800" alt="6-14-算子融合示例.png">
 
 假设我们编写了一个神经网络模块，输入 $x$ 后同时输出 $\sin^2 x$ 和 $\cos^2 x$ 。代码很简单，但在PyTorch中运行时会生成这样的计算图：首先载入$x$，启动CUDA核函数计算$\sin x$，再启动另一个计算 $\cos x$ ，接着计算 $\sin^2 x$ 和 $\cos^2 x$ ，最后计算 $\sin^2 x + \cos^2 x$ 。为了完成这些运算，数据需要在内存和计算单元间反复传输，这正是上图展示的左侧低效模式。
 
@@ -824,13 +824,13 @@ Tensor Core是NVIDIA为低精度矩阵乘设计的**专用电路**，它不是�
 
 **重计算的核心思想是通过增加计算量来避免内存访问。**
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-15-反向传播算法.png" width="800" alt="6-15-反向传播算法.png">
+<img src="images/6-15-反向传播算法.png" width="800" alt="6-15-反向传播算法.png">
 
 我们获取最底层的输入数据（黄色节点），然后我们向上传播激活值。这些也是树上的黄色数值。接着我们反向计算雅可比矩阵。这些是边上的绿色数值。为了计算梯度，我将进行反向传播，需要进行乘法运算。我们会将雅可比矩阵和激活值结合，反向传播梯度。仔细想想，前向传播后的那些黄色数值必须被存储起来。它们被存储后，需要从我们存放的全局内存中提取，并送入计算单元。
 
 从机制上来说，这个过程是必然发生的。但这可能会导致海量的内存输入输出操作。但是能够避免这种情况。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-16-三个sigmoid函数堆叠.png" width="800" alt="6-16-三个sigmoid函数堆叠.png">
+<img src="images/6-16-三个sigmoid函数堆叠.png" width="800" alt="6-16-三个sigmoid函数堆叠.png">
 
 假如我们将三个 $sigmoid$ 函数层层堆叠。这是**前向计算图**。计算 $sigmoid$ 函数，并存储S1和S2这两个 $sigmoid$ 的激活值，最终得到输出结果，这就是我们的**前向传播过程**。但**反向传播过程**就显得有些棘手。当构建反向计算图时，我们需要调用**S1和S2**，接收从**输出端反传的梯度**，然后将其推入这个反向计算过程，最终得到 $x$ 的梯度。为了完成反向传播，需要执行**三次内存读取和一次内存写入**。而在前向传播中，需要读取一次 $x$ ，并对S1、S2和输出结果进行三次内存写入。它涉及相当数量的**内存读写操作**，总共需要**执行八次**。
 
@@ -844,17 +844,17 @@ Tensor Core是NVIDIA为低精度矩阵乘设计的**专用电路**，它不是�
 
 GPU中的**慢速内存**（即全局内存/DRAM）实际上极其缓慢。为了**提升速度，硬件层面会进行特定优化**。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-17-突发模式.png" width="800" alt="6-17-突发模式.png">
+<img src="images/6-17-突发模式.png" width="800" alt="6-17-突发模式.png">
 
 其中一项DRAM硬件优化是：当读取某个内存值时，实际获得的**不仅是目标值，而是整块内存数据**，**被称为突发模式**。假设读取大内存块的第一个值，内存不仅会返回0，还**会同时返回0123这四个值**。
 
 每个地址空间都被划分为突发段，系统会直接返回整个突发段而非仅目标数据。当寻址内存时，数据传输到放大器是最耗时的步骤。而突发段作用是**一旦完成这个步骤，就能免费获取大量字节数据**。突发段设计正是为了优化耗时的数据迁移过程。**如果内存访问模式得当，就能显著加速内存访问**。比如要读取整个数据块，若采用随机访问，需要执行与查询长度相当的次数；但若先读取首值，就能立即获取整个突发段；接着读取第4个值，又能立即获得第二个突发段。**通过精心设计内存访问策略，仅从每个突发段提取所需数据，理论上可实现四倍吞吐量**，这就是内存合并技术。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-18-合并同一个线程块中的内存访问.png" width="800" alt="6-18-合并同一个线程块中的内存访问.png">
+<img src="images/6-18-合并同一个线程块中的内存访问.png" width="800" alt="6-18-合并同一个线程块中的内存访问.png">
 
 当线程束中的**所有线程都位于同一突发段**时，智能硬件和编程模型会将这些查询聚合**不再分别查询0123**，而是通过单次查询0即可从突发模式DRAM中同时读取所有四个值。**注意线程束包含32个有序线程**，这些线程的内存访问是同步进行的。通过优化可以一次性获取全部4字节数据，使**内存吞吐量提升四倍**。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-19-矩阵乘法的合并.png" width="800" alt="6-19-矩阵乘法的合并.png">
+<img src="images/6-19-矩阵乘法的合并.png" width="800" alt="6-19-矩阵乘法的合并.png">
 
 以矩阵乘法为例，假设有两种矩阵读取方式：按行遍历（每个线程处理一行）或按列遍历（每个线程处理一列）。实际上**左侧按列遍历的模式会非常缓慢**，因为**内存访问无法合并**；而右侧按行遍历时，线程内存访问地址连续，可以**实现内存合并**。
 
@@ -873,7 +873,7 @@ GPU中的**慢速内存**（即全局内存/DRAM）实际上极其缓慢。为�
 
 **分块的核心思想是通过分组内存访问来减少全局内存的访问量**。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-20-矩阵乘法分块.png" width="800" alt="6-20-矩阵乘法分块.png">
+<img src="images/6-20-矩阵乘法分块.png" width="800" alt="6-20-矩阵乘法分块.png">
 
 通过矩阵乘法的例子来解释，**原始的矩阵乘法算法严重问题**，从这个简单的矩阵乘法算法开始：左侧是 $M$ 矩阵，上方是 $N$ 矩阵。计算矩阵乘积时需要遍历 $M$ 的行和 $N$ 的列，进行内积运算后结果存入 $P$ 矩阵。这里标出了**每个线程对应的输出存储位置及其元素访问顺序**。
 
@@ -881,17 +881,17 @@ GPU中的**慢速内存**（即全局内存/DRAM）实际上极其缓慢。为�
 
 问题在于能否避免过多的全局内存读写，理想方案是用一段时间将数据块从全局内存加载到高速的共享内存，在共享内存中完成大量计算，最后再处理下一数据块。这样能最小化全局内存访问。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-21-矩阵乘法分块（Tiling）化.png" width="800" alt="6-21-矩阵乘法分块（Tiling）化.png">
+<img src="images/6-21-矩阵乘法分块（Tiling）化.png" width="800" alt="6-21-矩阵乘法分块（Tiling）化.png">
 
 在矩阵乘法中我们将 $M$ 和 $N$ **矩阵划分成多个分块**（例如**2x2的子矩阵**），首先加载左上角的 $M_{0,0}$ 分块和 $N_{0,0}$ 分块到**共享内存**（都是2*2的小矩阵），这样就能计算部分求和结果。当处理完这两个数据块后就可以在这里加载**新的数据块**，然后利用已加载到共享内存中的 $M_{0,2}$ 块和 $N_{2,0}$ 块重复计算过程，再将部分和累加到 $P$ 中。通过有效整合并减少了全局内存访问量,一次性将尽可能多的数据加载到共享内存，在单个数据块上执行所有子矩阵运算，然后再处理下一个数据块。
 
 另一个优势是由于加载的是**完整数据块**，我们可以**按任意顺序（例如列优先或行优先）遍历这些子矩阵**，从而在从全局内存加载数据块到共享内存时实现**内存访问的合并**。采用分块访问策略能带来全方位的性能提升。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-22-矩阵乘法分块的数学分析.png" width="800" alt="6-22-矩阵乘法分块的数学分析.png">
+<img src="images/6-22-矩阵乘法分块的数学分析.png" width="800" alt="6-22-矩阵乘法分块的数学分析.png">
 
 现在我们可以进行分块计算的数学分析。假设有矩阵 $A$ 、 $B$ 和 $C$，这三个 $N×N$ 的方阵，数据块尺寸为 $T$ 。对于N×N矩阵乘法，若采用非分块方式逐行逐列计算，每个输入元素每次处理时都需要从**全局内存读取**，即每个元素会被读取 $N$ 次。而采用分块计算时，全局内存读取以**数据块**为单位进行，每个输入元素从全局内存读取次数降为 $N/T$ 次，同时在每个数据块内部进行 $T$ 次读取。虽**然矩阵乘法运算的总读取次数无法减少，但通过将读取操作转移到高速共享内存，我们实现了 $T$ 次共享内存读取与 $N/T$ 次全局内存读取的配合。当共享内存能存储较大数据块时，这将使全局内存数据读取量减少 $T$ 倍**。
 
-<img src="https://raw.githubusercontent.com/datawhalechina/diy-llm/main/docs/zh/chapter6/images/6-23-分块（Tiling）分块的复杂性.png" width="800" alt="6-23-分块（Tiling）分块的复杂性.png">
+<img src="images/6-23-分块（Tiling）分块的复杂性.png" width="800" alt="6-23-分块（Tiling）分块的复杂性.png">
 
 分块策略非常复杂，这是导致GPU和矩阵乘法性能表现令人困惑的根源之一。假设采用128这个规整的分块尺寸，当处理256尺寸的完整矩阵时效果很好，一个2x2的分块数据加载很顺畅。假设在列方向使用257大小的分块，那么需要**六个分块才能覆盖这个矩阵，而右侧的两个分块里面没有数据**。问题在于每个分块都会被分配给一个**流多处理器（SM）**，每个分块对应一个线程块，**线程会在各自分块（Tiling）内执行运算**。所以右侧那两个分块几乎不会执行什么计算，对应的SM基本上会处于闲置状态。
 
