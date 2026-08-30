@@ -34,7 +34,12 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 **训练与推理的预测下一个词的依据对比**
 
-![alt text](<image/训练 vs 推理.png>)
+
+<div align="center">   
+<img width="1649" height="954" alt="训练 vs 推理" src="https://github.com/user-attachments/assets/007c1b6a-5c5d-4215-9760-d8ef74613801" />
+   <p>图2.1 训练 vs 推理</p>
+ </div>
+ 
 
 |阶段|下一步预测 $token_i$ 的输入来源|
 |---|---|
@@ -68,7 +73,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 >&emsp;&emsp;teacher-forcing 牺牲了训练与推理的一致性，但换来了训练效率的巨大提升和优化过程的稳定性。
 
 
-基于对原理分析的理解，我们可以从成本维度进一步量化训练与推理的差异。以 8B 参数的 LLM 为例（ $N = 8 \times 10^{9}$ ），假设参数均为 BF16，对比训练与推理两阶段的成本开销，这种差异决定了为什么推理优化会成为规模化部署的核心命题：
+&emsp;&emsp;基于对原理分析的理解，我们可以从成本维度进一步量化训练与推理的差异。以 8B 参数的 LLM 为例（ $N = 8 \times 10^{9}$ ），假设参数均为 BF16，对比训练与推理两阶段的成本开销，这种差异决定了为什么推理优化会成为规模化部署的核心命题：
 
  **训练一次**：
 
@@ -94,11 +99,16 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 训练与推理在模型生命周期中是深度耦合的协作关系：
 
-![alt text](image/训练与推理协作.png)
+
+<div align="center">   
+<img width="1694" height="929" alt="训练与推理协作" src="https://github.com/user-attachments/assets/8c21e266-4944-46f6-8198-6cd537659e2b" />
+   <p>图2.2 训练与推理协作</p>
+ </div>
+ 
 
 **1.推理是训练的组成部分**
 
-&emsp;&emsp;训练不是单纯地"喂数据更新参数"，而是一个持续的"训练 -> 推理 - > 评估 -> 优化"循环：        
+&emsp;训练不是单纯地"喂数据更新参数"，而是一个持续的"训练 -> 推理 - > 评估 -> 优化"循环：        
 
 - 每个 epoch 训练完成后，模型需要在验证集上推理，计算准确率、loss等指标，得到训练效果
 - 强化学习阶段（RLHF/PPO）中，模型必须推理生成回答，然后根据奖励信号调整参数
@@ -109,7 +119,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 **2.训练决定推理的效率上限**
 
-&emsp;&emsp;模型的架构设计是在训练开始前确定的，比如这些设计直接决定了部署时推理的性能——
+&emsp;模型的架构设计是在训练开始前确定的，比如这些设计直接决定了部署时推理的性能——
 
 - **结构选择影响资源消耗**：transformer层数、隐藏层维度等参数决定了推理时的显存占用和计算量。比如，一个700亿参数的模型，推理时至少需要140GB显存（FP16），这是架构决定的硬约束。
 - **优化空间在训练时埋下**：FlashAttention加速attention计算、KV cache压缩减少显存占用、MQA/GQA共享KV头降低带宽需求等推理优化技术，都需要在训练时就采用对应的架构设计。比如，训练时所用只有标准的 MHA ，部署时就无法直接用GQA加速。
@@ -125,7 +135,12 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 &emsp;&emsp;在 LLM 推理中从接收用户请求到输出完整回复的一个基本生命周期，可以概括为以下流程：
 
-![alt text](<image/一个 token 的生命周期.png>)
+
+<div align="center">   
+<img width="833" height="390" alt="一个 token 的生命周期" src="https://github.com/user-attachments/assets/9fc65367-02a5-4a5f-a78b-844441e803c4" />
+   <p>图2.3 一个 token 的生命周期</p>
+ </div>
+ 
 
 - **请求调度**：用户输入一段 Prompt，即由多个 token 组成。推理引擎的调度器，比如 vLLM、SGLang scheduler 等将请求分配到可用的 GPU 或 GPU 组上；
 - **Prefill 阶段**：对分配到的整段 Prompt 完成一次计算。模型并行处理所有输入 token，计算出完整的 KV cache，并采样出第一个输出 token。这一阶段计算量大、并行度高；
@@ -184,7 +199,7 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 
 - **模型权重读取**：14 GB
 
-- **KV cache 写入**，每个 token（占用空间大小为 2 byte）的 KV cache 大小为$2 \text{ (KV)} \times 32 \text{层} \times 4096 \times 2 \ \mathrm{byte} \approx 0.5 \text{MB}$。处理 3000 个输入 token，需写入约 **1\.5 GB** 
+- **KV cache 写入**，每个 token（占用空间大小为 2 byte）的 KV cache 大小为 $2 \text{ (KV)} \times 32 \text{层} \times 4096 \times 2 \ \mathrm{byte} \approx 0.5 \text{MB}$ 。处理 3000 个输入 token，需写入约 **1.5 GB** 
 
 - **激活值**：相对较小，可忽略
 
@@ -211,8 +226,8 @@ $$\text{FLOP per token} \approx L \times (24 d^2 + 4 S d)$$
 
 其中 S 是当前序列长度（需要 attend 的历史 token 数）。以生成第 1 个输出 token 为例（S = 3000）：
 
-- **线性投影 \+ FFN 项**：$24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOP/层}$;
-- **Attention 项**：$4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOP/层}$\.
+- **线性投影 \+ FFN 项**： $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOP/层}$ ;
+- **Attention 项**： $4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOP/层}$ .
 
 **32 层总计算量 = 线性投影 + FFN 项 + Attention 项** ≈ **14.4 GFLOPs，**同样按照 A100 的巅峰算力值计算，理论计算时间仅约 **0.05 ms**。但实际耗时远超这个值，不过更大的问题是显存占用。
 
@@ -266,7 +281,12 @@ $$\text{拐点} = \frac{\text{峰值算力（FLOP/s）}}{\text{内存带宽（By
 
 - 物理含义：当算术强度达到这个临界值时，硬件的计算能力和内存带宽恰好达到平衡状态，通过一个示意图来理解 Roofline model 的结构
 
-![alt text](<image/Roofline model.png>)
+
+
+<div align="center">   
+<img width="999" height="732" alt="Roofline model" src="https://github.com/user-attachments/assets/74aa8cf1-469c-44c3-af71-6736c4253be2" />
+   <p>图2.4 Roofline model</p>
+ </div>
 
 - 判断依据：这个拐点值将 Roofline 图分为左右两个区域，左侧是 memory-bound ，右侧是 compute-bound。 
 
@@ -286,7 +306,7 @@ $$\text{AI} = \frac{\text{总浮点运算次数（FLOPs）}}{\text{总内存访�
 
     - **AI ≥ 拐点，实际性能 ≈ 峰值算力**。特征是内存供给充足，计算单元满负荷运转。
 
-> compute-bound 与 Memory-bound ：
+> compute-bound 与 memory-bound ：
 > 
 > - compute-bound（计算受限）：AI 值足够高。此时计算单元被打满，性能主要由峰值算力决定，内存不再是瓶颈。
 > - memory-bound（内存受限）：AI 值较低。处理器大部分时间在等待数据，性能由内存带宽 × AI 决定，计算单元利用率低。
@@ -296,7 +316,11 @@ $$\text{AI} = \frac{\text{总浮点运算次数（FLOPs）}}{\text{总内存访�
 
 在初步判断了瓶颈所在后，就可以给出推理瓶颈判断方案。判断流程如下：
 
-![image\.png](图片和附件/image%201.png)
+
+<div align="center">   
+<img width="1691" height="930" alt="借助 Roofline model 定位推理优化的方法" src="https://github.com/user-attachments/assets/55e1aa17-7649-4c7d-926c-828aacd44b03" />
+   <p>图2.5 借助Roofline model判断推理瓶颈</p>
+ </div>
 
 **Step1** 获取硬件参数：查询目标硬件的峰值算力和内存带宽，计算拐点值；
 
@@ -398,7 +422,7 @@ $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 $$\text{Bytes}_{\text{decode}} = L \times (12d^2 + 2d + 2Sd) \times 2$$
 
 - 权重搬运：与 Prefill 相同，仍需读取全部权重 $12d^2$
-- 输入 + 输出：$1 \times d$（输入）\+ $1 \times d$（输出）= $2d$
+- 输入 + 输出：$1 \times d$ （输入）+ $1 \times d$ （输出）= $2d$
 - KV Cache 读取：Attention 需要读取历史 $S$ 个 token 的 KV，共 $2 \times S \times d$
 
 
