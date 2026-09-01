@@ -4,7 +4,7 @@
 
 &emsp;&emsp;理解 LLM 的 inference 过程，不仅有助于认识模型如何生成输出，也能进一步分析影响推理质量、速度、吞吐量和成本的关键因素，为推理优化提供基础。
 
-# 2.1 本章学习目标
+## 1 本章学习目标
 
 &emsp;&emsp;上一章我们梳理了 LLM 的整体架构，而 inference 是决定其可用性、成本与开发体验的核心环节。本章将从 inference 原理切入，逐层拆解链路，并结合真实场景展开。围绕以下问题进行分析：
 
@@ -17,13 +17,13 @@
 
 &emsp;&emsp;读完本章后，可以理解 inference 的关键两个阶段，使用 Roofline model 分析推理过程中的性能瓶颈，针对具体场景选择合适的优化策略。
 
-# 2.2 推理与训练
+## 2 推理与训练
 
 &emsp;&emsp;在 LLM 的工作周期中，训练与推理阶段性分离，计算方式完全不同——**训练并行优化参数，推理串行逐步输出**。训练决定模型的能力边界，推理在真实场景中反映缺陷（对齐偏差、效率瓶颈...），这些反馈驱动训练侧通过 RLHF、合成数据或蒸馏等方法进行针对性优化。
 
 &emsp;&emsp;二者形成闭环：训练塑造能力，推理释放能力，推理也可以指导训练演进。
 
-## 2.2.1 推理与训练的差异
+### 2.1 推理与训练的差异
 
 &emsp;&emsp;在LLM中，训练与推理都涉及模型的前向计算，但它们的目标、计算模式和资源瓶颈存在本质差异。对于`自回归推理`或`并行化训练`，假设需要生成第 $i$ 个token，则模型在该位置的条件概率可以统一写为：
 
@@ -36,10 +36,9 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 
 <div align="center">
-<img width="1649" height="954" alt="2-1-训练 vs 推理" src="https://github.com/user-attachments/assets/fcaaf476-4c85-461b-91d2-ec3e812b01e2" />
-   <p>图2.1 训练 vs 推理</p>
- </div>
-
+  <img src="images/2-1-训练 vs 推理.png" alt="2-1-训练 vs 推理.png" width="80%">
+  <p><em>图 1. 训练 vs 推理</em></p>
+</div>
 
 |阶段|下一步预测 $token_i$ 的输入来源|
 |---|---|
@@ -87,7 +86,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 **推理一次(输入 512 tokens prompt，生成 128 tokens)**：
 
-- 仅前向传播，总计算量 = $2N \times (len_{input} + len_{output}) \ \mathrm{FLOP}$
+- 仅前向传播，总计算量 = $2N \times (\text{len}_{input} + \text{len}_{output}) \ \mathrm{FLOP}$
 - 带入具体数据，总计算量 = $2 \times 8 \times 10^{9} \times (512+128) \approx 1 \times 10^{13} \ \mathrm{FLOP}$
 
 &emsp;&emsp;若每天服务 100 万次这样的请求，月度成本达数万美元，年度累计就会超过训练成本。正是这种成本结构差异驱动了推理优化的核心方向——降低单次推理的时延与显存占用，以及提高吞吐量，最终在规模化部署中摊薄边际成本。
@@ -95,23 +94,22 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 &emsp;&emsp;明确了训练与推理的本质差异后，下一个问题是：两者如何协作完成从模型训练到服务推理的流程？
 
-## 2.2.2 训练与推理的协作
+### 2.2 训练与推理的协作
 
 训练与推理在模型生命周期中是深度耦合的协作关系：
 
-
 <div align="center">
-<img width="1694" height="929" alt="2-2-训练与推理协作" src="https://github.com/user-attachments/assets/ab94c0f3-1396-453c-a119-6b86520e02ed" />
-   <p>图2.2 训练与推理协作</p>
- </div>
+  <img src="images/2-2-训练与推理协作.png" alt="2-2-训练与推理协作.png" width="80%">
+  <p><em>图 2. 训练与推理协作</em></p>
+</div>
+
 
 **1.推理是训练的组成部分**
 
 &emsp;训练不是单纯地"喂数据更新参数"，而是一个持续的"训练 -> 推理 - > 评估 -> 优化"循环：        
 
-- 每个 epoch 训练完成后，模型需要在验证集上推理，计算准确率、loss等指标，得到训练效果
-- 强化学习阶段（RLHF/PPO）中，模型必须推理生成回答，然后根据奖励信号调整参数
-- 能力测试（如代码生成、数学推理）需要模型完整推理输出结果，再用结果质量指导训练方向
+- 每个 epoch 训练完成后，模型需要在验证集上推理，计算准确率、loss等指标，得到训练效果；
+- 后训练 RL 阶段中，策略模型先推理得到回答，由外部奖励模型或规则对回答打分，最后用PPO等算法根据奖励更新参数。
 
 可以说：没有推理就无法知道模型"学得怎么样"，也就无法进行有效训练。
 
@@ -120,29 +118,27 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 &emsp;模型的架构设计是在训练开始前确定的，比如这些设计直接决定了部署时推理的性能——
 
-- **结构选择影响资源消耗**：transformer层数、隐藏层维度等参数决定了推理时的显存占用和计算量。比如，一个700亿参数的模型，推理时至少需要140GB显存（FP16），这是架构决定的硬约束。
-- **优化空间在训练时埋下**：FlashAttention加速attention计算、KV cache压缩减少显存占用、MQA/GQA共享KV头降低带宽需求等推理优化技术，都需要在训练时就采用对应的架构设计。比如，训练时所用只有标准的 MHA ，部署时就无法直接用GQA加速。
-- **量化和压缩的兼容性**：如果需要在推理时用INT8量化降低显存和提升输出速度，训练时最好做quantization-aware training，否则量化后精度损失会很大影响最后的推理性能。
+- **结构选择影响资源消耗**：transformer 层数、隐藏层维度等架构参数，直接决定推理时的显存占用和计算量。例如，700 亿参数模型在 FP16 下仅权重就约需 140GB 显存，这是架构带来的硬约束。
+- **部分优化空间在训练时埋下**：有的推理优化必须在训练时就定好结构。GQA 通过分组共享 KV 头降低带宽，训练若只用标准 MHA，部署时无法直接改成 GQA 。
+- **量化和压缩的兼容性**：推理若要用 INT8 量化来降显存、提速度，训练时最好做量化感知训练（QAT）。即我们指定量化位数，然后在前向中模拟量化噪声，让参数适应量化误差。不经过 QAT 就直接量化，精度损失会很影响最后的推理表现。
 
-推理不是"训练完成后的事"，而是贯穿全程的协同过程。训练时每个架构决策都在为未来的推理性能"买单"，那么推理的约束必须在训练阶段就纳入设计考量。两者是"设计时绑定，运行时协作"的关系。
+推理不是"训练完成后的事"，而是贯穿全程的协同过程。训练时每个架构决策都在为未来的推理性能"买单"，那么推理的约束必须在训练阶段就纳入设计考量。两者是"**设计时绑定，运行时协作**"的关系。
 
-# 2.3 Prefill与Decode
+## 3 Prefill与Decode
 
 &emsp;&emsp;在完成训练的 LLM 推理过程中，从输入 Prompt 到逐步生成输出 token 的关键阶段分为 Prefill 和 Decode。这两个阶段在计算模式上有本质的差异，理解这两个阶段的特性差异，是针对性优化推理性能的前提。
 
-## 2.3.1 一个 token 的生命周期
+### 3.1 一个 token 的生命周期
 
 &emsp;&emsp;在 LLM 推理中从接收用户请求到输出完整回复的一个基本生命周期，可以概括为以下流程：
 
 
-
 <div align="center">
-<img width="833" height="390" alt="2-3-一个 token 的生命周期" src="https://github.com/user-attachments/assets/b78f63e0-4b06-4654-a9c0-e506210f4fb4" />
-   <p>图2.3 一个 token 的生命周期</p>
- </div>
+  <img src="images/2-3-一个 token 的生命周期.png" alt="2-3-一个 token 的生命周期.png" width="80%">
+  <p><em>图 3. 一个 token 的生命周期</em></p>
+</div>
 
-
-- **请求调度**：用户输入一段 Prompt，即由多个 token 组成。推理引擎的调度器，比如 vLLM、SGLang scheduler 等将请求分配到可用的 GPU 或 GPU 组上；
+- **请求调度**：用户输入一段 Prompt，即由多个 token 组成。推理引擎的调度器，比如 SGLang scheduler 等将请求分配到可用的 GPU 或 GPU 组上；
 - **Prefill 阶段**：对分配到的整段 Prompt 完成一次计算。模型并行处理所有输入 token，计算出完整的 KV cache，并采样出第一个输出 token。这一阶段计算量大、并行度高；
 - **Decode 阶段**：进入自回归生成阶段。每次只输入上一个生成的 token，结合已有的 KV cache 进行前向计算，生成下一个 token，同时将新 token 的 KV 追加到 cache 中。重复此过程，直到遇到结束符（EOS）或达到最大生成长度。这一阶段计算量小，但需要频繁访问不断增长的 KV cache；
 
@@ -155,7 +151,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 ---
 
-## 2.3.2 Prefill
+### 3.2 Prefill
 
 Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可以是多个请求打包成的 batch）进行**一次完整的前向传播**。模型会**并行处理**所有输入 token，**构建并写入初始 KV cache**，同时得到第一个生成 token 的 logits。以  LLaMA-7B 的 Prefill 场景为例：
 
@@ -181,13 +177,10 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 
 **2. 不同 Prompt 长度的对比**
 
-|Prompt 总 token 数 (N)|近似总 FLOPs|相对 1000 token 的倍数|主要变化趋势|
-|---|---|---|---|
-|500|≈ 7.2 TFLOPs|0.5×|线性投影占主导|
-|1000|≈ 14.5 TFLOPs|1.0×|线性投影占主导|
-|3000|≈ 43.4 TFLOPs|3.0×|线性投影仍主导，Attention 开始明显|
-|8000|≈ 120 TFLOPs|8.3×|Attention 占比显著上升|
-|16000|≈ 270 TFLOPs|18.6×|Attention 的 $N^{2}$ 项开始主导|
+<div align="center">
+  <img src="images/2-4-不同Prompt的FLOPs对比" alt="2-4-不同Prompt的FLOPs对比.png" width="80%">
+  <p><em>图 4. 不同Prompt的FLOPs对比</em></p>
+</div>
 
 在中等长度（几千 token）时，计算量基本随 $N$ **近似线性增长**；当 Prompt 变得很长时，Attention 的二次项会让计算量加速上涨。
 
@@ -199,7 +192,7 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 
 - **模型权重读取**：14 GB
 
-- **KV cache 写入**，每个 token（占用空间大小为 2 byte）的 KV cache 大小为 $2 \text{ (KV)} \times 32 \text{层} \times 4096 \times 2 \ \mathrm{byte} \approx 0.5 \text{MB}$ 。处理 3000 个输入 token，需写入约 **1\.5 GB** 
+- **KV cache 写入**，每个 token（占用空间大小为 2 byte）的 KV cache 大小为 $2 \text{ (KV)} \times 32 \text{层} \times 4096 \times 2 \ \mathrm{byte} \approx 0.5 \text{MB}$ 。处理 3000 个输入 token，需写入约 **1.5 GB** 
 
 - **激活值**：相对较小，可忽略
 
@@ -214,7 +207,7 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 
 因此 GPU 的计算单元会被充分使用，算术强度比较高。
 
-## 2.3.3 Decode
+### 3.3 Decode
 
 完成 Prefill 阶段，LLM 进入 Decode 阶段，基于已生成的 KV cache **逐个**生成后续 token。这里仍以 LLaMA-7B 为例，假设输入 Prompt 长度为 3000 token（对应 1.5 GB KV cache），以及每个 token 占用空间为 2 byte。
 
@@ -226,7 +219,7 @@ $$\text{FLOP per token} \approx L \times (24 d^2 + 4 S d)$$
 
 其中 S 是当前序列长度（需要 attend 的历史 token 数）。以生成第 1 个输出 token 为例（S = 3000）：
 
-- **线性投影 \+ FFN 项**： $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOP/层}$ ;
+- **线性投影 + FFN 项**： $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOP/层}$ ;
 - **Attention 项**： $4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOP/层}$ .
 
 **32 层总计算量 = 线性投影 + FFN 项 + Attention 项** ≈ **14.4 GFLOPs**，同样按照 A100 的巅峰算力值计算，理论计算时间仅约 **0.05 ms**。但实际耗时远超这个值，不过更大的问题是显存占用。
@@ -241,7 +234,7 @@ Decode 阶段每生成 1 个 token 需要：
 - **1个新 token 的 KV 写入**：约 0.5 MB
 - **激活值**：相对较小，可忽略
 
-**内存流量总计** ≈ **15.5 GB**（读写合计，新写入的 0.5 MB 可忽略不计）。同样使用 A100 ，对应的 HBM 带宽为 1.6 TB/s，读取 15.5 GB 数据的理论最小时间为 $\frac{15.5 \text{ GB}}{1600 \text{ GB/s}} \approx 9.7 \text{ ms}$ ，对比算力维度的理论时间，**GPU 有超过一半的时间都在空转等待数据搬运**。
+**内存流量总计** ≈ **15.5 GB**（读写合计，新写入的 0.5 MB 可忽略不计）。同样使用 A100 ，对应的 HBM 带宽为 1.6 TB/s，读取 15.5 GB 数据的理论最小时间为 $\frac{15.5 \text{ GB}}{1600 \text{ GB/s}} \approx 9.7 \text{ ms}$ ，对比算力维度的理论时间，**GPU 几乎所有的时间都在空转等待数据搬运**。
 
 
 
@@ -259,11 +252,11 @@ Decode 阶段每生成 1 个 token 需要：
 
 &emsp;&emsp;Decode 阶段浮点运算远小于同场景中的 Prefill，但每次生成 1 个 token 都需要读取完整模型权重 + 不断增长的 KV cache，算术强度极低。**速度瓶颈主要来自内存带宽，容量瓶颈则来自 KV cache 的持续累积**。
 
-# 2.4 识别推理阶段的瓶颈
+## 4 识别推理阶段的瓶颈
 
 &emsp;&emsp;在 LLM 推理过程中，最核心的 Kernel 部分即模型的计算架构，性能主要受两个关键因素制约：**数据搬运效率**和**计算吞吐能力**。前者取决于系统的带宽，每秒能从内存读取或写入多少数据；后者取决于计算单元（如 GPU 的 Tensor Core）算力，即每秒能完成多少次浮点运算。
 
-## 2.4.1 Roofline model 原理
+### 4.1 Roofline model 原理
 
 &emsp;&emsp;为了识别 inference 过程中的性能瓶颈，可以采用 **Roofline model** 进行可视化分析。这个方法通过将硬件的理论性能上限与实际工作负载的特征结合，帮助判断当前 LLM 计算任务究竟受限于 memory-bound 还是 compute-bound 。其中 Roofline model 的坐标轴定义：
 
@@ -283,9 +276,10 @@ $$\text{拐点} = \frac{\text{峰值算力（FLOP/s）}}{\text{内存带宽（By
 
 
 <div align="center">
-<img width="999" height="732" alt="2-4-Roofline model" src="https://github.com/user-attachments/assets/5cba29e9-a12b-4345-83b7-fdefdcfb2940" />
-   <p>图2.4 Roofline model</p>
- </div>
+  <img src="images/2-5-Roofline model.png" alt="2-5-Roofline model.png" width="80%">
+  <p><em>图 5. Roofline model</em></p>
+</div>
+
 
 - 判断依据：这个拐点值将 Roofline 图分为左右两个区域，左侧是 memory-bound ，右侧是 compute-bound。 
 
@@ -315,11 +309,11 @@ $$\text{AI} = \frac{\text{总浮点运算次数（FLOPs）}}{\text{总内存访�
 
 在初步判断了瓶颈所在后，就可以给出推理瓶颈判断方案。判断流程如下：
 
-
 <div align="center">
-<img width="1691" height="930" alt="2-5-借助 Roofline model 定位推理优化的方法" src="https://github.com/user-attachments/assets/62872bb7-8369-4fd6-92a3-5803e71157ee" />
-   <p>图2.5 借助 Roofline model 定位推理优化的方法</p>
- </div>
+  <img src="images/2-6-借助 Roofline model 定位推理优化的方法.png" alt="2-6-借助 Roofline model 定位推理优化的方法.png" width="80%">
+  <p><em>图 6. 借助 Roofline model 定位推理优化的方法</em></p>
+</div>
+
 
 **Step1** 获取硬件参数：查询目标硬件的峰值算力和内存带宽，计算拐点值；
 
@@ -332,7 +326,7 @@ $$\text{AI} = \frac{\text{总浮点运算次数（FLOPs）}}{\text{总内存访�
 
 
 
-## 2.4.2 Roofline model 实例分析
+### 4.2 Roofline model 实例分析
 
 &emsp;&emsp;LLM 推理的核心计算几乎全部落在矩阵乘法（GEMM）上——Attention 的 QKV 投影、注意力得分计算以及 FFN 的线性变换都是如此。为了用 Roofline model 判断性能瓶颈，我们先从最基础的 **GEMM** 入手，推导其算术强度的计算方法，并观察矩阵规模如何决定计算、访存瓶颈。
 
@@ -408,11 +402,11 @@ $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 
 - 单层总权重：$(4 + 8)d^2 = 12d^2$
 
-- QKV 投影 \+ 输出投影：形状 $d \times d$，需要读取 3 次 + 1 次（输出），共 $4d^2$ 参数
+- QKV 投影 + 输出投影：形状 $d \times d$，需要读取 3 次 + 1 次（输出），共 $4d^2$ 参数
 
 - FFN 层：两个线性层 $d \times 4d$ 和 $4d \times d$，共 $8d^2$ 参数
 
-- 输入 \+ 输出：$N \times d$（输入）\+ $N \times d$（输出）= $2Nd$
+- 输入 + 输出：$N \times d$（输入）+ $N \times d$（输出）= $2Nd$
 
 
 
@@ -428,7 +422,7 @@ $$\text{Bytes}_{\text{decode}} = L \times (12d^2 + 2d + 2Sd) \times 2$$
 
 **2.算术强度**
 
-&emsp;&emsp;这里只考虑处理 1 个批次的情况。Prefill 阶段算术强度为 $\text{AI}_{\text{prefill}} = \frac{L(24Nd^2 + 2N^2d)}{L(12d^2 + 2Nd) \times 2} = \frac{24Nd^2 + 2N^2d}{24d^2 + 4Nd}$ ；Decode 阶段算术强度为 $\text{AI}_{\text{decode}} = \frac{L(24d^2 + 4Sd)}{L(12d^2 + 2d + 2Sd) \times 2} = \frac{24d^2 + 4Sd}{24d^2 + 4d + 4Sd}$ 。对比分析可得：
+&emsp;&emsp;这里只考虑处理 1 个批次的情况。Prefill 阶段算术强度为  $\text{AI}_{\text{prefill}} = \frac{L(24Nd^2 + 4N^2d)}{L(12d^2 + 2Nd) \times 2} = \frac{24Nd^2 + 4N^2d}{24d^2 + 4Nd}$  ；Decode 阶段算术强度为 $\text{AI}_{\text{decode}} = \frac{L(24d^2 + 4Sd)}{L(12d^2 + 2d + 2Sd) \times 2} = \frac{24d^2 + 4Sd}{24d^2 + 4d + 4Sd}$ 。对比分析可得：
 
 - Prefill 的 AI值 随输入序列长度 $N$ 线性增长；
 - Decode 的 AI值 在 $S$ 增大后趋近于常数 1 与序列长度几乎无关。
@@ -441,7 +435,7 @@ $$\text{Bytes}_{\text{decode}} = L \times (12d^2 + 2d + 2Sd) \times 2$$
 
 **Prefill 阶段 AI值** ，假设输入序列长度 $N = 100$ ：
 
-$$\text{AI}_{\text{prefill}} = \frac{26 \times 100 \times 4096^2 + 2 \times 100^2 \times 4096}{24 \times 4096^2 + 4 \times 100 \times 4096}= \frac{4.37 \times 10^{10} + 8.19 \times 10^7}{4.02 \times 10^8 + 1.64 \times 10^6} \approx 108 \text{ FLOP/Byte}$$
+$$\text{AI}_{\text{prefill}} = \frac{26 \times 100 \times 4096^2 + 4 \times 100^2 \times 4096}{24 \times 4096^2 + 4 \times 100 \times 4096} \approx \frac{4.37 \times 10^{10} + 1.6 \times 10^8}{4.02 \times 10^8 + 1.64 \times 10^6} \approx 109 \text{ FLOP/Byte}$$
 
 
 **Decode 阶段 AI值** ，假设$S = 100$，已生成 100 个 token：
@@ -458,166 +452,85 @@ $\text{AI}_{\text{decode}} = \frac{24 \times 4096^2 + 4 \times 100 \times 4096}{
 
 优化方向：Prefill阶段，批处理、算子融合、Tensor Core 计算优化等；Decode阶段，量化（减少权重搬运）、KV Cache 复用（RadixAttention）等。
 
-## 2.4.3 影响推理性能的部分关键因素
 
-&emsp;&emsp;实际推理系统的性能不仅取决于单个阶段的计算特性，还会有多个影响 LLM 推理性能的几个关键因素，这些因素直接决定了系统能否充分利用硬件能力。接下来会分析部分常见因素。
+## 5 实际场景中的推理
 
-**1.批处理大小**
+&emsp;&emsp;前面我们从理论角度分析了 Prefill、Decode 的性能特征。实际应用中，不同场景会放大特定阶段的瓶颈，比如最常见的两个场景 **Agent 协作、多轮对话** ，下面分别分析这两个典型场景的推理瓶颈。
 
-当同时处理的批次大小变为 batch 时，**模型权重可以在多个请求之间复用**，从而提高算术强度。那么 Prefill、Decode 阶段的算术强度为：
-
-$$\text{AI}_\text{prefill}=\frac{batch \times (24Nd^2 + 2N^2d)}{24d^2 + 4Nd \times batch}, \quad \text{AI}_\text{decode}=\frac{batch \times (24d^2 + 4Sd)}{24d^2+batch \times(4d+4Sd)}$$
-
-&emsp;&emsp; batch 增大的时候，两个部分的算术强度都有提高，但是 Prefill 阶段提升会更明显，而后者会随着生成的 token 序列变长减少 batch 增大带来的 AI 值提高效果，因此对于 Decode 阶段需要考虑其他的优化方法。
-
-
-
-**2.序列长度**
-
-对不同阶段的影响，序列长度对推理性能的影响有 2 个方面：一方面增加了计算密度，另一方面加重了内存负担：
-
-- Prefill 阶段：AI 值随序列长度近似线性增长 $\text{AI}_{\text{prefill}} \approx \frac{N}{2}$ ，但 Attention 计算复杂度为 $O(N^2)$ ，超长序列会导致计算时间激增。
-
-- Decode 阶段：每生成 1 个 token，那么已生成序列长度 $S$ 会增加，KV Cache 读取量也会越大。这个时候 AI 值虽略有提升但仍极低，并且长序列加剧 memory-bound 、缓存加载的时间问题。
-
-
-
-Decode阶段的显存占用分析（LLaMA-7B，32 层，bf16）：
-
-|序列长度 S|KV Cache 占用|批处理能力|
-|---|---|---|
-|512|256 MB|~64 请求|
-|2048|1 GB|~16 请求|
-|8192|4 GB|~4 请求|
-|32768|16 GB|单请求|
-
-&emsp;&emsp;Decode过程中长序列场景下，显存主要被 KV cache 占据，有可能会限制了 batch size 增加带来的正向收益。`batch size 降低 → AI 值降低 → memory-bound`这形成了 “长序列-低批处理-低算术强度” 的循环。
-
-
-
-**3.请求调度策略**
-
-&emsp;&emsp;Prefill 和 Decode 的资源会相互竞争。在实际推理服务中，系统需要同时处理：
-
-- 新到达的请求(需要 Prefill)
-
-- 正在生成的请求(需要 Decode)
-
-&emsp;&emsp;由于 Prefill、Decode 阶段两者的资源需求特征截然不同。如果共享相同的 GPU 资源，Prefill 会争夺资源并中断解码过程，增加生成延迟。为了最大化 LLM 推理性能，许多推理系统采用了 PD 分离 的方法。例如：
-
-- NVIDIA使用高算力 GPU 集群处理 Prefill 阶段，高带宽专用硬件(如 Groq LPU，具有 40 PB/s 片上 SRAM 带宽)处理 Decode 阶段。
-- 开源框架如 vLLM、SGLang 也支持 PD 分离架构。
-
-这种分离需要在 Prefill 和 Decode 节点间传输 KV Cache。虽然引入额外的信息通信开销，但在长上下文、高并发场景下能显著降低延迟并提升吞吐量。
-
-# 2.5 实际场景中的推理
-
-&emsp;&emsp;前面我们从理论角度分析了 Prefill、Decode 的性能特征。实际应用中，不同场景会放大特定阶段的瓶颈，比如最常见的两个场景 **Agent 协作、多轮对话** ，下面分别分析这两个典型场景的推理瓶颈与优化方向。
-
-## 2.5.1 Agent 协作
+### 5.1 Agent 协作
 
 &emsp;&emsp;在智能体协作场景中，推理性能面临以下主要挑战：
 
 **1.工具调用的开销**
 
-&emsp;&emsp;Agentic 工作流通常需要多次工具调用循环`模型生成 → 工具执行 → 结果返回 → 模型再次推理`。每次循环都需要完整的 Prefill 过程处理累积的上下文。**主要挑战：**
+&emsp;&emsp;Agentic 工作流通常需要多次工具调用循环`模型生成 → 工具执行 → 结果返回 → 模型再次推理`。每次循环都需要完整的 Prefill 过程处理累积的上下文。
 
 - **重复 Prefill**：每次工具调用后，系统提示词、对话历史、工具定义等共享上下文都需要重新进行预填充。
 - **上下文膨胀**：工具定义和执行结果会快速增加输入长度，使后续的 Prefill 成本持续上升。
-- **Decode 阶段的影响**：虽然工具调用主要增加 Prefill 负担，但累积的上下文也会影响 Decode 性能。更大的 KV cache 意味着每生成一个新 token 都需要从内存中读取更多数据，使 Decode 阶段的 memory\-bound 特性更加明显。
+
 
 **2. 跨 Agent 通信成本**
 
-&emsp;&emsp;在**串行执行的分布式多智能体系统中**，Agent 间的消息传递和状态同步会引入网络延迟和序列化开销。**主要挑战：**
+&emsp;&emsp;在**串行执行的分布式多智能体系统中**，Agent 间的消息传递和状态同步会引入网络延迟和序列化开销。
 
 - **Prefill 阶段影响**：Agent 间传递的消息会成为下一个 Agent 的输入上下文的一部分，增加 Prefill 的输入长度。
 - **Decode 阶段影响**：如果 Agent 间需要等待彼此的输出，会导致整体端到端延迟增加。当多个 Decode 请求在同一 GPU 上竞争资源时，网络**延迟**会进一步放大排队等待时间。
-- **调度复杂性**：分布式 多Agent 系统中，请求可能在不同节点间跳转，导致 KV cache 无法复用，每次都需要完整 Prefill。
-
-**部分优化策略：**
-
-**①Prompt cache**：将系统提示词和工具定义放在输入的前缀位置，增加提示词缓存命中概率，从而减少重复计算。
-
-**②工具定义优化**：最小化 schema 描述，移除冗余字段和示例；动态加载相关工具子集，而非一次性加载所有工具定义。
-
-**③使用上下文压缩**：使用结构化、紧凑的通信协议，避免传递冗长的自然语言描述。减少通信过程中 Prefill 成本。
 
 
+### 5.2 多轮对话
 
-## 2.5.2 多轮对话
-
-&emsp;&emsp;多轮对话场景的核心特点是：每轮新请求都依赖之前的对话历史，导致输入长度随对话轮次线性增长。**主要挑战：**
+&emsp;&emsp;多轮对话场景的核心特点是：每轮新请求都依赖之前的对话历史，导致输入长度随对话轮次线性增长：
 
 **1.Prefill 延迟线性增长**
 
-&emsp;&emsp;在同一个对话窗口中，每轮对话需要处理完整的历史上下文，导致 TTFT 随轮次增加而线性增长。对于长对话（>10 轮），Prefill 时间可能占据总响应时间的主要部分。假设每轮对话增加 200 tokens，模型 Prefill 速度为 1000 tokens/s：第 1 轮，TTFT ≈ 200ms；第 10 轮，TTFT ≈ 2000ms..\随着对话轮次增加，Prefill响应时间明显增加。
+&emsp;&emsp;在同一个对话窗口中，每轮对话需要处理完整的历史上下文，导致 TTFT 随轮次增加而线性增长。对于长对话（>10 轮），Prefill 时间可能占据总响应时间的主要部分。假设每轮对话增加 200 tokens，模型 Prefill 速度为 1000 tokens/s：第 1 轮，TTFT ≈ 200ms；第 10 轮，TTFT ≈ 2000ms...随着对话轮次增加，Prefill响应时间明显增加。
 
 **2. KV Cache 内存占用**
 
-&emsp;&emsp;保存完整对话历史的 KV Cache 会消耗大量显存。在长上下文（如 100K tokens）场景下，其可能占用数十 GB 内存，限制了并发请求数。**主要影响：**
+&emsp;&emsp;保存完整对话历史的 KV Cache 会消耗大量显存。在长上下文（如 100K tokens）场景下，其可能占用数十 GB 内存，限制了并发请求数。
 
 - **内存访问成为瓶颈**：对于长上下文，KV Cache 的读取时间可能超过实际计算时间。
-
 - **批处理效率下降**：大量的 KV Cache 减少了可以并发处理的请求数，降低了 GPU 利用率和整体吞吐量。
 
 
+## 6 总结与测试题
 
-**部分优化策略：**
-
-**①KV Cache 复用与缓存**：比如 Prefix Cache，在 Prefill 阶段查找是否存在**可复用的共享前缀 KV Cache**，从而减少重复计算。
-
-**②架构优化**：采用滑动窗口注意力机制的模型将注意力范围限制在固定窗口内，从而**限制 KV Cache 的最大长度，减少内存占用**。但是会牺牲对窗口外历史信息的访问能力。
-
-**③KV Cache offloading**：当 GPU 显存紧张或会话长时间未活跃/优先级低时，将 KV Cache 卸载到 CPU 内存或 SSD。需要时通过 NVLink 重新加载回 GPU。这可以提升并发能力但会引入传输延迟，适用于低频访问场景。
-
-
-
-# 2.6 总结
+### 6.1 总结
 
 &emsp;&emsp;本章分析了 LLM 推理的核心机制与性能瓶颈。从训练与推理的本质差异出发，探讨了 Prefill 与 Decode 两个关键阶段的计算特征，引入 Roofline model 作为性能分析工具。结合 Agent 协作和多轮对话两个典型场景，了解到部分实际推理系统中面临的挑战与优化方向。
 
-## 练习题
+### 6.2 测试题
 
-1.在多轮对话导致 KV Cache 不断增长的场景中，会对 Prefill 阶段产生影响吗？请分别讨论以下两种架构：
-
-- PD 分离架构
-- PD 未分离架构（Prefill 和 Decode 共享同一 GPU 资源）
-
-> 提示：考虑显存占用、资源竞争和调度策略。
-
-
-2.对比 Prefill 与 Decode 两个阶段的区别与联系，并分析各自的性能瓶颈是什么？
+1.对比 Prefill 与 Decode 两个阶段的区别与联系，并分析各自的性能瓶颈是什么？
 
 > 提示：从计算模式、并行特性、算术强度、内存访问模式等维度对比。
 
 
 
-3.KV Cache 的来源是什么？它在推理过程中起什么作用？如果在标准 Attention 计算过程中不使用 KV Cache，会发生什么？
+2.KV Cache 的来源是什么？它在推理过程中起什么作用？如果在标准 Attention 计算过程中不使用 KV Cache，会发生什么？
 
 > 提示：考虑自回归生成的特点和计算复杂度。
 
 
-4.如何使用 Roofline model 判断推理过程的性能瓶颈？请选择一个具体场景进行分析。
+3.如何使用 Roofline model 判断推理过程的性能瓶颈？请选择一个具体场景进行分析。
 
 > 提示：明确说明硬件参数、计算 AI 值、与拐点对比的完整流程。
 
 
-5.在 RAG+ LLM 的应用场景中，假设需要基于多个金融领域文档作为知识库来分析经济问题，并在同一个对话窗口中进行长时间多轮交互。这种场景的主要性能瓶颈是什么？
+4.在 RAG+ LLM 的应用场景中，假设需要基于多个金融领域文档作为知识库来分析经济问题，并在同一个对话窗口中进行长时间多轮交互。这种场景的主要性能瓶颈是什么？
 
 > 提示：考虑检索文档注入的上下文长度、多轮对话历史累积、KV Cache 增长等因素。
 
-6.为什么量化（比如，INT8/INT4）对 Decode 阶段的加速比对 Prefill 更显著？
+5.为什么量化（比如，INT8/INT4）对 Decode 阶段的加速比对 Prefill 更显著？
 
 > 提示：考虑 KV Cache 在两个阶段的变化、作用。
 
-# **参考资料**
+## 参考资料
 
 - https://docs.sglang.io/
 - https://www.nvidia.com/en-sg/data-center/h100/
-- https://vllm.ai/blog/2025-09-05-anatomy-of-vllm
-- https://vllm.ai/blog/2026-04-07-moriio-kv-connector
 - https://www.lmsys.org/blog/2025-05-05-large-scale-ep
-- https://github.com/datawhalechina/diy-llm/blob/main/docs/zh/chapter10/%E6%8E%A8%E7%90%86.md
+- https://datawhalechina.github.io/diy-llm/chapter10/%E6%8E%A8%E7%90%86.html
 - https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform
 - https://zolotukhin.ai/blog/2026-07-23-a-local-coding-agent-reads-back-eighteen-tokens-for-every-one-it-writes/
 - https://datawhalechina.github.io/diy-llm/chapter9/chapter9_Scaling_Laws.html
