@@ -27,7 +27,7 @@
 
 &emsp;&emsp;这门课想补上这个缺口。前半部分，我们从推理最核心的问题讲起：KV Cache 为什么要有、prefill 和 decode 差在哪、compute-bound 和 memory-bound 到底是什么意思。中间部分，带着你从零手搓一个 mini-sglang：前向、生成、KV Cache、HTTP 服务、Continuous Batching、Paged KV Cache、RadixAttention，一样一样加上去。后半部分，回到真实的 SGLang，讲清楚它那些前沿优化具体是怎么做的，最后教你怎么给 SGLang 提第一个像样的 PR。
 
-&emsp;&emsp;本项目由 <strong>Datawhale</strong> 和 <strong>RadixArk</strong>（SGLang 团队创立的公司）共同发起，值得信赖。
+&emsp;&emsp;本项目由 <strong>Datawhale</strong> 和 <strong>RadixArk</strong>（SGLang 团队创立的公司）共同发起，值得信赖！SGLang 在推理框架领域技术扎实、迭代活跃，认可这个项目的话，欢迎去 [sglang官方仓库](https://github.com/sgl-project/sglang) 点个 ⭐。
 
 ## ✨ 你能学到什么
 
@@ -45,6 +45,12 @@
 - **GPU 编程（可选）**：了解 CUDA 基础概念会更好，不懂也没关系，Part I 会从零补齐
 - **硬件（可选）**：Part I 不需要 GPU；Part II 大部分内容能在 CPU 上调试，完整的实现和性能测试建议用 GPU（云服务也行）
 
+## 🔗 相关链接
+
+- **仓库地址**：https://github.com/datawhalechina/zero-to-sglang
+- **SGLang 官方**：https://github.com/sgl-project/sglang
+- **mini-sglang 参考实现**：https://github.com/sgl-project/mini-sglang
+
 ## 📖 课程目录
 
 > 状态图例：✅ 已完成  🔄 更新中  📝 待完善  🚧 筹备中  ⏸️ 暂缓
@@ -55,6 +61,7 @@
 |------|----------|------|
 | <strong>Part 0 — 开课之前</strong> | | |
 | [0.1 编码伦理与开源精神](docs/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
+| [0.2 部署你的第一个SGLang服务](docs/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
 | <strong>Part I — 基础概念（concepts only，无代码、无 GPU）</strong> | | |
 | 1. Introduction to LLM | LLM 的定义与发展脉络、Transformer 架构、自回归生成、关键基础概念 | 🔄 |
 | 2. Introduction to inference | 训练 vs 推理、prefill/decode、compute-bound vs memory-bound、Roofline | 🔄 |
@@ -155,12 +162,6 @@ zero-to-sglang/
 - ✍️ <strong>分享实践</strong>：分享你的学习笔记、benchmark 复现与实践经验
 
 > 贡献之前，请先读一遍 [Part 0](docs/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
-
-## 🔗 相关链接
-
-- **仓库地址**：https://github.com/datawhalechina/zero-to-sglang
-- **SGLang 官方**：https://github.com/sgl-project/sglang
-- **mini-sglang 参考实现**：https://github.com/sgl-project/mini-sglang
 
 
 ## ❓ 常见问题
