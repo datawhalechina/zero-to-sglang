@@ -78,16 +78,16 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 - 根据[Scaling Law](https://datawhalechina.github.io/diy-llm/chapter9/chapter9_Scaling_Laws.html)定理 ，训练数据量与模型参数量之比约为 **20:1** 。则对于 8B 参数的模型，所需训练数据量 $D$ 约为 160B tokens，即 $D = 1.6 \times 10^{11}$ 。
 
-- 每个 token 的训练计算量 = $\text{前向} 2ND + \text{反向} 4ND$ ，则总计算量表示为 $6ND = 6 \times 8 \times 10^{9} \times 1.6 \times 10^{11} \approx 7.7 \times 10^{21}  \ \mathrm{FLOP}$
+- 每个 token 的训练计算量 = $\text{前向} 2ND + \text{反向} 4ND$ ，则总计算量表示为 $6ND = 6 \times 8 \times 10^{9} \times 1.6 \times 10^{11} \approx 7.7 \times 10^{21}  \ \mathrm{FLOPs}$
 
-&emsp;&emsp;假设使用 H100 GPU（峰值约 $990\ \mathrm{TFLOP}$ ），完成以上训练若按峰值算力计算，约需 $\frac{7.7 \times 10^{21} \ \mathrm{FLOP}}{ (24 \times 3600) \times 990 \times 10^{12} \ \mathrm{FLOP}} \approx 90$ 张 GPU 训练**1 天**。但是实际训练中硬件算力使用通常低于峰值算力，因此需要更多 GPU，一次投入成本约为数十万美元。
+&emsp;&emsp;假设使用 H100 GPU（峰值约 $990\ \mathrm{TFLOPs}$ ），完成以上训练若按峰值算力计算，约需 $\frac{7.7 \times 10^{21} \ \mathrm{FLOP}}{ (24 \times 3600) \times 990 \times 10^{12} \ \mathrm{FLOPs}} \approx 90$ 张 GPU 训练**1 天**。但是实际训练中硬件算力使用通常低于峰值算力，因此需要更多 GPU，一次投入成本约为数十万美元。
 
 
 
 **推理一次(输入 512 tokens prompt，生成 128 tokens)**：
 
-- 仅前向传播，总计算量 = $2N \times (\text{len}_{input} + \text{len}_{output}) \ \mathrm{FLOP}$
-- 带入具体数据，总计算量 = $2 \times 8 \times 10^{9} \times (512+128) \approx 1 \times 10^{13} \ \mathrm{FLOP}$
+- 仅前向传播，总计算量 =  $2N \times (len_{input} + len_{output}) \ \mathrm{FLOPs}$
+- 带入具体数据，总计算量 =  $2 \times 8 \times 10^{9} \times (512+128) \approx 1 \times 10^{13} \ \mathrm{FLOPs}$
 
 &emsp;&emsp;若每天服务 100 万次这样的请求，月度成本达数万美元，年度累计就会超过训练成本。正是这种成本结构差异驱动了推理优化的核心方向——降低单次推理的时延与显存占用，以及提高吞吐量，最终在规模化部署中摊薄边际成本。
 
@@ -109,7 +109,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 &emsp;训练不是单纯地"喂数据更新参数"，而是一个持续的"训练 -> 推理 - > 评估 -> 优化"循环：        
 
 - 每个 epoch 训练完成后，模型需要在验证集上推理，计算准确率、loss等指标，得到训练效果；
-- 后训练 RL 阶段中，策略模型先推理得到回答，由外部奖励模型或规则对回答打分，最后用PPO等算法根据奖励更新参数。
+- 后训练 RL 阶段中，策略模型先推理得到回答，由外部奖励模型或规则对回答打分，然后用PPO等算法根据奖励更新参数。
 
 可以说：没有推理就无法知道模型"学得怎么样"，也就无法进行有效训练。
 
@@ -119,8 +119,8 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 &emsp;模型的架构设计是在训练开始前确定的，比如这些设计直接决定了部署时推理的性能——
 
 - **结构选择影响资源消耗**：transformer 层数、隐藏层维度等架构参数，直接决定推理时的显存占用和计算量。例如，700 亿参数模型在 FP16 下仅权重就约需 140GB 显存，这是架构带来的硬约束。
-- **部分优化空间在训练时埋下**：有的推理优化必须在训练时就定好结构。GQA 通过分组共享 KV 头降低带宽，训练若只用标准 MHA，部署时无法直接改成 GQA 。
-- **量化和压缩的兼容性**：推理若要用 INT8 量化来降显存、提速度，训练时最好做量化感知训练（QAT）。即我们指定量化位数，然后在前向中模拟量化噪声，让参数适应量化误差。不经过 QAT 就直接量化，精度损失会很影响最后的推理表现。
+- **部分优化空间在训练时埋下**：有的推理优化必须在训练时就定好结构。例如， GQA 通过分组共享 KV 头降低带宽，训练若只用标准 MHA，部署时无法直接改成 GQA 。
+- **量化和压缩的兼容性**：推理若要用 INT8 量化来降显存、提速度，训练时最好做量化感知训练（QAT）。即我们指定量化位数，然后在前向中模拟量化噪声，让参数适应量化误差。不经过 QAT 就直接量化，精度损失会很影响最后的推理性能。
 
 推理不是"训练完成后的事"，而是贯穿全程的协同过程。训练时每个架构决策都在为未来的推理性能"买单"，那么推理的约束必须在训练阶段就纳入设计考量。两者是"**设计时绑定，运行时协作**"的关系。
 
@@ -153,7 +153,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 
 ### 3.2 Prefill
 
-Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可以是多个请求打包成的 batch）进行**一次完整的前向传播**。模型会**并行处理**所有输入 token，**构建并写入初始 KV cache**，同时得到第一个生成 token 的 logits。以  LLaMA-7B 的 Prefill 场景为例：
+&emsp;&emsp;Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可以是多个请求打包成的 batch）进行**一次完整的前向传播**。模型会**并行处理**所有输入 token，**构建并写入初始 KV cache**，同时得到第一个生成 token 的 logits。以  LLaMA-7B 的 Prefill 场景为例：
 
 - 处理 2 个用户请求，合计 **N = 3000** 个 token  
 - 模型 config ：层数 $L = 32$，隐藏层维度 $d = 4096$ ，FFN 中间计算维度约 $4d = 16384$ ，注意力机制头数 $\text{heads} = 32$
@@ -164,7 +164,7 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 
 - **QKV + 输出投影**&emsp;4 个线性层，共 $2 \times 4 \times N d^{2}$ ;
 - **FFN**&emsp;两个线性层升维 + 降维，共 $2 \times 2 \times (4d \times Nd)$ ;
-- **Attention 核心计算** &emsp; $QK^{\top}$ 与 score×$V$  共 $2 \times 2 \times N^{2} d$ .
+- **Attention 核心计算** &emsp; $QK^{\top}$ 与 score× $V$   共 $2 \times 2 \times N^{2} d$ .
 
 单层总计 $24 N d^{2} + 4 N^{2} d$ ，整个模型为 $\text{Total FLOPs} \approx L \times \bigl(24 N d^{2} + 4 N^{2} d\bigr)$ ，带入具体数值的每 1 层总计算量表示：
 
@@ -178,7 +178,7 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 **2. 不同 Prompt 长度的对比**
 
 <div align="center">
-  <img src="images/2-4-不同Prompt的FLOPs对比" alt="2-4-不同Prompt的FLOPs对比.png" width="80%">
+  <img src="images/2-4-不同Prompt的FLOPs对比.png" alt="2-4-不同Prompt的FLOPs对比.png" width="80%">
   <p><em>图 4. 不同Prompt的FLOPs对比</em></p>
 </div>
 
@@ -209,7 +209,7 @@ Prefill 阶段是对当前调度到的 Prompt（可以是单个请求，也可�
 
 ### 3.3 Decode
 
-完成 Prefill 阶段，LLM 进入 Decode 阶段，基于已生成的 KV cache **逐个**生成后续 token。这里仍以 LLaMA-7B 为例，假设输入 Prompt 长度为 3000 token（对应 1.5 GB KV cache），以及每个 token 占用空间为 2 byte。
+&emsp;&emsp;完成 Prefill 阶段，LLM 进入 Decode 阶段，基于已生成的 KV cache **逐个**生成后续 token。这里仍以 LLaMA-7B 为例，假设输入 Prompt 长度为 3000 token（对应 1.5 GB KV cache），以及每个 token 占用空间为 2 byte。
 
 **1.单次完整浮点运算处理 1 个批次的估算**
 
@@ -219,10 +219,10 @@ $$\text{FLOP per token} \approx L \times (24 d^2 + 4 S d)$$
 
 其中 S 是当前序列长度（需要 attend 的历史 token 数）。以生成第 1 个输出 token 为例（S = 3000）：
 
-- **线性投影 + FFN 项**： $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOP/层}$ ;
-- **Attention 项**： $4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOP/层}$ .
+- **线性投影 + FFN 项**： $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOPs/层}$ ;
+- **Attention 项**： $4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOPs/层}$ .
 
-**32 层总计算量 = 线性投影 + FFN 项 + Attention 项** ≈ **14.4 GFLOPs**，同样按照 A100 的巅峰算力值计算，理论计算时间仅约 **0.05 ms**。但实际耗时远超这个值，不过更大的问题是显存占用。
+&emsp;&emsp;**32 层总计算量 = 线性投影 + FFN 项 + Attention 项** ≈ **14.4 GFLOPs**，同样按照 A100 的巅峰算力值计算，理论计算时间仅约 **0.05 ms**。但实际耗时远超这个值，不过更大的问题是显存占用。
 
 
 **2.内存流量与瓶颈分析**
@@ -234,7 +234,7 @@ Decode 阶段每生成 1 个 token 需要：
 - **1个新 token 的 KV 写入**：约 0.5 MB
 - **激活值**：相对较小，可忽略
 
-**内存流量总计** ≈ **15.5 GB**（读写合计，新写入的 0.5 MB 可忽略不计）。同样使用 A100 ，对应的 HBM 带宽为 1.6 TB/s，读取 15.5 GB 数据的理论最小时间为 $\frac{15.5 \text{ GB}}{1600 \text{ GB/s}} \approx 9.7 \text{ ms}$ ，对比算力维度的理论时间，**GPU 几乎所有的时间都在空转等待数据搬运**。
+&emsp;&emsp;**内存流量总计** ≈ **15.5 GB**（读写合计，新写入的 0.5 MB 可忽略不计）。同样使用 A100 ，对应的 HBM 带宽为 1.6 TB/s，读取 15.5 GB 数据的理论最小时间为 $\frac{15.5 \text{ GB}}{1600 \text{ GB/s}} \approx 9.7 \text{ ms}$ ，对比算力维度的理论时间，**GPU 几乎所有的时间都在空转等待数据搬运**。
 
 
 
@@ -246,7 +246,7 @@ Decode 阶段每生成 1 个 token 需要：
 - 生成第 100 个 token 后，1.5 GB + 50 MB ≈ 1.55 GB
 - 生成第 2000 个 token 后，1.5 GB + 1000 MB ≈ 2.5 GB
 
-核心问题在于——长时间对话或处理大 batch 的场景中，每生成一个新 token，需要读取的 KV cache 体积在增大，进一步加重内存流量与带宽压力。这也是 vLLM、SGLang 等推理引擎引入 PagedAttention、KV cache 复用、量化压缩 等优化技术的原因。
+&emsp;&emsp;核心问题在于——长时间对话或处理大 batch 的场景中，每生成一个新 token，需要读取的 KV cache 体积在增大，进一步加重内存流量与带宽压力。这也是 SGLang 等推理引擎引入 KV cache 复用、量化压缩 等优化技术的原因。
 
 ---
 
@@ -261,9 +261,7 @@ Decode 阶段每生成 1 个 token 需要：
 &emsp;&emsp;为了识别 inference 过程中的性能瓶颈，可以采用 **Roofline model** 进行可视化分析。这个方法通过将硬件的理论性能上限与实际工作负载的特征结合，帮助判断当前 LLM 计算任务究竟受限于 memory-bound 还是 compute-bound 。其中 Roofline model 的坐标轴定义：
 
 - **横轴**：算术强度（Arithmetic Intensity, AI），单位 FLOP/Byte ，表示每搬运 1 字节数据可以执行多少次浮点运算次数；
-
 - **纵轴**：实际性能（Performance），单位 FLOP/s ，表示每秒实际完成的浮点计算量，这个值始终不会硬件的峰值算力。
-
 
 
 其中，两个关键的判断指标——拐点、算术强度的计算原理：
@@ -400,13 +398,13 @@ AI 值随矩阵规模增大而增大，即矩阵越大搬运的数据复用率�
 
 $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 
-- 单层总权重：$(4 + 8)d^2 = 12d^2$
+- 单层总权重：  $(4 + 8)d^2 = 12d^2$
 
 - QKV 投影 + 输出投影：形状 $d \times d$，需要读取 3 次 + 1 次（输出），共 $4d^2$ 参数
 
 - FFN 层：两个线性层 $d \times 4d$ 和 $4d \times d$，共 $8d^2$ 参数
 
-- 输入 + 输出：$N \times d$（输入）+ $N \times d$（输出）= $2Nd$
+- 输入 + 输出： $N \times d$ （输入）+ $N \times d$（输出）= $2Nd$
 
 
 
@@ -415,14 +413,21 @@ $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 $$\text{Bytes}_{\text{decode}} = L \times (12d^2 + 2d + 2Sd) \times 2$$
 
 - 权重搬运：与 Prefill 相同，仍需读取全部权重 $12d^2$
-- 输入 + 输出： $1 \times d$（输入）\+ $1 \times d$（输出）= $2d$
+- 输入 + 输出： $1 \times d$ （输入）+ $1 \times d$（输出）= $2d$
 - KV Cache 读取：Attention 需要读取历史 $S$ 个 token 的 KV，共 $2 \times S \times d$
 
 
 
 **2.算术强度**
 
-&emsp;&emsp;这里只考虑处理 1 个批次的情况。Prefill 阶段算术强度为  $\text{AI}_{\text{prefill}} = \frac{L(24Nd^2 + 4N^2d)}{L(12d^2 + 2Nd) \times 2} = \frac{24Nd^2 + 4N^2d}{24d^2 + 4Nd}$  ；Decode 阶段算术强度为 $\text{AI}_{\text{decode}} = \frac{L(24d^2 + 4Sd)}{L(12d^2 + 2d + 2Sd) \times 2} = \frac{24d^2 + 4Sd}{24d^2 + 4d + 4Sd}$ 。对比分析可得：
+&emsp;&emsp;这里只考虑处理 1 个批次的情况。
+
+- Prefill 阶段算术强度为 $\text{AI}_{\text{prefill}} = \frac{L(24Nd^2 + 4N^2d)}{L(12d^2 + 2Nd) \times 2} = \frac{24Nd^2 + 4N^2d}{24d^2 + 4Nd}$
+
+- Decode 阶段算术强度为
+$$\text{AI}_{\text{decode}} = \frac{L(24d^2 + 4Sd)}{L(12d^2 + 2d + 2Sd) \times 2} = \frac{24d^2 + 4Sd}{24d^2 + 4d + 4Sd}$$
+
+对比分析可得：
 
 - Prefill 的 AI值 随输入序列长度 $N$ 线性增长；
 - Decode 的 AI值 在 $S$ 增大后趋近于常数 1 与序列长度几乎无关。
