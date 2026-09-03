@@ -1,6 +1,23 @@
-# part1 Introduction to GPU
+# 第三章 Introduction to GPU
 
 欢迎来到 zero-to-sglang 课程，这里是课程的第二部分，上节课我们介绍了大模型的推理具体过程，学习了token的生命历程还有KV Cache 等技术，下面我们要介绍的是GPU的架构以及LLM在GPU的执行流程。GPU作为大模型训练和推理的地基，贯穿整个大模型的生命流程，我们有必要学习GPU相关的知识。下面就让我们开始本节课程的学习。
+
+## 本章概要
+
+本章围绕 **GPU 硬件架构** 与 **大模型推理在 GPU 上的执行流程** 展开，共分为四个部分：
+
+### 一、GPU 架构基础：
+
+从 GPU 作为图形处理器的起源讲起，对比 CPU 与 GPU 的设计哲学（低延迟 vs 高吞吐），并以 A100 为例拆解 GPC→TPC→SM→CUDA/Tensor Core。
+
+### 二、GPU 的执行模型：
+
+讲解 SIMT 执行模型下 Block/Warp/Thread 的三级调度，以及寄存器→共享内存→L2→全局内存的多级内存层次。
+
+### 三、LLM 推理在 GPU 上的执行流程：
+
+说明为什么 LLM 推理离不开 GPU，并将推理拆解为预处理、计算密集的 Prefill 和内存密集的 Decode 三个阶段。
+
 
 ## 一、GPU 架构基础
 
@@ -10,7 +27,7 @@
 
 当我们打开游戏里面的3D模型，可以发现3D模型都是由一个一个**小三角形**构成，三角形由三根线构成，为了节省存储的空间，我们只存储三角形的三个顶点坐标，构成线的像素点坐标我们不储存，而是实时计算出来。
 
-<img src="images/6-0-3D模型和三角形的计算.png" width="800" alt="6-0-3D模型和三角形的计算">
+<img src="images/3-1-3D模型和三角形的计算.png" width="800" alt="3-1-3D模型和三角形的计算">
 
 由两个点构成一个直线就可以发现，一根线我们只存储**两个端点的信息**，中间的像素点再时时计算渲染。我们可以由两个顶点坐标计算斜率和截距，就可以算出两条线中间的点的位置。虽然都是简单计算，只有大量简单的乘法和加法。但是 CPU 天生时执行复杂逻辑的，只能逐个计算，所以**计算时间非常长**。
 
@@ -72,7 +89,7 @@ CPU设计初衷是用来最小化单任务延迟，快速响应复杂逻辑，�
 
 GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大部分晶体管用于算术逻辑单元（ALU），核心多而简，可以达到数万个。优化**延迟**，追求单个任务最快完成。配备大型控制单元、分支预测器，核心数量少（4-32个）但时钟频率极高。
 
-<img src="images/6-1-GPU和CPU的结构.png" width="800" alt="6-1-GPU和CPU的结构">
+<img src="images/3-2-GPU和CPU的结构.png" width="800" alt="3-2-GPU和CPU的结构">
 
 上面这幅图可以看到：**CPU的计算单元**（绿色部分）少，大部分用来**控制（Control）**和**缓存（Cache）**这决定了它可以进行**复杂的逻辑运算**，GPU则不同，他的**控制单元少（黄色部分）**,大部分都是**绿色的计算单元**，这决定了它可以进行**大量并行计算简单的乘法和加法运算**，复杂的逻辑和复杂的计算就不行了。GPU主要就是优化**吞吐量**，追求所有任务整体最快完成。控制逻辑仅占芯片面积的极小部分，计算单元（ALU）占绝大多数。所以我们在使用GPU时还要**CPU的调度**，一个好的GPU要配上好的CPU才能发挥作用。
 
@@ -82,7 +99,7 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 
 我们使用A100 来介绍GPU的具体结构
 
-<img src="images/6-2-GPU的结构.png" width="800" alt="6-1-GPU的结构">
+<img src="images/3-3-GPU的结构.png" width="800" alt="3-3-GPU的结构">
 
 一张英伟达的的显卡剖面图如图，一张显卡由**供电、显卡核心、显存、显示接口和金手指**组成。
 
@@ -107,7 +124,7 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 
 #### 1.3.3 GA100 GPU核心架构（芯片内部宏观结构）
 
-<img src="images/6-3-GPU核心的架构.png" width="800" alt="6-3-GPU核心的架构.png">
+<img src="images/3-4-GPU核心的架构.png" width="800" alt="3-4-GPU核心的架构.png">
 
 NVIDIA Ampere架构是NVIDIA于2020年发布的GPU架构，是其第八代GPU架构。它采用7纳米（nm）制程工艺，集成了高达540亿个晶体管，是当时世界上最大的7纳米芯片。该架构主要面向数据中心、人工智能（AI）、高性能计算（HPC）及专业图形等领域
 
@@ -147,7 +164,7 @@ A100的SM是Ampere架构核心，相比消费级GPU有本质增强：
 
 SM是将线程块（Thread Block）映射到物理硬件并完成实际计算的根本单元。当GPU内核（Kernel）启动时，线程块被分配到空闲的SM上，SM负责将其内部的线程束（Warp，32线程）解码并派发至CUDA核心（处理通用运算）或Tensor Core（处理矩阵乘加运算）执行。没有SM的调度，CUDA核心和Tensor Core无法自主运行。
 
-<img src="images/6-4-SM的架构.png" width="800" alt="6-4-SM的架构.png">
+<img src="images/3-5-SM的架构.png" width="800" alt="3-5-SM的架构.png">
 
 ```
 ┌──────────────────────────────
@@ -223,11 +240,11 @@ SM内置**192KB的L1缓存/共享内存**，供本SM内所有CUDA核心快速存
 
 ### 2.2 执行模型的核心名词详解
 
-<img src="images/6-5-SM的执行.png" width="800" alt="6-5-SM的执行.png">
+<img src="images/3-6-SM的执行.png" width="800" alt="3-6-SM的执行.png">
 
 在GPU运行中，我们划分三个粒度层级来思考：**块（block）、线程束（warp）和线程（thread）**，这是粒度逐级细化的顺序。块是大型线程组，**每个块会被分配给一个SM处理**。可以把每个SM想象成**独立工作**的单元，而块就是分配给它的**处理单元**。在每个块内部包含**大量线程**，每个线程代表待执行的任务单元。这些线程在执行时会分组运行，这种分组称为线程束。每个线程束由32个连续编号的线程组成，从块中提取出来同步执行。通过这个示意图可以看到：多个块被分配给不同的SM，每个块内包含多个线程束，每个线程束又由大量线程组成。所有这些线程都会在不同数据上执行相同的指令，这就是基本执行模型。
 
-<img src="images/6-28-内存模型.png" width="800" alt="6-28-内存模型.png">
+<img src="images/3-7-内存模型.png" width="800" alt="3-7-内存模型.png">
 
 #### 1. Warp（线程束）
 
@@ -275,7 +292,7 @@ SIMT模型是**GPU高吞吐量的底层逻辑**,它将硬件上**SIMD式的密�
 
 ### 2.3 GPU的内存模型
 
-<img src="images/6-6-GPU的内存模型.png" width="800" alt="6-6-GPU的内存模型.png">
+<img src="images/3-8-GPU的内存模型.png" width="800" alt="3-8-GPU的内存模型.png">
 
 
 **内存距离SM越近，访问速度越快**。因此存在**极高速的内存类型（如L1缓存和共享内存）**，它们位于SM内部，具有**极快的读写速度**。像**寄存器这类需要频繁读写的元件，就应该放置在L1和共享内存中**。
@@ -424,7 +441,21 @@ LLM在GPU上的推理，其核心是**自回归**地逐个生成token，整个�
 
 下面，我们以单卡A100运行Llama类模型为例，逐步拆解这个过程。
 
-### 3.1 预处理：CPU的准备工作
+### 3.1 为什么 LLM 推理离不开 GPU
+
+在拆解推理流程之前，我们先回答一个根本问题：为什么大模型推理几乎必须依赖 GPU？答案要回到前两章讲过的 GPU 架构与执行模型。
+
+**1. 推理的本质是海量矩阵运算。** Transformer 的每一层都由大规模的矩阵乘法（GEMM/GEMV）构成——注意力的 Q×Kᵀ、注意力加权求和、以及各层的线性投影和 FFN，本质都是"大量简单的乘加运算"。这正是 GPU 数千个 CUDA 核心和专用 Tensor Core 最擅长的工作，而 CPU 只有几十个重逻辑核心，串行处理这种规模的运算会慢上几个数量级。
+
+**2. 大模型需要极高的显存带宽。** 一个 70B 模型的 FP16 权重约 140GB，每生成一个 token 都要把相关权重从显存搬运到计算单元。GPU 的 HBM 显存带宽可达约 2TB/s，是 CPU 主存（约 100GB/s）的 20 倍以上。推理速度在很大程度上由"每秒能搬多少字节权重"决定，这一点 CPU 内存系统根本无法满足。
+
+**3. GPU 用吞吐量掩盖延迟的设计恰好契合推理。** 推理时成百上千个 token、多个请求可以并行处理，GPU 通过 Warp 切换在等待访存时立刻调度其他就绪线程，把内存延迟通过调度消弭，使昂贵的计算单元和显存带宽持续满载。CPU 追求单任务低延迟，面对这种大批量同质任务反而无法发挥。
+
+**4. 软件生态的成熟。** CUDA、cuDNN 以及 PyTorch/TensorFlow 等框架，加上 FlashAttention、PagedAttention 等针对 GPU 内存层次深度优化的算子，使 GPU 成为 LLM 训练与推理事实上的标准平台。
+
+**LLM 推理是典型的计算密集 + 访存密集任务，而 GPU 正是为大规模并行计算和高带宽访存而生的硬件，两者高度契合，这就是推理离不开 GPU 的根本原因。**
+
+### 3.2 预处理：CPU的准备工作
 
 在GPU真正开始计算前，CPU需要完成一系列准备工作。
 
@@ -434,7 +465,7 @@ LLM在GPU上的推理，其核心是**自回归**地逐个生成token，整个�
 
 **数据传递**：将Token IDs等必要数据通过PCIe总线从CPU内存拷贝到GPU显存。
 
-### 3.2 Prefill阶段：首次并行计算（Compute-Bound）
+### 3.3 Prefill阶段：首次并行计算（Compute-Bound）
 
 这是处理用户输入的阶段。GPU接收到Token IDs后，会计算它们对应的向量表示（Embedding），然后送入模型的第一层开始计算。
 
@@ -453,7 +484,7 @@ LLM在GPU上的推理，其核心是**自回归**地逐个生成token，整个�
 
 在这个阶段，GPU算力是瓶颈，因此被称为**计算密集型（Compute-Bound）** 任务。
 
-### 3.3 Decode阶段：逐token生成（Memory-Bound）
+### 3.4 Decode阶段：逐token生成（Memory-Bound）
 
 这是模型“说话”的阶段。每生成一个新token，都需要依赖之前所有token的信息。
 
@@ -473,7 +504,7 @@ LLM在GPU上的推理，其核心是**自回归**地逐个生成token，整个�
 
 Decode阶段是**内存密集型（Memory-Bound）** 任务，优化重点在于减少显存访问量和提高访问效率。
 
-### 3.4 总结
+### 3.5 总结
 
 | 阶段 | 核心任务 | 计算类型 | GPU瓶颈 | 关键优化 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -509,9 +540,9 @@ GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计�
 
 ---
 
-### 3.2 测试题
+### 4.2 测试题
 
-1. LLM 推理的两个阶段是什么？
+1. LLM 推理的几个阶段分别是什么，各自有什么特点，为什么GPU成为LLM推理的主要工具？
 
 2. 请简述 CPU 与 GPU 在架构设计上的本质区别，并说明为何 GPU 适合深度学习中的矩阵运算。
 
@@ -522,6 +553,4 @@ GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计�
 
 - [https://datawhalechina.github.io/diy-llm/chapter6/chapter6_GPU和GPU相关的优化.html](https://datawhalechina.github.io/diy-llm/chapter6/chapter6_%E7%AC%AC%E5%85%AD%E7%AB%A0GPU%E5%92%8CGPU%E7%9B%B8%E5%85%B3%E7%9A%84%E4%BC%98%E5%8C%96.html)
 - [https://cs336.stanford.edu/](https://cs336.stanford.edu/)
-- [FlashAttention原理](https://arxiv.org/pdf/2205.14135)
-- [PagedAttention原理](https://arxiv.org/pdf/2309.06180)
-- [(https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
+- [https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
