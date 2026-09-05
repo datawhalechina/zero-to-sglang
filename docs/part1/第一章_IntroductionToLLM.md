@@ -392,3 +392,11 @@ RAG是实现上下文工程的一种关键技术手段，负责从长期记忆�
 1. 用一句话说明 LLM 的核心能力是什么，并解释为什么"预测下一个 token"能带来如此丰富的能力。
 2. 自注意力机制为什么需要位置编码？正余弦位置编码是如何提供位置信息的？
 4. 简述残差连接和层归一化各自的作用。
+
+## 相关链接
+
+[https://datawhalechina.github.io/diy-llm/chapter13](https://datawhalechina.github.io/diy-llm/chapter13/chapter13_%E7%AC%AC%E5%8D%81%E4%B8%89%E7%AB%A0%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%AE%AD%E7%BB%83%E6%B5%81%E7%A8%8B.html)
+
+[《Attention Is All You Need》](https://arxiv.org/abs/1706.03762)
+
+[https://www.donews.com](https://www.donews.com/news/detail/4/6512672.html#1)
