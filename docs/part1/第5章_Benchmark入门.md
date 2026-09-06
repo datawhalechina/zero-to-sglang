@@ -122,10 +122,10 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 
 &emsp;&emsp;数据集的选择取决于被评测服务的类型。通用语言模型通常需要考察综合知识（MMLU）、数学推理（GSM8K）、代码生成（HumanEval、SWE-bench）等能力；语音合成模型适用语音基准（Seed-TTS）；Agent 场景需采用带工具调用与多轮交互的 trace；长上下文场景则使用 LongBench 等长文本基准。
 
-&emsp;&emsp;实际场景中，你可以根据你要评测的对象，根据下图选择对应的 benchamrks：
+&emsp;&emsp;实际场景中，你可以根据你要评测的对象，根据下图选择对应的 benchmarks：
 
 <div align="center">
-  <img src="images/5-6-llm_benchamrks_taxonomy.png" width="800">
+  <img src="images/5-6-llm_benchmarks_taxonomy.png" width="800">
   <p><em>图 5.6 LLM 的代表性基准分类</em></p>
 </div>
 
@@ -231,4 +231,4 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 - [NVIDIA NIM LLMs Benchmarking](https://docs.nvidia.com/nim/benchmarking/llm/latest/overview.html)
 - [浅谈 LLM 推理基准测试](https://rudeigerc.dev/posts/llm-inference-benchmarking/)
 - [A Survey on Large Language Model Benchmarks](https://arxiv.org/abs/2508.15361v1)
-[DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning](https://arxiv.org/abs/2501.12948)
+- [DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning](https://arxiv.org/abs/2501.12948)
