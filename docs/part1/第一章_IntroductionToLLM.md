@@ -60,8 +60,8 @@ transformer模型的起源可以追溯到2017年，当时由Google研究团队�
 
 <div align="center">
     <img src="images/1-1-transformer.png" alt="1-1-transformer.png" width="800">
-</div>
 <p><em>图 1. Transformer 的整体架构</em></p>
+</div>
 
 上述图中是Transformer 的 Block 结构，右边是**解码器Block**和**编码器Block，解码器和编码器堆叠*N就是transformer结构**
 
@@ -108,8 +108,8 @@ $$
 
 <div align="center">
     <img src="images/1-2-MultiHeadAttention.png" alt="1-2-MultiHeadAttention.png" width="800">
-</div>
 <p><em>图 2. 多头注意力机制</em></p>
+</div>
 
 注意力机制仿照人类注意力的运行原理，人类在看一张图片时不会将**注意力均匀的放在照片的每个角落**，而是有选择的观察图片中亮眼和突出的部分。注意力机制也是这样，会关注输入中重要的部分，表现为权重大。注意力机制本质是加权求和。
 
@@ -239,8 +239,8 @@ $$
 
 <div align="center">
     <img src="images/1-3-Add&Norm.png" alt="1-3-Add&Norm.png" width="400">
-</div>
 <p><em>图 3. 残差连接与层归一化（Add & Norm）</em></p>
+</div>
 
 残差公式：
 
@@ -269,8 +269,8 @@ $$\text{output} = \text{LayerNorm}\big(x + \text{Sublayer}(x)\big)$$
 
 <div align="center">
     <img src="images/1-4-FeedForward.png" alt="1-4-FeedForward.png" width="400">
-</div>
 <p><em>图 4. 前馈网络（Feed Forward）</em></p>
+</div>
 
 原始Transformer论文《Attention Is All You Need》中使用的激活函数是**ReLU**（Rectified Linear Unit），具体应用于**位置前馈网络** （Position-wise Feed-Forward Networks）。
 
