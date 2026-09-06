@@ -1,6 +1,6 @@
 # 第 5 章 Introduction to Benchmark（Benchmark 入门）
 
-&emsp;&emsp;前面几章分析了推理过程，区分了 Prefill 与 Decode 的计算与访存特征，指出二者分别更接近 compute-bound 与 memory-bound。但这些结论仍停留在定性层面，当要验证系统优化、对比不同引擎或规划部署容量时，还需要量化的性能数据作为依据。benchmark（基准测试） 正是获得这类数据、并保证其可复现与可对比的方法。
+&emsp;&emsp;前面几章分析了推理过程，区分了 Prefill 与 Decode 的计算与访存特征，指出二者分别更接近 compute-bound 与 memory-bound。但这些结论仍停留在定性层面，当要验证系统优化、对比不同引擎或规划部署容量时，还需要量化的性能数据作为依据。benchmark（基准测试）正是获得这类数据、并保证其可复现与可对比的方法。
 
 ## 1 本章学习目标
 
@@ -34,12 +34,12 @@
 像 Artificial Analysis 这样的网站，就将模型的性能与每 token 的成本结合起来，绘制出帕累托前沿（Pareto Frontier）。这揭示了一个现实：顶级模型（如 Claude Fable 5）虽然强大，但价格昂贵；而一些排名稍后的模型，可能在性能和成本之间取得了更好的平衡。
 
 <div align="center">
-   <img src="images//5-3-前沿模型在Artificial_Analysis上的Pareto性能对比.png" width="800"/>
+   <img src="images/5-3-前沿模型在Artificial_Analysis上的Pareto性能对比.png" width="800"/>
    <p>图5.3 不同模型在 Artificial Analysis 网站上的性能 vs 成本对比</p>
  </div>
 
 &emsp;&emsp;**评估**的核心问题是给定一个固定的模型，它到底有多“好”？ 这看似是一个简单的打分问题，实则是一个深刻且复杂的系统性工程。评估不仅决定了我们如何衡量当前模型的性能，更在根本上塑造了未来模型的发展方向。为了准确理解本文的讨论范围，我们需要明确区分两类不同的 LLM 基准测试：
-- **LLM 基准测试（LLM Benchmark）**：该类测试专注于评估 LLM 模型本身的能力表现，通过标准化的任务集合（如 MMLU、GSM8K、SWE-bench 等）来衡量模型在语言理解、数学推理、长程智能体等维度的准确性和可靠性。该过程也被称作模型评估（Evaluation），主要关注模型输出的质量而非推理过程的效率
+- **LLM 基准测试（LLM Benchmark）**：该类测试专注于评估 LLM 模型本身的能力表现，通过标准化的任务集合（如 MMLU、GSM8K、SWE-bench 等）来衡量模型在语言理解、数学推理、长程推理等维度的准确性和可靠性。该过程也被称作模型评估（Evaluation），主要关注模型输出的质量而非推理过程的效率
 - **LLM 推理基准测试（LLM Inference Benchmark）**：这类测试专注于评估 LLM 推理服务在实际部署环境中的性能表现，包括延迟、吞吐量、资源利用率、稳定性等工程指标，其关注的是如何高效地运行模型。
 
 
@@ -93,7 +93,7 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 - **Throughput**：单位时间内的产出，以 `token/s` 或`request/s` 计，表示系统的总体效率。
 - **Goodput（有效吞吐）**：在满足延迟约束前提下的吞吐。若规定 TTFT 不得超过 500ms，则超过此限的请求不计入，剩余的才计入 Goodput。单纯提高并发可以拉高 Throughput，但若延迟已全面超限，该吞吐并不具有实际价值。
 
-&emsp;&emsp;由于并发提高会同时拉高延迟，近年业界更倾向以 Goodput 而非裸 Throughput 作为衡量标准。
+&emsp;&emsp;由于并发提高会同时拉高延迟，近年业界更倾向以 Goodput 而非 Throughput 作为衡量标准。
 
 &emsp;&emsp;延迟与吞吐存在此消彼长的关系：并发越高、batch 越大，GPU 利用率越高、吞吐越大，但每请求排队更久、TTFT 更差。因此二者必须同时观察。
 
@@ -102,7 +102,7 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
   <p><em>图 5.5 吞吐与 TTFT 随并发的变化</em></p>
 </div>
 
-&emsp;&emsp;图 2 中蓝线为吞吐、橙线为 TTFT，横轴为并发数。蓝线前期上升较快、后期趋于饱和，橙线随时间持续上升。二者对照可见，并发并非越高越好，存在一个吞吐接近上限而 TTFT 尚未失控的区间。
+&emsp;&emsp;图 5.5 中蓝线为吞吐、橙线为 TTFT，横轴为并发数。蓝线前期上升较快、后期趋于饱和，橙线随时间持续上升。二者对照可见，并发并非越高越好，存在一个吞吐接近上限而 TTFT 尚未失控的区间。
 
 &emsp;&emsp;不同场景对指标的敏感度不同，这与第 2 章讨论的场景分类对应：
 
@@ -157,7 +157,7 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 &emsp;&emsp;选定数据集后，运行层面的参数必须固定，否则结果不可比：
 - 固定并发数或请求速率：根据场景选择固定并发（--max-concurrency）或固定速率（--request-rate）。
 - 固定硬件、模型、精度与量化方式：FP16 和 INT8 的吞吐差异可能达到 2 倍以上。
-- 充分预热：发送若干 dummy 请求，使 CUDA graph、KV Cache 分配器进入稳态后再统计。
+- 充分预热：发送若干 dummy 请求，使 CUDA Graph、KV Cache 分配器进入稳态后再统计。
 - 固定输出长度或长度分布：对比两个版本时，若输出长度分布不同，吞吐数字没有可比性。
 
 ## 5 如何解读 benchmark 结果
@@ -183,7 +183,7 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 
 ### 5.2 常见误区
 
-&emsp;&emsp;  以下是在实际工作中最容易出现的解读错误：
+&emsp;&emsp;以下是在实际工作中最容易出现的解读错误：
 
 1. 只看吞吐，不看延迟。
 2. 只看均值，不看尾延迟。
@@ -230,6 +230,5 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 - [Measuring Massive Multitask Language Understanding (MMLU)](https://arxiv.org/abs/2009.03300)
 - [NVIDIA NIM LLMs Benchmarking](https://docs.nvidia.com/nim/benchmarking/llm/latest/overview.html)
 - [浅谈 LLM 推理基准测试](https://rudeigerc.dev/posts/llm-inference-benchmarking/)
-- [A Survey on Large Language Model Benchmarks
-](https://arxiv.org/abs/2508.15361v1)
+- [A Survey on Large Language Model Benchmarks](https://arxiv.org/abs/2508.15361v1)
 [DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning](https://arxiv.org/abs/2501.12948)
