@@ -79,6 +79,7 @@
 | 8. RadixAttention and Prefix Caching | RadixAttention 与前缀缓存 | 🚧 |
 | 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
 | 10. Speculative Decoding | 投机解码 | 🚧 |
+| 11. Kernel Optimization | Kernel介绍 | 🚧 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
 | 1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）and CUDA Graph** | 主流 Attention 后端对比与 CUDA Graph | 🚧 |
 | 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
