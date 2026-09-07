@@ -134,24 +134,6 @@ zero-to-sglang/
 
 <!-- TODO: 若后续有配套代码目录，请补充到上面的结构树中 -->
 
-## 💡 如何学习
-
-&emsp;&emsp;这门课理论和实战对半分，适合有 Python 基础、对 LLM 有个大致概念的人。不需要你懂 CUDA，也不用一上来就有 GPU。
-
-&emsp;&emsp;五个部分按顺序走就行：
-
-- <strong>Part 0：开课之前</strong>。先聊点技术之外的：怎么对自己写的代码负责、怎么和 reviewer 沟通、为什么改性能之前必须先 profile。这部分很短，但值得先看。
-
-- <strong>Part I：基础概念</strong>（第 1 ~ 5 章）。没有代码，也不需要 GPU。把 LLM、推理、GPU、KV Cache、benchmark 这几个概念掰开讲清楚，建立心智模型。
-
-- <strong>Part II：从零手搓 Mini SGL</strong>（第 1 ~ 10 章）。动手。从 200 行前向和生成开始，一步步把你的 mini-sglang 搭起来。
-
-- <strong>Part III：高级推理技术</strong>（第 1 ~ 5 章）。读真实 SGLang 源码，讲 Attention Backends、CUDA Graph、量化这些进阶内容。
-
-- <strong>Part IV：如何为 SGLang 做贡献</strong>（第 1 ~ 3 章）。把前面学到的东西变成一次真实的贡献。
-
-&emsp;&emsp;推理优化是个靠动手的活，光看不练等于没学。代码一定要自己跑、自己改。遇到问题，直接来 issue 区问。
-
 ## 🤝 如何贡献
 
 我们是一个开放的开源社区，欢迎任何形式的贡献：
@@ -181,7 +163,7 @@ zero-to-sglang/
 
 ## 💬 读者交流群
 
-欢迎加入 Diy-LLM 读者交流群，与大家一起交流学习、答疑解惑：
+欢迎加入 zero-to-sglang 读者交流群，与大家一起交流学习、答疑解惑：
 
 <div align="center">
   <table>
@@ -203,7 +185,7 @@ zero-to-sglang/
 
 - 感谢 Datawhale 和 SGLang 团队对项目的支持
   - Datawhale：[@1iyouzhen](https://github.com/1iyouzhen)、[@xuhu0115](https://github.com/xuhu0115)、[@kangkang-Adam](https://github.com/kangkang-Adam)
-  - RadixArk：[@Ccyest](https://github.com/Ccyest)
+  - SGLang：[@Ccyest](https://github.com/Ccyest)
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
 - 感谢所有为本项目做出贡献的开发者们 ❤️
 
