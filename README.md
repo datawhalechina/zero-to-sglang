@@ -198,7 +198,7 @@ zero-to-sglang/
 
 - 感谢 Datawhale 和 SGLang 团队对项目的支持
   - Datawhale：[@1iyouzhen](https://github.com/1iyouzhen)、[@xuhu0115](https://github.com/xuhu0115)、[@kangkang-Adam](https://github.com/kangkang-Adam)
-  - SGLang：[@Ccyest](https://github.com/Ccyest)
+  - SGLang：[@Ccyest](https://github.com/Ccyest)、[@fcranzhou](https://github.com/fcranzhou)
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
 - 感谢所有为本项目做出贡献的开发者们 ❤️
 
