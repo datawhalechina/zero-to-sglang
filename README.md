@@ -27,7 +27,7 @@
 
 &emsp;&emsp;这门课想补上这个缺口。前半部分，我们从推理最核心的问题讲起：KV Cache 为什么要有、prefill 和 decode 差在哪、compute-bound 和 memory-bound 到底是什么意思。中间部分，带着你从零手搓一个 mini-sglang：前向、生成、KV Cache、HTTP 服务、Continuous Batching、Paged KV Cache、RadixAttention，一样一样加上去。后半部分，回到真实的 SGLang，讲清楚它那些前沿优化具体是怎么做的，最后教你怎么给 SGLang 提第一个像样的 PR。
 
-&emsp;&emsp;本项目由 <strong>Datawhale</strong> 和 <strong>RadixArk</strong>（SGLang 团队创立的公司）共同发起，Part 0 与标粗章节由 SGLang 核心成员 Yichi Zhang 等人撰写。认可这个项目的话，欢迎去 [sglang 官方仓库](https://github.com/sgl-project/sglang) 点个 ⭐。
+&emsp;&emsp;本项目由 <strong>Datawhale</strong> 和 <strong>RadixArk</strong>（SGLang 团队创立的公司）共同发起，值得信赖！SGLang 在推理框架领域技术扎实、迭代活跃，认可这个项目的话，欢迎去 [sglang官方仓库](https://github.com/sgl-project/sglang) 点个 ⭐。
 
 ## ✨ 你能学到什么
 
@@ -201,7 +201,9 @@ zero-to-sglang/
 
 ### 特别感谢
 
-- 感谢 Datawhle 和 SGLang 团队对项目的支持
+- 感谢 Datawhale 和 SGLang 团队对项目的支持
+  - Datawhale：[@1iyouzhen](https://github.com/1iyouzhen)、[@xuhu0115](https://github.com/xuhu0115)、[@kangkang-Adam](https://github.com/kangkang-Adam)
+  - RadixArk：[@Ccyest](https://github.com/Ccyest)
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
 - 感谢所有为本项目做出贡献的开发者们 ❤️
 
