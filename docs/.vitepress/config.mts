@@ -23,6 +23,7 @@ export default defineConfig({
       { text: 'Part II', link: '/part2/第1章_mini-sglang：推理引擎长什么样' },
       { text: 'Part III', link: '/part3/第1章_AttentionBackends与CUDAGraph' },
       { text: 'Part IV', link: '/part4/第1章_用Cookbook部署SGLang' },
+      { text: '社区贡献', link: '/community/' },
     ],
 
     sidebar: [
@@ -74,6 +75,13 @@ export default defineConfig({
           { text: '第 1 章 用 Cookbook 部署 SGLang', link: '/part4/第1章_用Cookbook部署SGLang' },
           { text: '第 2 章 Profiling 与 Trace 分析', link: '/part4/第2章_Profiling与Trace分析' },
           { text: '第 3 章 SGLang PR 工作流', link: '/part4/第3章_SGLangPR工作流' },
+        ],
+      },
+      {
+        text: 'Community — 社区贡献',
+        items: [
+          { text: '专区说明', link: '/community/' },
+          { text: 'PR 要求', link: '/community/PR_requirement' },
         ],
       },
     ],

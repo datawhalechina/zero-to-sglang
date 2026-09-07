@@ -121,12 +121,14 @@ cd zero-to-sglang
 
 ```
 zero-to-sglang/
-├── docs/                    # 课程文档
-│   ├── part0/               # Part 0：编码伦理与开源精神
+├── docs/                    # 课程文档（VitePress 站点源码）
+│   ├── part0/               # Part 0：开课之前
 │   ├── part1/               # Part I：基础概念（更新中）
 │   ├── part2/               # Part II：从零手搓 Mini SGL（规划中）
 │   ├── part3/               # Part III：高级推理技术（规划中）
-│   └── part4/               # Part IV：如何为 SGLang 做贡献（规划中）
+│   ├── part4/               # Part IV：如何为 SGLang 做贡献（规划中）
+│   └── community/           # 社区贡献专区：手搓记录、踩坑、学习笔记
+├── WRITING_TEMPLATE.md      # 课程正文写作模板
 ├── README.md                # 项目说明
 └── .gitignore               # Git 忽略配置
 ```
@@ -153,15 +155,26 @@ zero-to-sglang/
 
 ## 🤝 如何贡献
 
-我们是一个开放的开源社区，欢迎任何形式的贡献：
+我们是一个开放的开源社区，欢迎任何形式的贡献。动手之前，请先读一遍 [Part 0](docs/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
 
-- 🐛 <strong>报告 Bug</strong>：发现内容或代码问题，提交 Issue
-- 💡 <strong>提出建议</strong>：对项目有好想法，欢迎发起讨论
-- 📝 <strong>完善内容</strong>：帮助改进教程，提交 Pull Request
-- ✍️ <strong>分享实践</strong>：分享你的学习笔记、benchmark 复现与实践经验
+<strong>1. 改进课程正文</strong>
 
-> 贡献之前，请先读一遍 [Part 0](docs/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
+- 🐛 发现内容、公式、代码有错：提 Issue，或者直接改了提 PR
+- 📝 补充章节内容、优化表述：提 PR。章节划分和编号按[写作模板](WRITING_TEMPLATE.md)里的大纲来，不要自行增删、合并章节
+- 💡 对课程有想法：开 Issue 讨论
 
+<strong>2. 分享你的实践</strong>
+
+- 🔧 跟着 Part II 自己手搓了一遍 mini-sglang，把过程中遇到的 bug 和解法记下来
+- ⚠️ 部署 SGLang、配环境时踩过的坑，或者你觉得文档没写清楚、值得提醒别人的地方
+- 📒 读完某一章后按自己理解整理的学习笔记，或者补充的推导、实验等等
+
+内容放在 `docs/community/` 对应的目录下。
+
+<strong>提 PR 的流程</strong>
+
+1. Fork 本仓库，从 `main` 切一个分支
+2. PR 具体要求见 [docs/community/PR_requirement.md](docs/community/PR_requirement.md)，提交之前请逐条核实
 
 ## ❓ 常见问题
 
