@@ -3,6 +3,7 @@
     <img src="./docs/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
     <h1>zero-to-sglang</h1>
     <h3>📚 《从零手搓SGLang》</h3>
+    <p><em>A hands-on Chinese tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
 </div>
 
 <div align="center">
@@ -26,7 +27,7 @@
 
 &emsp;&emsp;这门课想补上这个缺口。前半部分，我们从推理最核心的问题讲起：KV Cache 为什么要有、prefill 和 decode 差在哪、compute-bound 和 memory-bound 到底是什么意思。中间部分，带着你从零手搓一个 mini-sglang：前向、生成、KV Cache、HTTP 服务、Continuous Batching、Paged KV Cache、RadixAttention，一样一样加上去。后半部分，回到真实的 SGLang，讲清楚它那些前沿优化具体是怎么做的，最后教你怎么给 SGLang 提第一个像样的 PR。
 
-&emsp;&emsp;本项目由 <strong>Datawhale</strong> 和 <strong>RadixArk</strong>（SGLang 团队创立的公司）共同发起，值得信赖！SGLang 在推理框架领域技术扎实、迭代活跃，认可这个项目的话，欢迎去 [sglang官方仓库](https://github.com/sgl-project/sglang) 点个 ⭐。
+&emsp;&emsp;本项目由 <strong>Datawhale</strong> 和 <strong>RadixArk</strong>（SGLang 团队创立的公司）共同发起，Part 0 与标粗章节由 SGLang 核心成员 Yichi Zhang 等人撰写。认可这个项目的话，欢迎去 [sglang 官方仓库](https://github.com/sgl-project/sglang) 点个 ⭐。
 
 ## ✨ 你能学到什么
 
@@ -59,8 +60,8 @@
 | 章节 | 关键内容 | 状态 |
 |------|----------|------|
 | <strong>Part 0 — 开课之前</strong> | | |
-| [0.1 编码伦理与开源精神](docs/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
-| [0.2 部署你的第一个SGLang服务](docs/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
+| [0.1 Coding Ethics and Open-Source Spirit（编码伦理与开源精神）](docs/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
+| [0.2 Deploy Your First SGLang Server（部署你的第一个 SGLang 服务）](docs/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
 | <strong>Part I — 基础概念（concepts only，无代码、无 GPU）</strong> | | |
 | [1. Introduction to LLM](docs/part1/第1章_LLM入门.md) | LLM 的定义与发展脉络、Transformer 架构、自回归生成、关键基础概念 | ✅ |
 | [2. Introduction to inference](docs/part1/第2章_推理入门.md) | 训练 vs 推理、prefill/decode、compute-bound vs memory-bound、Roofline model| ✅ |
