@@ -2,6 +2,8 @@
 
 How to explain, how deep to go, and what tone to use are up to the author. This template only covers two things: **a uniform structure**, and **a few hard rules that must not be broken**.
 
+The rules below are enforced by CI: every chapter file changed in a PR is run through `python3 scripts/check_chapters.py`, and a PR that fails cannot be merged. Run it locally before submitting: `python3 scripts/check_chapters.py eng/part1/Chapter2_Introduction-to-Inference.md`, or `--all` for every chapter.
+
 ## Files and images
 
 - One chapter per markdown file, under `course-material/eng/partN/`, named `ChapterN_English-Title.md`, e.g. `Chapter2_Introduction-to-Inference.md`.
