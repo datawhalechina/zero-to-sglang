@@ -1,0 +1,70 @@
+# PR 检查：改动的章节必须符合写作模板（ch/ 对应中文模板，eng/ 对应英文模板），站点必须能构建。
+name: Docs CI
+
+on:
+  pull_request:
+    paths:
+      - 'ch/**'
+      - 'eng/**'
+      - 'docs/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs-ci.yml'
+  # 手动触发时对全部章节做检查
+  workflow_dispatch:
+
+jobs:
+  template-check:
+    name: Chapter template check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check chapters changed in this PR
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          files=$(git -c core.quotePath=false diff --name-only --diff-filter=AMR "origin/${{ github.base_ref }}...HEAD" -- 'ch/*.md' 'eng/*.md')
+          if [ -z "$files" ]; then
+            echo "No markdown files under ch/ or eng/ changed."
+            exit 0
+          fi
+          echo "$files"
+          echo "$files" | xargs -d '\n' python3 scripts/check_chapters.py
+
+      - name: Check all chapters
+        if: github.event_name == 'workflow_dispatch'
+        run: python3 scripts/check_chapters.py --all
+
+  build:
+    name: VitePress build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
