@@ -2,7 +2,7 @@
 
 The previous chapters analyzed the inference process and distinguished the compute and memory-access characteristics of Prefill and Decode. These conclusions are still qualitative. To verify system optimizations, compare different engines, or plan deployment capacity, we need quantitative performance data. A benchmark provides such data while keeping results reproducible and comparable.
 
-## 1. Learning objectives
+## 1 Learning objectives
 
 The rest of this course will build a mini-sglang from scratch and analyze SGLang in depth. Every change needs to be validated quantitatively with benchmarks. By the end of this chapter, you should be able to:
 
@@ -11,7 +11,7 @@ The rest of this course will build a mini-sglang from scratch and analyze SGLang
 - choose a suitable benchmark workload and design a reproducible, comparable test;
 - run SGLang benchmark tools and interpret their results.
 
-## 2. What is a benchmark and why does it matter?
+## 2 What is a benchmark and why does it matter?
 
 ### 2.1 Introduction
 
@@ -51,7 +51,7 @@ These benchmarks differ in evaluation target, input, and metrics. The first give
 
 A benchmark is a reproducible and comparable test. It helps us understand inference-service and hardware bottlenecks, quantify optimization effects, and plan production capacity and resource allocation.
 
-## 3. Core metrics
+## 3 Core metrics
 
 Inference-service metrics fall into two categories: **latency**, which describes the response speed of an individual request, and **throughput**, which describes the system's overall output capacity. They answer different questions.
 
@@ -100,7 +100,7 @@ In Figure 5.5, the blue curve is throughput, the orange curve is TTFT, and the h
 | Offline batch processing / evaluation | Throughput |
 | Real-time speech / multi-step Agent reasoning | TTFT and tail latency |
 
-## 4. How to design a benchmark
+## 4 How to design a benchmark
 
 The first question is what you want to measure. Only then should you choose the dataset or request set and fix runtime parameters.
 
@@ -145,7 +145,7 @@ In most cases, `bench_serving` is sufficient:
 - Warm up sufficiently so that CUDA Graphs and the KV-cache allocator reach a steady state.
 - Fix output length or its distribution; otherwise throughput numbers are not comparable.
 
-## 5. How to interpret benchmark results
+## 5 How to interpret benchmark results
 
 ### 5.1 Look at latency before throughput
 
@@ -174,7 +174,7 @@ When comparing results, check the model, precision, hardware, concurrency, reque
 8. Drawing conclusions from a single-machine measurement while ignoring communication overhead and topology in multi-GPU or multi-machine deployments. Tensor parallelism needs NVLink or RDMA, and multi-machine deployments also incur network latency.
 9. Failing to fix the random seed. Sampling kernels can take different execution paths, causing noise that makes optimization effects difficult to identify.
 
-## 6. Summary and exercises
+## 6 Summary and Exercises
 
 ### 6.1 Summary
 
