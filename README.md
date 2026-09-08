@@ -4,7 +4,7 @@
     <h1>zero-to-sglang</h1>
     <h3>📚 《从零手搓SGLang》</h3>
     <p><em>A hands-on Chinese tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
-    <p><strong>简体中文</strong> | <a href="./README_en.md">English</a></p>
+    <p>其他语言：<a href="./README_en.md">English</a></p>
 </div>
 
 <div align="center">

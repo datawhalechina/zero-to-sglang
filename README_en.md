@@ -3,7 +3,7 @@
     <h1>zero-to-sglang</h1>
     <h3>📚 Build SGLang from Scratch</h3>
     <p><em>A hands-on tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
-    <p><a href="./README.md">简体中文</a> | <strong>English</strong></p>
+    <p>Also available in: <a href="./README.md">简体中文</a></p>
 </div>
 
 <div align="center">
@@ -178,20 +178,6 @@ Yes. Part I involves no GPU at all. Most of the code in Part II can be debugged 
 
 No. The course starts from inference concepts. Low-level topics such as attention backends only come in Part III, and you can catch up on CUDA as needed at that point.
 </details>
-
-
-## 💬 Reader group
-
-Join the zero-to-sglang reader group (WeChat) to learn together and get your questions answered:
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center"><img src="./ch/images/zero-to-sglang读者交流群.jpg" alt="Reader group" width="280"><br>Reader group</td>
-    </tr>
-  </table>
-</div>
-
 
 
 ## 👥 Contributors
