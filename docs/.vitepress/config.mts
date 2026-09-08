@@ -99,6 +99,12 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
     ],
   },
   {
+    text: 'Part I — Foundations',
+    items: [
+      { text: 'Chapter 5 — Introduction to Benchmark', link: '/eng/part1/Chapter5_Introduction_to_Benchmark' },
+    ],
+  },
+  {
     text: 'Community',
     items: [
       { text: 'About', link: '/eng/community/' },
