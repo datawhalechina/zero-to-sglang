@@ -1,16 +1,20 @@
 
 <div align='center'>
-    <img src="./docs/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
+    <img src="./course-material/ch/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
     <h1>zero-to-sglang</h1>
+    <p>
+      <a href="./README.md"><img src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2563eb?style=for-the-badge" alt="简体中文"></a>
+      <a href="./README_en.md"><img src="https://img.shields.io/badge/English-6b7280?style=for-the-badge" alt="English"></a>
+    </p>
     <h3>📚 《从零手搓SGLang》</h3>
+    <p><em>A hands-on tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
 </div>
 
 <div align="center">
   <img src="https://img.shields.io/github/stars/datawhalechina/zero-to-sglang?style=flat&logo=github" alt="GitHub stars"/>
   <img src="https://img.shields.io/github/forks/datawhalechina/zero-to-sglang?style=flat&logo=github" alt="GitHub forks"/>
-  <img src="https://img.shields.io/badge/language-Chinese-brightgreen?style=flat" alt="Language"/>
+  <img src="https://img.shields.io/badge/language-Chinese%20%7C%20English-brightgreen?style=flat" alt="Language"/>
   <a href="https://github.com/datawhalechina/zero-to-sglang"><img src="https://img.shields.io/badge/GitHub-Project-blue?style=flat&logo=github" alt="GitHub Project"></a>
-  <!-- TODO: 部署在线阅读后启用下面这行，并确认地址 -->
   <a href="https://datawhalechina.github.io/zero-to-sglang/"><img src="https://img.shields.io/badge/在线阅读-Online%20Reading-green?style=flat&logo=gitbook" alt="Online Reading"></a>
 </div>
 
@@ -60,16 +64,16 @@
 | 章节 | 关键内容 | 状态 |
 |------|----------|------|
 | <strong>Part 0 — 开课之前</strong> | | |
-| [0.1 编码伦理与开源精神](docs/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
-| [0.2 部署你的第一个SGLang服务](docs/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
+| [0.1 Coding Ethics and Open-Source Spirit（编码伦理与开源精神）](course-material/ch/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
+| [0.2 Deploy Your First SGLang Server（部署你的第一个 SGLang 服务）](course-material/ch/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
 | <strong>Part I — 基础概念（concepts only，无代码、无 GPU）</strong> | | |
-| 1. Introduction to LLM | LLM 的定义与发展脉络、Transformer 架构、自回归生成、关键基础概念 | 🔄 |
-| [2. Introduction to inference](docs/part1/第2章_推理入门.md) | 训练 vs 推理、prefill/decode、compute-bound vs memory-bound、Roofline model| ✅ |
+| [1. Introduction to LLM](course-material/ch/part1/第1章_LLM入门.md) | LLM 的定义与发展脉络、Transformer 架构、自回归生成、关键基础概念 | ✅ |
+| [2. Introduction to inference](course-material/ch/part1/第2章_推理入门.md) | 训练 vs 推理、prefill/decode、compute-bound vs memory-bound、Roofline model| ✅ |
 | 3. Introduction to GPU | GPU 架构基础、LLM 推理在 GPU 上的执行流程、从硬件理解推理瓶颈 | 🔄 |
-| 4. KV Cache: The Core Data Structure of Inference | 从 Attention 推导 KV Cache、cache 生命周期、显存占用定量分析 | 🔄 |
-| [5. Introduction to Benchmark](docs/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | ✅ |
+| [4. KV Cache: The Core Data Structure of Inference](course-material/ch/part1/第4章_推理的核心数据结构入门.md) | 从 Attention 推导 KV Cache、cache 生命周期、显存占用定量分析 | ✅ |
+| [5. Introduction to Benchmark](course-material/ch/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | 🔄 |
 | <strong>Part II — 从零手搓 Mini SGL</strong> | | |
-| 1. mini-sglang：推理引擎长什么样 | 推理引擎的总体架构、模块划分、本部分的 roadmap | 🚧 |
+| 1. mini-sglang：推理引擎长什么样 | 推理引擎的总体架构、模块划分、本部分的 roadmap | 📝 |
 | 2. **Inside SGLang: The Path of a Request** | 一个请求从进入到返回的完整生命周期 | 🚧 |
 | 3. Your First 200 Lines: Forward Pass and Generation | 手写前向传播与自回归生成循环 | 🚧 |
 | 4. KV Cache: From O(n²) to O(n) | 缓存实现与注意力计算优化 | 🚧 |
@@ -122,47 +126,51 @@ cd zero-to-sglang
 
 ```
 zero-to-sglang/
-├── docs/                    # 课程文档
-│   ├── part0/               # Part 0：编码伦理与开源精神
-│   ├── part1/               # Part I：基础概念（更新中）
-│   ├── part2/               # Part II：从零手搓 Mini SGL（规划中）
-│   ├── part3/               # Part III：高级推理技术（规划中）
-│   └── part4/               # Part IV：如何为 SGLang 做贡献（规划中）
-├── README.md                # 项目说明
+├── course-material/         # 课程正文
+│   ├── ch/                  # 中文（在线阅读 /ch/）
+│   │   ├── part0/           # Part 0：开课之前
+│   │   ├── part1/           # Part I：基础概念（更新中）
+│   │   ├── part2/           # Part II：从零手搓 Mini SGL（规划中）
+│   │   ├── part3/           # Part III：高级推理技术（规划中）
+│   │   ├── part4/           # Part IV：如何为 SGLang 做贡献（规划中）
+│   │   └── WRITING_TEMPLATE.md
+│   └── eng/                 # English（在线阅读 /eng/，翻译中）
+│       ├── part0/
+│       └── WRITING_TEMPLATE.md
+├── community/               # 社区贡献专区：手搓记录、踩坑、学习笔记
+│   ├── ch/
+│   └── eng/
+├── docs/.vitepress/         # VitePress 站点配置
+├── README.md                # 项目说明（中文）
+├── README_en.md             # 项目说明（English）
 └── .gitignore               # Git 忽略配置
 ```
 
 <!-- TODO: 若后续有配套代码目录，请补充到上面的结构树中 -->
 
-## 💡 如何学习
-
-&emsp;&emsp;这门课理论和实战对半分，适合有 Python 基础、对 LLM 有个大致概念的人。不需要你懂 CUDA，也不用一上来就有 GPU。
-
-&emsp;&emsp;五个部分按顺序走就行：
-
-- <strong>Part 0：开课之前</strong>。先聊点技术之外的：怎么对自己写的代码负责、怎么和 reviewer 沟通、为什么改性能之前必须先 profile。这部分很短，但值得先看。
-
-- <strong>Part I：基础概念</strong>（第 1 ~ 5 章）。没有代码，也不需要 GPU。把 LLM、推理、GPU、KV Cache、benchmark 这几个概念掰开讲清楚，建立心智模型。
-
-- <strong>Part II：从零手搓 Mini SGL</strong>（第 1 ~ 10 章）。动手。从 200 行前向和生成开始，一步步把你的 mini-sglang 搭起来。
-
-- <strong>Part III：高级推理技术</strong>（第 1 ~ 5 章）。读真实 SGLang 源码，讲 Attention Backends、CUDA Graph、量化这些进阶内容。
-
-- <strong>Part IV：如何为 SGLang 做贡献</strong>（第 1 ~ 3 章）。把前面学到的东西变成一次真实的贡献。
-
-&emsp;&emsp;推理优化是个靠动手的活，光看不练等于没学。代码一定要自己跑、自己改。遇到问题，直接来 issue 区问。
-
 ## 🤝 如何贡献
 
-我们是一个开放的开源社区，欢迎任何形式的贡献：
+我们是一个开放的开源社区，欢迎任何形式的贡献。动手之前，请先读一遍 [Part 0](course-material/ch/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
 
-- 🐛 <strong>报告 Bug</strong>：发现内容或代码问题，提交 Issue
-- 💡 <strong>提出建议</strong>：对项目有好想法，欢迎发起讨论
-- 📝 <strong>完善内容</strong>：帮助改进教程，提交 Pull Request
-- ✍️ <strong>分享实践</strong>：分享你的学习笔记、benchmark 复现与实践经验
+<strong>1. 改进课程正文</strong>
 
-> 贡献之前，请先读一遍 [Part 0](docs/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
+- 🐛 发现内容、公式、代码有错：提 Issue，或者直接改了提 PR
+- 📝 补充章节内容、优化表述：提 PR。章节划分和编号按[写作模板](course-material/ch/WRITING_TEMPLATE.md)里的大纲来，不要自行增删、合并章节
+- 🌐 参与翻译：按[英文写作模板](course-material/eng/WRITING_TEMPLATE.md)把章节翻译成英文，放在 `course-material/eng/` 下
+- 💡 对课程有想法：开 Issue 讨论
 
+<strong>2. 分享你的实践</strong>
+
+- 🔧 跟着 Part II 自己手搓了一遍 mini-sglang，把过程中遇到的 bug 和解法记下来
+- ⚠️ 部署 SGLang、配环境时踩过的坑，或者你觉得文档没写清楚、值得提醒别人的地方
+- 📒 读完某一章后按自己理解整理的学习笔记，或者补充的推导、实验等等
+
+内容放在 `community/ch/`（英文放 `community/eng/`）对应的目录下。
+
+<strong>提 PR 的流程</strong>
+
+1. Fork 本仓库，从 `main` 切一个分支
+2. PR 具体要求见 [community/ch/PR_requirement.md](community/ch/PR_requirement.md)，提交之前请逐条核实
 
 ## ❓ 常见问题
 
@@ -178,17 +186,32 @@ zero-to-sglang/
 不需要。这门课从推理的概念出发，Part III 才会深入 Attention Backends 等底层内容，到时候再按需补就行。
 </details>
 
-<!-- TODO: 可继续补充读者常见问题 -->
+
+## 💬 读者交流群
+
+欢迎加入 zero-to-sglang 读者交流群，与大家一起交流学习、答疑解惑：
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="./course-material/ch/images/zero-to-sglang读者交流群.jpg" alt="读者交流群" width="280"><br>读者交流群</td>
+    </tr>
+  </table>
+</div>
+
+
 
 ## 👥 贡献者
 
-<!-- TODO: 补充贡献者名单（可参考 diy-llm / hello-agents 的表格形式） -->
 
 *注：我们感谢每一位为项目做出贡献的开发者！*
 
+
 ### 特别感谢
 
-- 感谢 Datawhle 和 SGLang 团队对项目的支持
+- 感谢 Datawhale 和 SGLang 团队对项目的支持
+  - Datawhale：[@1iyouzhen](https://github.com/1iyouzhen)、[@xuhu0115](https://github.com/xuhu0115)、[@kangkang-Adam](https://github.com/kangkang-Adam)
+  - SGLang：[@Ccyest](https://github.com/Ccyest)、[@fcranzhou](https://github.com/fcranzhou)
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
 - 感谢所有为本项目做出贡献的开发者们 ❤️
 

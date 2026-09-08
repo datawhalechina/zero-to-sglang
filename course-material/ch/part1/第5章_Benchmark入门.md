@@ -18,7 +18,7 @@
 当你打开任何一个大语言模型（LLM）的评测网站或论文时，你首先看到的是什么？
 
 <div align="center">
-   <img src="images/5-1-Deepseek-R1的基准性能.png" width="800"/>
+   <img src="./images/5-1-Deepseek-R1的基准性能.png" width="800"/>
    <p>图5.1 Deepseek-R1的基准性能</p>
  </div>
 
@@ -27,20 +27,22 @@
 当然，评估不能只看能力，成本和推理速度也是评价的关键维度。另外一个例子是来自于 [Artificial Analysis](https://artificialanalysis.ai/) 网站，从智能、推理速度、价格三个角度测评了不同模型：
 
 <div align="center">
-   <img src="images/5-2-前沿模型在Artificial_Analysis上的性能对比.png" width="800"/>
+   <img src="./images/5-2-前沿模型在Artificial_Analysis上的性能对比.png" width="800"/>
    <p>图5.2 不同模型在 Artificial Analysis 网站上的性能排行榜</p>
  </div>
 
-像 Artificial Analysis 这样的网站，就将模型的性能与每 token 的成本结合起来，绘制出帕累托前沿（Pareto Frontier）。这揭示了一个现实：顶级模型（如 Claude Fable 5）虽然强大，但价格昂贵；而一些排名稍后的模型，可能在性能和成本之间取得了更好的平衡。
+像 Artificial Analysis 这样的网站，就将模型的性能与每 token 的成本结合起来，绘制出帕累托前沿（Pareto Frontier）。这揭示了一个现实：一些前沿智能模型虽然强大，但价格昂贵；而一些排名稍后的模型，可能在性能和成本之间取得了更好的平衡。
 
 <div align="center">
-   <img src="images/5-3-前沿模型在Artificial_Analysis上的Pareto性能对比.png" width="800"/>
+   <img src="./images/5-3-前沿模型在Artificial_Analysis上的Pareto性能对比.png" width="800"/>
    <p>图5.3 不同模型在 Artificial Analysis 网站上的性能 vs 成本对比</p>
  </div>
 
-&emsp;&emsp;**评估**的核心问题是给定一个固定的模型，它到底有多“好”？ 这看似是一个简单的打分问题，实则是一个深刻且复杂的系统性工程。评估不仅决定了我们如何衡量当前模型的性能，更在根本上塑造了未来模型的发展方向。为了准确理解本文的讨论范围，我们需要明确区分两类不同的 LLM 基准测试：
-- **LLM 基准测试（LLM Benchmark）**：该类测试专注于评估 LLM 模型本身的能力表现，通过标准化的任务集合（如 MMLU、GSM8K、SWE-bench 等）来衡量模型在语言理解、数学推理、长程推理等维度的准确性和可靠性。该过程也被称作模型评估（Evaluation），主要关注模型输出的质量而非推理过程的效率
-- **LLM 推理基准测试（LLM Inference Benchmark）**：这类测试专注于评估 LLM 推理服务在实际部署环境中的性能表现，包括延迟、吞吐量、资源利用率、稳定性等工程指标，其关注的是如何高效地运行模型。
+&emsp;&emsp;**评估**的核心问题是给定一个固定的模型，它到底有多“好”？ 这看似是一个简单的打分问题，实则是一个深刻且复杂的系统性工程。为了准确理解本文的讨论范围，需要先区分两类 benchmark：
+- **模型能力 Benchmark（Model Capability Benchmark）**：评估模型本身的能力，通过 MMLU、GSM8K、HumanEval、SWE-bench 等标准化任务，衡量模型在知识理解、数学推理、代码生成等方面的输出质量。它关注的是模型“答得好不好”。
+- **推理负载 Benchmark（Inference Workload Benchmark）**：评估已经部署的推理服务，在给定请求负载下测量 TTFT、TPOT、吞吐量、P99 延迟等工程指标。它关注的是模型“运行得快不快、稳不稳”，也常被称为 AI Infra Benchmark。
+
+&emsp;&emsp;两类 benchmark 的评测对象、输入形式和指标都不同：前者向模型提供任务并检查答案质量，后者向推理服务发送请求并观察系统性能，不能将二者混为一谈。
 
 
 
@@ -65,7 +67,7 @@
 &emsp;&emsp;延迟指标有四个，它们在一次请求中所处的位置如下：
 
 <div align="center">
-  <img src="images/5-4-request-timeline.png" alt="5-4-request-timeline.png" width="800">
+  <img src="./images/5-4-request-timeline.png" alt="5-4-request-timeline.png" width="800">
   <p><em>图 5.4 一次请求的时间轴</em></p>
 </div>
 
@@ -98,11 +100,11 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 &emsp;&emsp;延迟与吞吐存在此消彼长的关系：并发越高、batch 越大，GPU 利用率越高、吞吐越大，但每请求排队更久、TTFT 更差。因此二者必须同时观察。
 
 <div align="center">
-  <img src="images/5-5-latency-throughput.jpg" alt="5-5-latency-throughput.jpg" width="800">
-  <p><em>图 5.5 吞吐与 TTFT 随并发的变化</em></p>
+  <img src="./images/5-5-latency-throughput.jpg" alt="5-5-latency-throughput.jpg" width="800">
+  <p><em>图 5.5 吞吐与 TTFT 随并发的变化（数据为构造示例）</em></p>
 </div>
 
-&emsp;&emsp;图 5.5 中蓝线为吞吐、橙线为 TTFT，横轴为并发数。蓝线前期上升较快、后期趋于饱和，橙线随时间持续上升。二者对照可见，并发并非越高越好，存在一个吞吐接近上限而 TTFT 尚未失控的区间。
+&emsp;&emsp;图 5.5 中蓝线为吞吐、橙线为 TTFT，横轴为并发数；图中数据为构造示例。蓝线前期上升较快、后期趋于饱和，橙线随并发数增加而上升。二者对照可见，并发并非越高越好，存在一个吞吐接近上限而 TTFT 尚未失控的区间。
 
 &emsp;&emsp;不同场景对指标的敏感度不同，这与第 2 章讨论的场景分类对应：
 
@@ -120,12 +122,14 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 
 ### 4.1 确定评测对象与数据集
 
-&emsp;&emsp;数据集的选择取决于被评测服务的类型。通用语言模型通常需要考察综合知识（MMLU）、数学推理（GSM8K）、代码生成（HumanEval、SWE-bench）等能力；语音合成模型适用语音基准（Seed-TTS）；Agent 场景需采用带工具调用与多轮交互的 trace；长上下文场景则使用 LongBench 等长文本基准。
+&emsp;&emsp;本节讨论的是**推理负载 Benchmark**，而不是模型能力 Benchmark。模型能力 Benchmark 使用 MMLU、GSM8K、HumanEval、SWE-bench 等任务检查输出质量；推理负载 Benchmark 则使用真实或构造的请求集，向推理服务施加负载，测量延迟、吞吐与资源效率。前者回答“模型能力如何”，后者回答“推理系统性能如何”。
 
-&emsp;&emsp;实际场景中，你可以根据你要评测的对象，根据下图选择对应的 benchmarks：
+&emsp;&emsp;因此，数据集或请求集的选择应与评测对象对应：模型能力评测可选择综合知识、数学推理、代码生成等任务；推理服务评测则应选择与目标业务相符的请求分布，例如真实对话、固定长度请求、共享前缀请求或带工具调用的多轮 trace。两类 benchmark 的结果不能直接互相替代。
+
+&emsp;&emsp;实际场景中，应先明确是在评测模型能力，还是在评测推理服务的工程性能，再根据评测对象选择对应的 benchmark：
 
 <div align="center">
-  <img src="images/5-6-llm_benchmarks_taxonomy.png" width="800">
+  <img src="./images/5-6-llm_benchmarks_taxonomy.png" width="800">
   <p><em>图 5.6 LLM 的代表性基准分类</em></p>
 </div>
 
@@ -134,7 +138,7 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 &emsp;&emsp;SGLang 官方也提供四个不同层次的 benchmark 工具，其覆盖范围对应引擎的不同层次：
 
 <div align="center">
-  <img src="images/5-7-benchmark-tools.png" alt="5-7-benchmark-tools.png" width="800">
+  <img src="./images/5-7-benchmark-tools.png" alt="5-7-benchmark-tools.png" width="800">
   <p><em>图 5.7 引擎分层与 benchmark 工具的覆盖范围</em></p>
 </div>
 
@@ -173,7 +177,7 @@ $$\text{E2E} = \text{TTFT} + \text{剩余生成时间} = 250 + 4975 = 5225 \text
 &emsp;&emsp;报告这些延迟指标时，均值无法反映分布的尾部。下图示意一批请求的 TTFT 分布，横轴为延迟、纵轴为请求数量：
 
 <div align="center">
-  <img src="images/5-8-percentiles.png" alt="5-8-percentiles.png" width="800">
+  <img src="./images/5-8-percentiles.png" alt="5-8-percentiles.png" width="800">
   <p><em>图 5.8 TTFT 分布与百分位数</em></p>
 </div>
 

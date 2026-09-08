@@ -1,1 +1,17 @@
+# 项目本地工作笔记
 SGLang编写.md
+
+# dependencies
+node_modules/
+
+# VitePress cache + build output
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
+# logs
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
