@@ -2,9 +2,12 @@
 <div align='center'>
     <img src="./course-material/ch/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
     <h1>zero-to-sglang</h1>
+    <p>
+      <a href="./README.md"><img src="https://img.shields.io/badge/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2563eb?style=for-the-badge" alt="简体中文"></a>
+      <a href="./README_en.md"><img src="https://img.shields.io/badge/English-6b7280?style=for-the-badge" alt="English"></a>
+    </p>
     <h3>📚 《从零手搓SGLang》</h3>
-    <p><em>A hands-on Chinese tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
-    <p>其他语言：<a href="./README_en.md">English</a></p>
+    <p><em>A hands-on tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
 </div>
 
 <div align="center">
