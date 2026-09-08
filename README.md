@@ -4,12 +4,13 @@
     <h1>zero-to-sglang</h1>
     <h3>📚 《从零手搓SGLang》</h3>
     <p><em>A hands-on Chinese tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
+    <p><strong>简体中文</strong> | <a href="./README_en.md">English</a></p>
 </div>
 
 <div align="center">
   <img src="https://img.shields.io/github/stars/datawhalechina/zero-to-sglang?style=flat&logo=github" alt="GitHub stars"/>
   <img src="https://img.shields.io/github/forks/datawhalechina/zero-to-sglang?style=flat&logo=github" alt="GitHub forks"/>
-  <img src="https://img.shields.io/badge/language-Chinese-brightgreen?style=flat" alt="Language"/>
+  <img src="https://img.shields.io/badge/language-Chinese%20%7C%20English-brightgreen?style=flat" alt="Language"/>
   <a href="https://github.com/datawhalechina/zero-to-sglang"><img src="https://img.shields.io/badge/GitHub-Project-blue?style=flat&logo=github" alt="GitHub Project"></a>
   <a href="https://datawhalechina.github.io/zero-to-sglang/"><img src="https://img.shields.io/badge/在线阅读-Online%20Reading-green?style=flat&logo=gitbook" alt="Online Reading"></a>
 </div>
@@ -131,9 +132,11 @@ zero-to-sglang/
 │   ├── community/           # 社区贡献专区：手搓记录、踩坑、学习笔记
 │   └── WRITING_TEMPLATE.md  # 中文课程写作模板
 ├── eng/                     # English edition（在线阅读 /eng/，翻译中）
+│   ├── part0/               # Part 0: Before you learn
 │   └── WRITING_TEMPLATE.md  # 英文课程写作模板
 ├── docs/.vitepress/         # VitePress 站点配置
-├── README.md                # 项目说明
+├── README.md                # 项目说明（中文）
+├── README_en.md             # 项目说明（English）
 └── .gitignore               # Git 忽略配置
 ```
 
@@ -147,6 +150,7 @@ zero-to-sglang/
 
 - 🐛 发现内容、公式、代码有错：提 Issue，或者直接改了提 PR
 - 📝 补充章节内容、优化表述：提 PR。章节划分和编号按[写作模板](ch/WRITING_TEMPLATE.md)里的大纲来，不要自行增删、合并章节
+- 🌐 参与翻译：按[英文写作模板](eng/WRITING_TEMPLATE.md)把章节翻译成英文，放在 `eng/` 下
 - 💡 对课程有想法：开 Issue 讨论
 
 <strong>2. 分享你的实践</strong>

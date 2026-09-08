@@ -7,7 +7,10 @@ hero:
   tagline: "Start from what inference really is, build a mini-sglang by hand, then read the real SGLang source"
   actions:
     - theme: brand
-      text: Read the Chinese edition
+      text: Start Learning
+      link: /eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit
+    - theme: alt
+      text: 简体中文
       link: /ch/
     - theme: alt
       text: View on GitHub
@@ -26,6 +29,6 @@ features:
 
 ## English edition
 
-The English edition is being translated from the Chinese original, part by part. Part 0 comes first. Until a chapter lands here, the [Chinese edition](/ch/) is the complete reference.
+The English edition is being translated from the Chinese original, part by part. Part 0 is available now and more parts are on the way. Until a chapter lands here, the [Chinese edition](/ch/) is the complete reference.
 
 Want to help translate? See the [writing template](https://github.com/datawhalechina/zero-to-sglang/blob/main/eng/WRITING_TEMPLATE.md) and open a PR.

@@ -85,10 +85,19 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
 
 const engNav: DefaultTheme.NavItem[] = [
   { text: 'Home', link: '/eng/' },
+  { text: 'Part 0', link: '/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit' },
 ]
 
 // Sections are added here as their English chapters land.
-const engSidebar: DefaultTheme.SidebarItem[] = []
+const engSidebar: DefaultTheme.SidebarItem[] = [
+  {
+    text: 'Part 0 — Before you learn',
+    items: [
+      { text: 'Coding Ethics and Open-Source Spirit', link: '/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit' },
+      { text: 'Deploy Your First SGLang Server', link: '/eng/part0/Part0-Deploy-Your-First-SGLang-Server' },
+    ],
+  },
+]
 
 // ---------------------------------------------------------------------------
 // Site
