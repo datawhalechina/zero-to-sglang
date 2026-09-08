@@ -2,7 +2,7 @@
 
 怎么讲、讲多深、用什么口吻，都由作者自己定。这份模板只管两件事：**结构上的统一**，和**几条不能违反的硬性要求**。
 
-下面的要求由 CI 自动检查：PR 里改动的章节文件会跑 `python3 scripts/check_chapters.py`，不合规的 PR 无法合并。提交前可以本地先跑一遍：`python3 scripts/check_chapters.py ch/part1/第2章_推理入门.md`，或者 `--all` 检查全部章节。
+下面的要求由 CI 自动检查：PR 里改动的章节文件会跑 `python3 scripts/check_chapters.py`，不合规的 PR 无法合并。提交前可以本地先跑一遍：`python3 scripts/check_chapters.py course-material/ch/part1/第2章_推理入门.md`，或者 `--all` 检查全部章节。
 
 ## 文件与图片
 

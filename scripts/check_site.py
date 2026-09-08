@@ -4,15 +4,21 @@
     python3 scripts/check_site.py                       # source checks
     python3 scripts/check_site.py --dist docs/.vitepress/dist   # + checks on a finished build
 
+Source layout vs. site URL (mirrors `rewrites` in docs/.vitepress/config.mts):
+
+    course-material/<lang>/...  ->  /<lang>/...
+    community/<lang>/...        ->  /<lang>/community/...
+
 Source checks:
   * every nav / sidebar / locale link in docs/.vitepress/config.mts points to an existing page
-  * every chapter page under ch/part*/ and eng/part*/ is reachable from the sidebar (no orphans)
-  * every relative link, href and src in README.md, README_en.md, ch/**/*.md, eng/**/*.md
-    resolves to an existing file (links inside fenced code blocks are ignored)
+  * every chapter page under course-material/*/part*/ is reachable from the sidebar (no orphans)
+  * every relative link, href and src in README.md, README_en.md and every markdown file
+    under course-material/ and community/ resolves to an existing file
+    (links inside fenced code blocks are ignored)
 
 Build checks (--dist):
   * the site root, /ch/ and /eng/ home pages were emitted
-  * every markdown page under ch/ and eng/ produced an HTML file
+  * every markdown page under course-material/ and community/ produced an HTML file
   * every Chinese page has a redirect stub at its pre-move root-level URL
 
 Only stdlib is used. Exit status is 1 when any error is found.
@@ -29,6 +35,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 CONFIG = REPO / "docs" / ".vitepress" / "config.mts"
 LOCALES = ("ch", "eng")
+COURSE = "course-material"
+COMMUNITY = "community"
 
 CONFIG_LINK_RE = re.compile(r"link:\s*'(/[^']*)'")
 MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
@@ -65,27 +73,52 @@ def outside_code(lines: list[str]):
             yield i, line
 
 
+def url_to_source(url: str) -> str:
+    """Site path (no leading slash) -> source path. Inverse of `rewrites` in config.mts."""
+    for lang in LOCALES:
+        if url.startswith(f"{lang}/community/") or url == f"{lang}/community":
+            return f"{COMMUNITY}/{lang}/" + url[len(f"{lang}/community/"):]
+        if url.startswith(f"{lang}/") or url == lang:
+            return f"{COURSE}/{lang}/" + url[len(f"{lang}/"):]
+    return url
+
+
+def source_to_url(rel: Path) -> Path:
+    """Source path (relative to repo) -> site path. Same mapping as `rewrites` in config.mts."""
+    parts = rel.parts
+    if len(parts) >= 3 and parts[0] == COURSE and parts[1] in LOCALES:
+        return Path(parts[1], *parts[2:])
+    if len(parts) >= 3 and parts[0] == COMMUNITY and parts[1] in LOCALES:
+        return Path(parts[1], "community", *parts[2:])
+    return rel
+
+
 def site_link_to_file(link: str) -> Path:
-    """'/ch/part0/X' -> ch/part0/X.md, '/ch/' -> ch/index.md, '/ch/X.html' -> ch/X.md"""
+    """'/ch/part0/X' -> course-material/ch/part0/X.md, '/ch/community/' -> community/ch/index.md"""
     path = link.split("#")[0].split("?")[0].lstrip("/")
     if path.endswith("/") or path == "":
-        return REPO / path / "index.md"
-    if path.endswith(".html"):
+        path = path + "index.md"
+    elif path.endswith(".html"):
         path = path[: -len(".html")] + ".md"
     elif not Path(path).suffix:
         path += ".md"
-    return REPO / path
+    return REPO / url_to_source(path)
+
+
+def content_roots() -> list[Path]:
+    return [REPO / top / loc for top in (COURSE, COMMUNITY) for loc in LOCALES]
 
 
 def content_pages() -> list[Path]:
     pages = []
-    for loc in LOCALES:
-        pages.extend(p for p in sorted((REPO / loc).rglob("*.md")) if p.name != "WRITING_TEMPLATE.md")
+    for root in content_roots():
+        pages.extend(p for p in sorted(root.rglob("*.md")) if p.name != "WRITING_TEMPLATE.md")
     return pages
 
 
 def chapter_pages() -> list[Path]:
-    return [p for p in content_pages() if re.fullmatch(r"part\d", p.parent.name)]
+    return [p for p in content_pages()
+            if p.relative_to(REPO).parts[0] == COURSE and re.fullmatch(r"part\d", p.parent.name)]
 
 
 def check_config(rep: Report) -> set[Path]:
@@ -115,8 +148,8 @@ def resolve_relative(src: Path, target: str) -> Path:
 
 def check_links(rep: Report) -> None:
     files = [REPO / "README.md", REPO / "README_en.md"]
-    for loc in LOCALES:
-        files.extend(sorted((REPO / loc).rglob("*.md")))
+    for root in content_roots():
+        files.extend(sorted(root.rglob("*.md")))
     for f in files:
         if not f.exists():
             continue
@@ -146,13 +179,13 @@ def check_dist(dist: Path, rep: Report) -> None:
         if not (dist / must).exists():
             rep.error(dist / must, 1, "expected build output is missing")
     for page in content_pages():
-        rel = page.relative_to(REPO).with_suffix(".html")
-        if not (dist / rel).exists():
-            rep.error(page, 1, f"page was not built: {rel}")
-        if rel.parts[0] == "ch":
-            stub = dist / Path(*rel.parts[1:])
+        url = source_to_url(page.relative_to(REPO)).with_suffix(".html")
+        if not (dist / url).exists():
+            rep.error(page, 1, f"page was not built: {url}")
+        if url.parts[0] == "ch":
+            stub = dist / Path(*url.parts[1:])
             if not stub.exists():
-                rep.error(page, 1, f"missing redirect stub for the old URL: {Path(*rel.parts[1:])}")
+                rep.error(page, 1, f"missing redirect stub for the old URL: {Path(*url.parts[1:])}")
 
 
 def main(argv: list[str]) -> int:

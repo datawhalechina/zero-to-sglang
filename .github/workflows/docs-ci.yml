@@ -1,12 +1,13 @@
-# PR 检查：改动的章节必须符合写作模板（ch/ 对应中文模板，eng/ 对应英文模板），
-# 站点导航 / 链接 / 页面必须一致，站点必须能构建且产出完整。
+# PR 检查：
+#   - course-material/ 里改动的章节必须符合写作模板（ch/ 对应中文模板，eng/ 对应英文模板）
+#   - 站点导航 / 链接 / 页面必须一致，站点必须能构建且产出完整（course-material/ 和 community/ 的改动都会触发）
 name: Docs CI
 
 on:
   pull_request:
     paths:
-      - 'ch/**'
-      - 'eng/**'
+      - 'course-material/**'
+      - 'community/**'
       - 'docs/**'
       - 'scripts/**'
       - 'package.json'
@@ -34,9 +35,9 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           git fetch --no-tags origin "${{ github.base_ref }}"
-          files=$(git -c core.quotePath=false diff --name-only --diff-filter=AMR "origin/${{ github.base_ref }}...HEAD" -- 'ch/*.md' 'eng/*.md')
+          files=$(git -c core.quotePath=false diff --name-only --diff-filter=AMR "origin/${{ github.base_ref }}...HEAD" -- 'course-material/*.md')
           if [ -z "$files" ]; then
-            echo "No markdown files under ch/ or eng/ changed."
+            echo "No markdown files under course-material/ changed."
             exit 0
           fi
           echo "$files"

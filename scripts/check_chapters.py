@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Check course chapters against the writing templates.
 
-    python3 scripts/check_chapters.py --all              # every chapter under ch/ and eng/
+    python3 scripts/check_chapters.py --all              # every chapter under course-material/
     python3 scripts/check_chapters.py FILE [FILE ...]    # only these files (CI passes the PR diff)
 
-Rules are taken from ch/WRITING_TEMPLATE.md (Chinese chapters) and
-eng/WRITING_TEMPLATE.md (English chapters):
+Rules are taken from course-material/ch/WRITING_TEMPLATE.md (Chinese chapters) and
+course-material/eng/WRITING_TEMPLATE.md (English chapters):
 
   * file name        第N章_中文标题.md            /  ChapterN_English-Title.md
   * one H1           # 第 N 章 English（中文）    /  # Chapter N Title
@@ -15,7 +15,9 @@ eng/WRITING_TEMPLATE.md (English chapters):
   * references       a bullet list, one entry per line
   * images           <img src="./images/章号-序号-说明.png" width="800">
   * outline          chapter number within the part's chapter count
-  * naming           no other inference projects named anywhere in ch/ or eng/
+  * naming           no other inference projects named anywhere under course-material/
+
+Only course-material/ is checked; community/ is out of scope for this script.
 
 A chapter file whose only heading is the H1 is treated as a placeholder: only the
 file name, the H1 and the naming rule are checked.
@@ -78,7 +80,7 @@ class Lang:
 LANGS = {
     "ch": Lang(
         key="ch",
-        root="ch",
+        root="course-material/ch",
         file_re=re.compile(r"^第(\d+)章_.+\.md$"),
         h1_re=re.compile(r"^第 (\d+) 章 (.+?)（(.+)）$"),
         summary="总结与测试题",
@@ -89,7 +91,7 @@ LANGS = {
     ),
     "eng": Lang(
         key="eng",
-        root="eng",
+        root="course-material/eng",
         file_re=re.compile(r"^Chapter(\d+)_.+\.md$"),
         h1_re=re.compile(r"^Chapter (\d+) (.+)$"),
         summary="Summary and Exercises",
@@ -332,7 +334,9 @@ def lang_of(path: Path) -> Lang | None:
         rel = path.resolve().relative_to(REPO)
     except ValueError:
         return None
-    return LANGS.get(rel.parts[0]) if rel.parts else None
+    if len(rel.parts) < 2 or rel.parts[0] != "course-material":
+        return None
+    return LANGS.get(rel.parts[1])
 
 
 def is_chapter_file(path: Path) -> bool:
@@ -349,7 +353,7 @@ def collect_all() -> list[Path]:
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="*", help="markdown files to check (default: none)")
-    ap.add_argument("--all", action="store_true", help="check every markdown file under ch/ and eng/")
+    ap.add_argument("--all", action="store_true", help="check every markdown file under course-material/")
     args = ap.parse_args(argv)
 
     paths = collect_all() if args.all else [Path(f).resolve() for f in args.files]
