@@ -1,4 +1,5 @@
-# PR 检查：改动的章节必须符合写作模板（ch/ 对应中文模板，eng/ 对应英文模板），站点必须能构建。
+# PR 检查：改动的章节必须符合写作模板（ch/ 对应中文模板，eng/ 对应英文模板），
+# 站点导航 / 链接 / 页面必须一致，站点必须能构建且产出完整。
 name: Docs CI
 
 on:
@@ -46,7 +47,7 @@ jobs:
         run: python3 scripts/check_chapters.py --all
 
   build:
-    name: VitePress build
+    name: Site check and VitePress build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -66,5 +67,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Site consistency check (nav, sidebar, links, orphan pages)
+        run: python3 scripts/check_site.py
+
       - name: Build
         run: pnpm run build
+
+      - name: Build output check (home pages, every page built, redirect stubs)
+        run: python3 scripts/check_site.py --dist docs/.vitepress/dist
