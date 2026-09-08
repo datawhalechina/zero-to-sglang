@@ -1,6 +1,6 @@
 
 <div align='center'>
-    <img src="./ch/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
+    <img src="./course-material/ch/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
     <h1>zero-to-sglang</h1>
     <h3>📚 《从零手搓SGLang》</h3>
     <p><em>A hands-on Chinese tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
@@ -61,14 +61,14 @@
 | 章节 | 关键内容 | 状态 |
 |------|----------|------|
 | <strong>Part 0 — 开课之前</strong> | | |
-| [0.1 Coding Ethics and Open-Source Spirit（编码伦理与开源精神）](ch/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
-| [0.2 Deploy Your First SGLang Server（部署你的第一个 SGLang 服务）](ch/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
+| [0.1 Coding Ethics and Open-Source Spirit（编码伦理与开源精神）](course-material/ch/part0/Part0-编码伦理与开源精神.md) | 对自己代码负责、沟通时说人话、Profile 永远是第一步、开源精神 | ✅ |
+| [0.2 Deploy Your First SGLang Server（部署你的第一个 SGLang 服务）](course-material/ch/part0/Part0-部署你的第一个SGLang服务.md) | 环境设置，在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B | ✅ |
 | <strong>Part I — 基础概念（concepts only，无代码、无 GPU）</strong> | | |
-| [1. Introduction to LLM](ch/part1/第1章_LLM入门.md) | LLM 的定义与发展脉络、Transformer 架构、自回归生成、关键基础概念 | ✅ |
-| [2. Introduction to inference](ch/part1/第2章_推理入门.md) | 训练 vs 推理、prefill/decode、compute-bound vs memory-bound、Roofline model| ✅ |
+| [1. Introduction to LLM](course-material/ch/part1/第1章_LLM入门.md) | LLM 的定义与发展脉络、Transformer 架构、自回归生成、关键基础概念 | ✅ |
+| [2. Introduction to inference](course-material/ch/part1/第2章_推理入门.md) | 训练 vs 推理、prefill/decode、compute-bound vs memory-bound、Roofline model| ✅ |
 | 3. Introduction to GPU | GPU 架构基础、LLM 推理在 GPU 上的执行流程、从硬件理解推理瓶颈 | 🔄 |
-| [4. KV Cache: The Core Data Structure of Inference](ch/part1/第4章_推理的核心数据结构入门.md) | 从 Attention 推导 KV Cache、cache 生命周期、显存占用定量分析 | ✅ |
-| [5. Introduction to Benchmark](ch/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | 🔄 |
+| [4. KV Cache: The Core Data Structure of Inference](course-material/ch/part1/第4章_推理的核心数据结构入门.md) | 从 Attention 推导 KV Cache、cache 生命周期、显存占用定量分析 | ✅ |
+| [5. Introduction to Benchmark](course-material/ch/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | 🔄 |
 | <strong>Part II — 从零手搓 Mini SGL</strong> | | |
 | 1. mini-sglang：推理引擎长什么样 | 推理引擎的总体架构、模块划分、本部分的 roadmap | 📝 |
 | 2. **Inside SGLang: The Path of a Request** | 一个请求从进入到返回的完整生命周期 | 🚧 |
@@ -123,17 +123,20 @@ cd zero-to-sglang
 
 ```
 zero-to-sglang/
-├── ch/                      # 中文课程（在线阅读 /ch/）
-│   ├── part0/               # Part 0：开课之前
-│   ├── part1/               # Part I：基础概念（更新中）
-│   ├── part2/               # Part II：从零手搓 Mini SGL（规划中）
-│   ├── part3/               # Part III：高级推理技术（规划中）
-│   ├── part4/               # Part IV：如何为 SGLang 做贡献（规划中）
-│   ├── community/           # 社区贡献专区：手搓记录、踩坑、学习笔记
-│   └── WRITING_TEMPLATE.md  # 中文课程写作模板
-├── eng/                     # English edition（在线阅读 /eng/，翻译中）
-│   ├── part0/               # Part 0: Before you learn
-│   └── WRITING_TEMPLATE.md  # 英文课程写作模板
+├── course-material/         # 课程正文
+│   ├── ch/                  # 中文（在线阅读 /ch/）
+│   │   ├── part0/           # Part 0：开课之前
+│   │   ├── part1/           # Part I：基础概念（更新中）
+│   │   ├── part2/           # Part II：从零手搓 Mini SGL（规划中）
+│   │   ├── part3/           # Part III：高级推理技术（规划中）
+│   │   ├── part4/           # Part IV：如何为 SGLang 做贡献（规划中）
+│   │   └── WRITING_TEMPLATE.md
+│   └── eng/                 # English（在线阅读 /eng/，翻译中）
+│       ├── part0/
+│       └── WRITING_TEMPLATE.md
+├── community/               # 社区贡献专区：手搓记录、踩坑、学习笔记
+│   ├── ch/
+│   └── eng/
 ├── docs/.vitepress/         # VitePress 站点配置
 ├── README.md                # 项目说明（中文）
 ├── README_en.md             # 项目说明（English）
@@ -144,13 +147,13 @@ zero-to-sglang/
 
 ## 🤝 如何贡献
 
-我们是一个开放的开源社区，欢迎任何形式的贡献。动手之前，请先读一遍 [Part 0](ch/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
+我们是一个开放的开源社区，欢迎任何形式的贡献。动手之前，请先读一遍 [Part 0](course-material/ch/part0/Part0-编码伦理与开源精神.md)，了解我们期望的编码伦理与开源精神。
 
 <strong>1. 改进课程正文</strong>
 
 - 🐛 发现内容、公式、代码有错：提 Issue，或者直接改了提 PR
-- 📝 补充章节内容、优化表述：提 PR。章节划分和编号按[写作模板](ch/WRITING_TEMPLATE.md)里的大纲来，不要自行增删、合并章节
-- 🌐 参与翻译：按[英文写作模板](eng/WRITING_TEMPLATE.md)把章节翻译成英文，放在 `eng/` 下
+- 📝 补充章节内容、优化表述：提 PR。章节划分和编号按[写作模板](course-material/ch/WRITING_TEMPLATE.md)里的大纲来，不要自行增删、合并章节
+- 🌐 参与翻译：按[英文写作模板](course-material/eng/WRITING_TEMPLATE.md)把章节翻译成英文，放在 `course-material/eng/` 下
 - 💡 对课程有想法：开 Issue 讨论
 
 <strong>2. 分享你的实践</strong>
@@ -159,12 +162,12 @@ zero-to-sglang/
 - ⚠️ 部署 SGLang、配环境时踩过的坑，或者你觉得文档没写清楚、值得提醒别人的地方
 - 📒 读完某一章后按自己理解整理的学习笔记，或者补充的推导、实验等等
 
-内容放在 `ch/community/` 对应的目录下。
+内容放在 `community/ch/`（英文放 `community/eng/`）对应的目录下。
 
 <strong>提 PR 的流程</strong>
 
 1. Fork 本仓库，从 `main` 切一个分支
-2. PR 具体要求见 [ch/community/PR_requirement.md](ch/community/PR_requirement.md)，提交之前请逐条核实
+2. PR 具体要求见 [community/ch/PR_requirement.md](community/ch/PR_requirement.md)，提交之前请逐条核实
 
 ## ❓ 常见问题
 
@@ -188,7 +191,7 @@ zero-to-sglang/
 <div align="center">
   <table>
     <tr>
-      <td align="center"><img src="./ch/images/zero-to-sglang读者交流群.jpg" alt="读者交流群" width="280"><br>读者交流群</td>
+      <td align="center"><img src="./course-material/ch/images/zero-to-sglang读者交流群.jpg" alt="读者交流群" width="280"><br>读者交流群</td>
     </tr>
   </table>
 </div>

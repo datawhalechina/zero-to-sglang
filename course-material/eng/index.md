@@ -31,4 +31,4 @@ features:
 
 The English edition is being translated from the Chinese original, part by part. Part 0 is available now and more parts are on the way. Until a chapter lands here, the [Chinese edition](/ch/) is the complete reference.
 
-Want to help translate? See the [writing template](https://github.com/datawhalechina/zero-to-sglang/blob/main/eng/WRITING_TEMPLATE.md) and open a PR.
+Want to help translate? See the [writing template](https://github.com/datawhalechina/zero-to-sglang/blob/main/course-material/eng/WRITING_TEMPLATE.md) and open a PR.

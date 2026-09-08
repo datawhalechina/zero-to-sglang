@@ -1,5 +1,5 @@
 <div align='center'>
-    <img src="./ch/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
+    <img src="./course-material/ch/images/zero_to_sglang.png" alt="zero-to-sglang banner" width="100%">
     <h1>zero-to-sglang</h1>
     <h3>📚 Build SGLang from Scratch</h3>
     <p><em>A hands-on tutorial on LLM inference: build a mini-sglang from scratch, then read the real SGLang source.</em></p>
@@ -62,14 +62,14 @@
 | Chapter | Key content | Status |
 |------|----------|------|
 | <strong>Part 0 — Before you learn</strong> | | |
-| [0.1 Coding Ethics and Open-Source Spirit](eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit.md) | Own your code, communicate like a human, profile first, the open-source spirit | ✅ |
-| [0.2 Deploy Your First SGLang Server](eng/part0/Part0-Deploy-Your-First-SGLang-Server.md) | Environment setup; run Qwen3-0.6B with SGLang on your own GPU | ✅ |
+| [0.1 Coding Ethics and Open-Source Spirit](course-material/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit.md) | Own your code, communicate like a human, profile first, the open-source spirit | ✅ |
+| [0.2 Deploy Your First SGLang Server](course-material/eng/part0/Part0-Deploy-Your-First-SGLang-Server.md) | Environment setup; run Qwen3-0.6B with SGLang on your own GPU | ✅ |
 | <strong>Part I — Foundations (concepts only, no code, no GPU)</strong> | | |
-| [1. Introduction to LLM (zh)](ch/part1/第1章_LLM入门.md) | What an LLM is and how it evolved, the Transformer architecture, autoregressive generation, key concepts | ✅ |
-| [2. Introduction to inference (zh)](ch/part1/第2章_推理入门.md) | Training vs. inference, prefill/decode, compute-bound vs. memory-bound, the Roofline model | ✅ |
+| [1. Introduction to LLM (zh)](course-material/ch/part1/第1章_LLM入门.md) | What an LLM is and how it evolved, the Transformer architecture, autoregressive generation, key concepts | ✅ |
+| [2. Introduction to inference (zh)](course-material/ch/part1/第2章_推理入门.md) | Training vs. inference, prefill/decode, compute-bound vs. memory-bound, the Roofline model | ✅ |
 | 3. Introduction to GPU | GPU architecture basics, how LLM inference executes on a GPU, understanding inference bottlenecks from the hardware | 🔄 |
-| [4. KV Cache: The Core Data Structure of Inference (zh)](ch/part1/第4章_推理的核心数据结构入门.md) | Deriving KV Cache from attention, cache lifecycle, quantitative memory analysis | ✅ |
-| [5. Introduction to Benchmark (zh)](ch/part1/第5章_Benchmark入门.md) | Core metrics such as TTFT / TPOT / ITL / Goodput, percentiles and tail latency, how to design, run and read a benchmark | 🔄 |
+| [4. KV Cache: The Core Data Structure of Inference (zh)](course-material/ch/part1/第4章_推理的核心数据结构入门.md) | Deriving KV Cache from attention, cache lifecycle, quantitative memory analysis | ✅ |
+| [5. Introduction to Benchmark (zh)](course-material/ch/part1/第5章_Benchmark入门.md) | Core metrics such as TTFT / TPOT / ITL / Goodput, percentiles and tail latency, how to design, run and read a benchmark | 🔄 |
 | <strong>Part II — Build Your Own Mini SGL</strong> | | |
 | 1. mini-sglang: what an inference engine looks like | Overall architecture of an inference engine, module breakdown, roadmap for this part | 📝 |
 | 2. **Inside SGLang: The Path of a Request** | The full lifecycle of a request from arrival to response | 🚧 |
@@ -124,17 +124,20 @@ cd zero-to-sglang
 
 ```
 zero-to-sglang/
-├── ch/                      # Chinese edition (read online at /ch/)
-│   ├── part0/               # Part 0: Before you learn
-│   ├── part1/               # Part I: Foundations (in progress)
-│   ├── part2/               # Part II: Build Your Own Mini SGL (planned)
-│   ├── part3/               # Part III: Advanced Inference Technique (planned)
-│   ├── part4/               # Part IV: How to Make Contribution to SGLang (planned)
-│   ├── community/           # Community corner: build logs, pitfalls, study notes
-│   └── WRITING_TEMPLATE.md  # Writing template for the Chinese edition
-├── eng/                     # English edition (read online at /eng/, in progress)
-│   ├── part0/               # Part 0: Before you learn
-│   └── WRITING_TEMPLATE.md  # Writing template for the English edition
+├── course-material/         # Course text
+│   ├── ch/                  # Chinese edition (read online at /ch/)
+│   │   ├── part0/           # Part 0: Before you learn
+│   │   ├── part1/           # Part I: Foundations (in progress)
+│   │   ├── part2/           # Part II: Build Your Own Mini SGL (planned)
+│   │   ├── part3/           # Part III: Advanced Inference Technique (planned)
+│   │   ├── part4/           # Part IV: How to Make Contribution to SGLang (planned)
+│   │   └── WRITING_TEMPLATE.md
+│   └── eng/                 # English edition (read online at /eng/, in progress)
+│       ├── part0/
+│       └── WRITING_TEMPLATE.md
+├── community/               # Community corner: build logs, pitfalls, study notes
+│   ├── ch/
+│   └── eng/
 ├── docs/.vitepress/         # VitePress site config
 ├── README.md                # Project overview (Chinese)
 ├── README_en.md             # Project overview (English)
@@ -143,13 +146,13 @@ zero-to-sglang/
 
 ## 🤝 Contributing
 
-We are an open community and welcome contributions of every kind. Before you start, please read [Part 0](eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit.md) to understand the coding ethics and open-source spirit we expect.
+We are an open community and welcome contributions of every kind. Before you start, please read [Part 0](course-material/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit.md) to understand the coding ethics and open-source spirit we expect.
 
 <strong>1. Improve the course text</strong>
 
 - 🐛 Found an error in the content, a formula, or code: open an issue, or fix it and open a PR
-- 📝 Add to a chapter or improve the wording: open a PR. Chapter division and numbering follow the outline in the [writing template](eng/WRITING_TEMPLATE.md); do not add, remove, or merge chapters on your own
-- 🌐 Translate: help translate chapters into English following the [English writing template](eng/WRITING_TEMPLATE.md), and put them under `eng/`
+- 📝 Add to a chapter or improve the wording: open a PR. Chapter division and numbering follow the outline in the [writing template](course-material/eng/WRITING_TEMPLATE.md); do not add, remove, or merge chapters on your own
+- 🌐 Translate: help translate chapters into English following the [English writing template](course-material/eng/WRITING_TEMPLATE.md), and put them under `course-material/eng/`
 - 💡 Have ideas about the course: open an issue to discuss
 
 <strong>2. Share your practice</strong>
@@ -158,12 +161,12 @@ We are an open community and welcome contributions of every kind. Before you sta
 - ⚠️ Pitfalls from deploying SGLang or setting up the environment, or places where the docs were unclear and others deserve a warning
 - 📒 Study notes written in your own words after finishing a chapter, or extra derivations and experiments
 
-Community content currently lives under the matching directory in `ch/community/`.
+Community content goes under the matching directory in `community/eng/` (English) or `community/ch/` (Chinese).
 
 <strong>How to open a PR</strong>
 
 1. Fork the repository and create a branch from `main`
-2. PR requirements are in [ch/community/PR_requirement.md](ch/community/PR_requirement.md) (zh); check every item before submitting
+2. PR requirements are in [community/eng/PR_requirement.md](community/eng/PR_requirement.md); check every item before submitting
 
 ## ❓ FAQ
 

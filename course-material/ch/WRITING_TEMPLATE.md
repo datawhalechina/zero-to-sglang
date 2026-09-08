@@ -4,8 +4,8 @@
 
 ## 文件与图片
 
-- 一章一个 markdown 文件，放在 `ch/partN/` 下，文件名 `第N章_中文标题.md`。
-- 图片放在同一 part 的 `ch/partN/images/` 下，文件名 `章号-序号-图片说明.png`，例如 `6-4-SM的架构.png`。
+- 一章一个 markdown 文件，放在 `course-material/ch/partN/` 下，文件名 `第N章_中文标题.md`。
+- 图片放在同一 part 的 `course-material/ch/partN/images/` 下，文件名 `章号-序号-图片说明.png`，例如 `6-4-SM的架构.png`。
 - 图片用 HTML 标签引用，宽度统一 800。
 
 ## 标题层级

@@ -4,8 +4,8 @@ How to explain, how deep to go, and what tone to use are up to the author. This 
 
 ## Files and images
 
-- One chapter per markdown file, under `eng/partN/`, named `ChapterN_English-Title.md`, e.g. `Chapter2_Introduction-to-Inference.md`.
-- Images go in the same part's `eng/partN/images/`, named `chapter-index-description.png`, e.g. `6-4-SM-architecture.png`. If a figure has no text that needs translating, reference the Chinese edition's copy by relative path instead of duplicating it.
+- One chapter per markdown file, under `course-material/eng/partN/`, named `ChapterN_English-Title.md`, e.g. `Chapter2_Introduction-to-Inference.md`.
+- Images go in the same part's `course-material/eng/partN/images/`, named `chapter-index-description.png`, e.g. `6-4-SM-architecture.png`. If a figure has no text that needs translating, reference the Chinese edition's copy by relative path instead of duplicating it.
 - Reference images with an HTML tag, width 800.
 
 ## Heading levels
@@ -54,7 +54,7 @@ A bullet list, one entry per line, with title and link. List only material you a
 
 ## Staying in sync with the Chinese edition
 
-English chapters are translations of the Chinese originals in `ch/`. Keep the section structure and numbering identical to the Chinese chapter so readers can switch editions on any page. Translate the meaning, not the words: rewrite sentences so they read naturally in English, but do not add, drop, or reorder content. If the Chinese chapter changes later, update the English chapter in the same PR, or open an issue so someone can.
+English chapters are translations of the Chinese originals in `course-material/ch/`. Keep the section structure and numbering identical to the Chinese chapter so readers can switch editions on any page. Translate the meaning, not the words: rewrite sentences so they read naturally in English, but do not add, drop, or reorder content. If the Chinese chapter changes later, update the English chapter in the same PR, or open an issue so someone can.
 
 ## Two rules that must not be broken
 

@@ -32,7 +32,7 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
     items: [
       { text: '第 1 章 LLM 入门', link: '/ch/part1/第1章_LLM入门' },
       { text: '第 2 章 推理入门', link: '/ch/part1/第2章_推理入门' },
-      { text: '第 3 章 GPU 入门', link: '/ch/part1/第三章_IntroductionToGPU' },
+      { text: '第 3 章 GPU 入门', link: '/ch/part1/第3章_IntroductionToGPU' },
       { text: '第 4 章 KV Cache', link: '/ch/part1/第4章_推理的核心数据结构入门' },
       { text: '第 5 章 Benchmark 入门', link: '/ch/part1/第5章_Benchmark入门' },
     ],
@@ -86,6 +86,7 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
 const engNav: DefaultTheme.NavItem[] = [
   { text: 'Home', link: '/eng/' },
   { text: 'Part 0', link: '/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit' },
+  { text: 'Community', link: '/eng/community/' },
 ]
 
 // Sections are added here as their English chapters land.
@@ -97,7 +98,35 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
       { text: 'Deploy Your First SGLang Server', link: '/eng/part0/Part0-Deploy-Your-First-SGLang-Server' },
     ],
   },
+  {
+    text: 'Community',
+    items: [
+      { text: 'About', link: '/eng/community/' },
+      { text: 'PR requirements', link: '/eng/community/PR_requirement' },
+    ],
+  },
 ]
+
+// ---------------------------------------------------------------------------
+// Source layout -> site URL
+// ---------------------------------------------------------------------------
+//
+//   course-material/<lang>/...  ->  /<lang>/...
+//   community/<lang>/...        ->  /<lang>/community/...
+//
+// Locales are keyed by the first URL segment, and public URLs stay exactly
+// /ch/... and /eng/... regardless of where the sources live.
+const SOURCE_TO_URL: [RegExp, string][] = [
+  [/^course-material\/(ch|eng)\//, '$1/'],
+  [/^community\/(ch|eng)\//, '$1/community/'],
+]
+
+function toSiteUrl(id: string): string {
+  for (const [re, to] of SOURCE_TO_URL) {
+    if (re.test(id)) return id.replace(re, to)
+  }
+  return id
+}
 
 // ---------------------------------------------------------------------------
 // Site
@@ -106,9 +135,10 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
 export default defineConfig({
   title: 'zero-to-sglang',
   base,
-  // Content lives in <repo>/ch and <repo>/eng; this folder only holds the site config.
+  // Content lives in <repo>/course-material and <repo>/community; this folder only holds the site config.
   srcDir: '..',
   srcExclude: ['*.md', '**/WRITING_TEMPLATE.md', '.github/**', 'docs/**'],
+  rewrites: toSiteUrl,
   ignoreDeadLinks: true,
 
   head: [
@@ -174,8 +204,9 @@ export default defineConfig({
   // and make the site root land on the Chinese edition.
   buildEnd(siteConfig) {
     for (const page of siteConfig.pages) {
-      if (!page.startsWith('ch/')) continue
-      const rest = page.slice('ch/'.length).replace(/\.md$/, '.html')
+      const url = siteConfig.rewrites.map[page] ?? page
+      if (!url.startsWith('ch/')) continue
+      const rest = url.slice('ch/'.length).replace(/\.md$/, '.html')
       const target = rest === 'index.html' ? `${base}ch/` : `${base}ch/${rest}`
       const href = encodeURI(target)
       const out = join(siteConfig.outDir, rest)
