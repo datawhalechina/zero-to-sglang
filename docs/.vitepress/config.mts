@@ -32,7 +32,7 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
     items: [
       { text: '第 1 章 LLM 入门', link: '/ch/part1/第1章_LLM入门' },
       { text: '第 2 章 推理入门', link: '/ch/part1/第2章_推理入门' },
-      { text: '第 3 章 GPU 入门', link: '/ch/part1/第3章_IntroductionToGPU' },
+      { text: '第 3 章 GPU 入门', link: '/ch/part1/第3章_GPU入门' },
       { text: '第 4 章 KV Cache', link: '/ch/part1/第4章_推理的核心数据结构入门' },
       { text: '第 5 章 Benchmark 入门', link: '/ch/part1/第5章_Benchmark入门' },
     ],
