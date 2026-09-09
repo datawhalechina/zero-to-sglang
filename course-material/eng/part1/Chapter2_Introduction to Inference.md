@@ -1,4 +1,4 @@
-# Chapter 2: Introduction to Inference
+# Chapter 2 Introduction to Inference
 
 &emsp;&emsp;Next-generation AI development tools, such as Claude Code and Codex, can connect to different LLM APIs, yet the actual user experience still varies considerably. More capable models usually deliver higher task-completion rates, more stable reasoning, and better code quality. Response speed, throughput, and cost also have a direct impact on development efficiency.
 
@@ -442,13 +442,13 @@ Optimization directions: for Prefill, batching, operator fusion, and Tensor Core
 - **Memory access becomes the bottleneck**: with long contexts, reading the KV cache can take longer than the actual computation.
 - **Batching efficiency declines**: large KV caches reduce the number of requests that can be processed concurrently, lowering GPU utilization and overall throughput.
 
-## 7 Summary and Review Questions
+## 7 Summary and Exercises
 
 ### 7.1 Chapter Summary
 
 &emsp;&emsp;This chapter analyzed the core mechanisms and performance bottlenecks of LLM inference. Starting from the fundamental differences between training and inference, we examined the computation characteristics of the two key stages, Prefill and Decode, and introduced the Roofline model as a performance-analysis tool. The Agent-collaboration and multi-turn-conversation scenarios illustrated challenges faced by practical inference systems.
 
-### 7.2 Review Questions
+### 7.2 Exercises
 
 1. What are the differences and connections between training and inference?
 
