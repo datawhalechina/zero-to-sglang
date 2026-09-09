@@ -124,7 +124,7 @@ Inference is not something that happens only after training; it is a collaborati
 &emsp;&emsp;The basic life cycle from receiving a user request to returning a complete response can be summarized as follows:
 
 <div align="center">
-  <img src="./images/2-3-A token's life cycle.png" alt="A token's life cycle" width="800">
+  <img src="./images/2-3-A token life cycle.png" alt="A token's life cycle" width="800">
   <p><em>Figure 3. A token's life cycle</em></p>
 </div>
 
