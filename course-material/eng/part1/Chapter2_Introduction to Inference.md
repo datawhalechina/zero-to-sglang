@@ -444,7 +444,7 @@ Optimization directions: for Prefill, batching, operator fusion, and Tensor Core
 
 ## 7 Summary and Exercises
 
-### 7.1 Chapter Summary
+### 7.1 Summary
 
 &emsp;&emsp;This chapter analyzed the core mechanisms and performance bottlenecks of LLM inference. Starting from the fundamental differences between training and inference, we examined the computation characteristics of the two key stages, Prefill and Decode, and introduced the Roofline model as a performance-analysis tool. The Agent-collaboration and multi-turn-conversation scenarios illustrated challenges faced by practical inference systems.
 
