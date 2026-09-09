@@ -8,7 +8,7 @@ Rules are taken from course-material/ch/WRITING_TEMPLATE.md (Chinese chapters) a
 course-material/eng/WRITING_TEMPLATE.md (English chapters):
 
   * file name        第N章_中文标题.md            /  ChapterN_English-Title.md
-  * one H1           # 第 N 章 English（中文）    /  # Chapter N Title
+  * one H1           # 第 N 章 中文标题            /  # Chapter N Title
   * sections         ## N ...  ### N.M ...  #### N.M.K ...   numbered, continuous, nothing below H4
   * ending           ## K 总结与测试题 (K.1 课程总结, K.2 测试题) then ## 参考资料
                      ## K Summary and Exercises (K.1 Summary, K.2 Exercises) then ## References
@@ -82,7 +82,7 @@ LANGS = {
         key="ch",
         root="course-material/ch",
         file_re=re.compile(r"^第(\d+)章_.+\.md$"),
-        h1_re=re.compile(r"^第 (\d+) 章 (.+?)（(.+)）$"),
+        h1_re=re.compile(r"^第 (\d+) 章 (.+)$"),
         summary="总结与测试题",
         summary_sub1="课程总结",
         summary_sub2="测试题",
@@ -326,7 +326,7 @@ def check_chapter(path: Path, lang: Lang, rep: Report) -> None:
 
 
 def example_h1(lang: Lang) -> str:
-    return "# 第 2 章 Introduction to Inference（推理入门）" if lang.key == "ch" else "# Chapter 2 Introduction to Inference"
+    return "# 第 2 章 推理入门" if lang.key == "ch" else "# Chapter 2 Introduction to Inference"
 
 
 def lang_of(path: Path) -> Lang | None:

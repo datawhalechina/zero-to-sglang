@@ -1,3 +1,3 @@
-# 第 2 章 Inside SGLang: The Path of a Request（请求的路径）
+# 第 2 章 请求的路径
 
 &emsp;&emsp;本章内容撰写中，敬请期待。

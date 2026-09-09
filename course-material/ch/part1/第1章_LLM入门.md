@@ -1,4 +1,4 @@
-# 第 1 章 Introduction to LLM（LLM 入门）
+# 第 1 章 LLM 入门
 
 ## 1 本章学习目标
 
