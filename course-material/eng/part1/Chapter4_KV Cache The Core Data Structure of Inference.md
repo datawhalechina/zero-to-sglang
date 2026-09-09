@@ -381,14 +381,14 @@ $$
 
 These problems show that KV Cache management cannot treat each request only as an independent contiguous tensor. Instead, it requires finer-grained block/page allocation, reclamation, and scheduling, while reusing identical prefixes whenever possible.
 
-## 6 Summary and Review Questions
+## 6 Summary and Exercises
 
-### 6.1 Chapter Summary
+### 6.1 Summary
 
 &emsp;&emsp;This chapter analyzed the KV Cache lifecycle and GPU memory usage starting from Attention, then examined the memory and management pressure it creates in long-context and multi-request scenarios. Efficient KV Cache organization and management are therefore major optimization priorities for inference engines.
 
 
-### 6.2 Review Questions
+### 6.2 Exercises
 
 **1. During Full Attention inference, which computations produce the KV Cache, and what purpose does it serve?**
 
