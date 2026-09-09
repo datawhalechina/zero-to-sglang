@@ -102,7 +102,7 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
     text: 'Part I — Foundations',
     items: [
       { text: 'Chapter 2 Inference', link: '/eng/part1/Chapter2_Introduction to Inference.md' },
-      { text: Chapter 4 KV Cache', link: '/eng/part1/Chapter4_KV Cache The Core Data Structure of Inference.md' },
+      { text: 'Chapter 4 KV Cache', link: '/eng/part1/Chapter4_KV Cache The Core Data Structure of Inference.md' },
     ],
   },
   {
