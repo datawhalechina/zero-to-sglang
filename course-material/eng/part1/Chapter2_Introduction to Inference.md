@@ -44,7 +44,7 @@ $$P(\text{token}_i \mid \text{token}_1, \text{token}_2, \dots, \text{token}_{i-1
 **Comparison of the inputs used to predict the next token during training and inference**
 
 <div align="center">
-  <img src="./images/2-1-Training vs. inference.png" alt="Training vs. inference" width="800">
+  <img src="./images/2-1-Training vs. Inference.png" alt="Training vs. inference" width="800">
   <p><em>Figure 1. Training vs. inference</em></p>
 </div>
 
