@@ -28,7 +28,7 @@
 当我们打开游戏里面的3D模型，可以发现3D模型都是由一个一个**小三角形**构成，三角形由三根线构成，为了节省存储的空间，我们只存储三角形的三个顶点坐标，构成线的像素点坐标我们不储存，而是实时计算出来。
 
 <div align="center">
-    <img src="images/3-1-3D模型和三角形的计算.png" alt="3-1-3D模型和三角形的计算.png" width="800">
+    <img src="./images/3-1-3D模型和三角形的计算.png" alt="3-1-3D模型和三角形的计算.png" width="800">
 <p><em>图 1. 3D 模型与三角形的计算</em></p>
 </div>
 
@@ -93,7 +93,7 @@ CPU设计初衷是用来最小化单任务延迟，快速响应复杂逻辑，�
 GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大部分晶体管用于算术逻辑单元（ALU），核心多而简，可以达到数千个（如 A100 有 6912 个 FP32 CUDA 核心）。它优化**吞吐量**，追求所有任务整体最快完成，为此配备大量可快速切换的线程来隐藏访存延迟，单个任务的延迟并非其优化目标。
 
 <div align="center">
-    <img src="images/3-2-GPU和CPU的结构.png" alt="3-2-GPU和CPU的结构.png" width="800">
+    <img src="./images/3-2-GPU和CPU的结构.png" alt="3-2-GPU和CPU的结构.png" width="800">
 <p><em>图 2. GPU 和 CPU 的结构对比</em></p>
 </div>
 
@@ -106,7 +106,7 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 我们使用A100 来介绍GPU的具体结构
 
 <div align="center">
-    <img src="images/3-3-GPU的结构.png" alt="3-3-GPU的结构.png" width="800">
+    <img src="./images/3-3-GPU的结构.png" alt="3-3-GPU的结构.png" width="800">
 <p><em>图 3. 显卡（GPU）的整体结构</em></p>
 </div>
 
@@ -141,7 +141,7 @@ GA100 是完整芯片的物理设计，实际产品会和白皮书中存在差�
 Ampere架构拓扑如下：
 
 <div align="center">
-    <img src="images/3-4-GPU核心的架构.png" alt="3-4-GPU核心的架构.png" width="800">
+    <img src="./images/3-4-GPU核心的架构.png" alt="3-4-GPU核心的架构.png" width="800">
 <p><em>图 4. GPU 核心的架构</em></p>
 </div>
 
@@ -164,7 +164,7 @@ A100的SM是Ampere架构核心，相比消费级GPU有本质增强：
 SM是将线程块（Thread Block）映射到物理硬件并完成实际计算的根本单元。当GPU内核（Kernel）启动时，线程块被分配到空闲的SM上，SM负责将其内部的线程束（Warp，32线程）解码并派发至CUDA核心（处理通用运算）或Tensor Core（处理矩阵乘加运算）执行。没有SM的调度，CUDA核心和Tensor Core无法自主运行。
 
 <div align="center">
-    <img src="images/3-5-SM的架构.png" alt="3-5-SM的架构.png" width="800">
+    <img src="./images/3-5-SM的架构.png" alt="3-5-SM的架构.png" width="800">
 <p><em>图 5. SM（流式多处理器）的架构</em></p>
 </div>
 
@@ -234,14 +234,14 @@ SM内置**192KB的L1缓存/共享内存**，供本SM内所有CUDA核心快速存
 ### 3.2 执行模型的核心名词详解
 
 <div align="center">
-    <img src="images/3-6-SM的执行.png" alt="3-6-SM的执行.png" width="800">
+    <img src="./images/3-6-SM的执行.png" alt="3-6-SM的执行.png" width="800">
 <p><em>图 6. SM 的执行流程</em></p>
 </div>
 
 在GPU运行中，我们划分三个粒度层级来思考：**块（block）、线程束（warp）和线程（thread）**，这是粒度逐级细化的顺序。块是大型线程组，**每个块会被分配给一个SM处理**。可以把每个SM想象成**独立工作**的单元，而块就是分配给它的**处理单元**。在每个块内部包含**大量线程**，每个线程代表待执行的任务单元。这些线程在执行时会分组运行，这种分组称为线程束。每个线程束由32个连续编号的线程组成，从块中提取出来同步执行。通过这个示意图可以看到：多个块被分配给不同的SM，每个块内包含多个线程束，每个线程束又由大量线程组成。所有这些线程都会在不同数据上执行相同的指令，这就是基本执行模型。
 
 <div align="center">
-    <img src="images/3-7-内存模型.png" alt="3-7-内存模型.png" width="800">
+    <img src="./images/3-7-内存模型.png" alt="3-7-内存模型.png" width="800">
 <p><em>图 7. 执行模型的内存视图</em></p>
 </div>
 
@@ -291,7 +291,7 @@ SIMT模型是**GPU高吞吐量的底层逻辑**,它将硬件上**SIMD式的密�
 ### 3.3 GPU的内存模型
 
 <div align="center">
-    <img src="images/3-8-GPU的内存模型.png" alt="3-8-GPU的内存模型.png" width="800">
+    <img src="./images/3-8-GPU的内存模型.png" alt="3-8-GPU的内存模型.png" width="800">
 <p><em>图 8. GPU 的内存层次模型</em></p>
 </div>
 
