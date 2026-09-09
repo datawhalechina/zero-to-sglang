@@ -28,7 +28,7 @@ Before the concept of deep learning became popular, the GPU was, in the eyes of 
 When we open a 3D model in a game, we can see that the 3D model is composed of one **small triangle** after another. A triangle is made up of three lines. To save storage space, we only store the coordinates of the triangle's three vertices; we do not store the coordinates of the pixel points that make up the lines, but compute them in real time.
 
 <div align="center">
-    <img src="images/3-1-3D模型和三角形的计算.png" alt="3-1-3D模型和三角形的计算.png" width="800">
+    <img src="images/3-1-3d-model-and-triangle-computation.png" alt="3-1-3d-model-and-triangle-computation.png" width="800">
 <p><em>Figure 1. 3D models and the computation of triangles</em></p>
 </div>
 
@@ -93,7 +93,7 @@ The CPU was originally designed to minimize single-task latency and respond quic
 The GPU was originally designed to maximize data throughput and process simple computations in bulk. Most of its transistors are used for Arithmetic Logic Units (ALUs). Its cores are numerous but simple, reaching the thousands (e.g., the A100 has 6,912 FP32 CUDA cores). It optimizes **throughput**, pursuing the fastest overall completion of all tasks, and to this end is equipped with a large number of threads that can be switched quickly to hide memory-access latency; the latency of a single task is not its optimization target.
 
 <div align="center">
-    <img src="images/3-2-GPU和CPU的结构.png" alt="3-2-GPU和CPU的结构.png" width="800">
+    <img src="images/3-2-gpu-and-cpu-structure.png" alt="3-2-gpu-and-cpu-structure.png" width="800">
 <p><em>Figure 2. Structural comparison of the GPU and the CPU</em></p>
 </div>
 
@@ -106,7 +106,7 @@ In the AI era, the **matrices** in deep learning pushed the GPU to the altar. Be
 We use the A100 to introduce the specific structure of a GPU.
 
 <div align="center">
-    <img src="images/3-3-GPU的结构.png" alt="3-3-GPU的结构.png" width="800">
+    <img src="images/3-3-gpu-structure.png" alt="3-3-gpu-structure.png" width="800">
 <p><em>Figure 3. The overall structure of a graphics card (GPU)</em></p>
 </div>
 
@@ -141,7 +141,7 @@ Unlike the GDDR memory chips of consumer-grade GPUs, the A100 adopts **3D stacki
 The Ampere architecture topology is as follows:
 
 <div align="center">
-    <img src="images/3-4-GPU核心的架构.png" alt="3-4-GPU核心的架构.png" width="800">
+    <img src="images/3-4-gpu-core-architecture.png" alt="3-4-gpu-core-architecture.png" width="800">
 <p><em>Figure 4. The architecture of the GPU core</em></p>
 </div>
 
@@ -164,7 +164,7 @@ The A100's SM is the core of the Ampere architecture, with fundamental enhanceme
 The SM is the fundamental unit that maps a Thread Block onto physical hardware and completes the actual computation. When a GPU kernel is launched, thread blocks are assigned to idle SMs, and the SM is responsible for decoding the warps (32 threads each) within it and dispatching them to CUDA cores (which handle general-purpose operations) or Tensor Cores (which handle matrix multiply-accumulate operations) for execution. Without the SM's scheduling, the CUDA cores and Tensor Cores cannot run on their own.
 
 <div align="center">
-    <img src="images/3-5-SM的架构.png" alt="3-5-SM的架构.png" width="800">
+    <img src="images/3-5-sm-architecture.png" alt="3-5-sm-architecture.png" width="800">
 <p><em>Figure 5. The architecture of the SM (Streaming Multiprocessor)</em></p>
 </div>
 
@@ -233,14 +233,14 @@ The SM has a built-in **192KB L1 cache / shared memory**, allowing all CUDA core
 ### 2.2 A Detailed Explanation of the Core Terms of the Execution Model
 
 <div align="center">
-    <img src="images/3-6-SM的执行.png" alt="3-6-SM的执行.png" width="800">
+    <img src="images/3-6-sm-execution.png" alt="3-6-sm-execution.png" width="800">
 <p><em>Figure 6. The execution flow of the SM</em></p>
 </div>
 
 In GPU operation, we divide thinking into three levels of granularity: **block, warp, and thread**, which is the order of progressively finer granularity. A block is a large group of threads, and **each block is assigned to one SM for processing**. You can think of each SM as a unit that **works independently**, and the block as the **processing unit** assigned to it. Inside each block there are **a large number of threads**, and each thread represents a task unit to be executed. When these threads execute, they run in groups, and this grouping is called a warp. Each warp consists of 32 consecutively numbered threads, extracted from the block and executed synchronously. From this diagram we can see: multiple blocks are assigned to different SMs, each block contains multiple warps, and each warp in turn consists of a large number of threads. All these threads execute the same instruction on different data—this is the basic execution model.
 
 <div align="center">
-    <img src="images/3-7-内存模型.png" alt="3-7-内存模型.png" width="800">
+    <img src="images/3-7-memory-model.png" alt="3-7-memory-model.png" width="800">
 <p><em>Figure 7. The memory view of the execution model</em></p>
 </div>
 
@@ -290,7 +290,7 @@ The SIMT model is **the underlying logic of the GPU's high throughput**. It enca
 ### 2.3 The GPU Memory Model
 
 <div align="center">
-    <img src="images/3-8-GPU的内存模型.png" alt="3-8-GPU的内存模型.png" width="800">
+    <img src="images/3-8-gpu-memory-model.png" alt="3-8-gpu-memory-model.png" width="800">
 <p><em>Figure 8. The GPU's memory hierarchy model</em></p>
 </div>
 
