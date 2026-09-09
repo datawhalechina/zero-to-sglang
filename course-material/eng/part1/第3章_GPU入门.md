@@ -1,512 +1,510 @@
-# 第三章 GPU 入门
+# Chapter 3 Introduction to GPU
 
-欢迎来到 zero-to-sglang 课程，这里是课程的第二部分，上节课我们介绍了大模型的推理具体过程，学习了token的生命历程还有KV Cache 等技术，下面我们要介绍的是GPU的架构以及LLM在GPU的执行流程。GPU作为大模型训练和推理的地基，贯穿整个大模型的生命流程，我们有必要学习GPU相关的知识。下面就让我们开始本节课程的学习。
+Welcome to the zero-to-sglang course. This is the second part of the course. In the previous chapter we introduced the specific process of large-model inference and learned about the life journey of a token as well as technologies such as the KV Cache. Next, we will introduce the architecture of the GPU and the execution flow of an LLM on the GPU. As the foundation of large-model training and inference, the GPU runs through the entire life cycle of a large model, so it is necessary for us to learn GPU-related knowledge. Let us now begin this chapter.
 
-## 本章概要
+## Chapter Overview
 
-本章围绕 **GPU 硬件架构** 与 **大模型推理在 GPU 上的执行流程** 展开，共分为四个部分：
+This chapter revolves around **GPU hardware architecture** and the **execution flow of large-model inference on the GPU**, and is divided into four parts:
 
-1.  GPU 架构基础：
+1.  GPU architecture fundamentals:
 
-从 GPU 作为图形处理器的起源讲起，对比 CPU 与 GPU 的设计哲学（低延迟 vs 高吞吐），并以 A100 为例拆解 GPC→TPC→SM→CUDA/Tensor Core。
+Starting from the origin of the GPU as a graphics processor, we compare the design philosophies of the CPU and the GPU (low latency vs. high throughput), and take the A100 as an example to break down GPC→TPC→SM→CUDA/Tensor Core.
 
-2. GPU 的执行模型：
+2. The GPU execution model:
 
-讲解 SIMT 执行模型下 Block/Warp/Thread 的三级调度，以及寄存器→共享内存→L2→全局内存的多级内存层次。
+We explain the three-level scheduling of Block/Warp/Thread under the SIMT execution model, as well as the multi-level memory hierarchy of registers→shared memory→L2→global memory.
 
-3. LLM 推理在 GPU 上的执行流程：
+3. The execution flow of LLM inference on the GPU:
 
-说明为什么 LLM 推理离不开 GPU，并将推理拆解为预处理、计算密集的 Prefill 和内存密集的 Decode 三个阶段。
+We explain why LLM inference is inseparable from the GPU, and break inference down into three stages: preprocessing, the compute-intensive Prefill, and the memory-intensive Decode.
 
 
-## 1、GPU 架构基础
+## 1. GPU Architecture Fundamentals
 
-### 1.1 GPU的起源：图形处理器
+### 1.1 The Origin of the GPU: The Graphics Processor
 
-在深度学习概念没有火起来之前，GPU在普通人眼中是**游戏显卡**，即图形处理器。下面用一个例子来说明GPU和CPU的区别。
+Before the concept of deep learning became popular, the GPU was, in the eyes of ordinary people, a **gaming graphics card**—that is, a graphics processor. The following example illustrates the difference between the GPU and the CPU.
 
-当我们打开游戏里面的3D模型，可以发现3D模型都是由一个一个**小三角形**构成，三角形由三根线构成，为了节省存储的空间，我们只存储三角形的三个顶点坐标，构成线的像素点坐标我们不储存，而是实时计算出来。
+When we open a 3D model in a game, we can see that the 3D model is composed of one **small triangle** after another. A triangle is made up of three lines. To save storage space, we only store the coordinates of the triangle's three vertices; we do not store the coordinates of the pixel points that make up the lines, but compute them in real time.
 
 <div align="center">
     <img src="images/3-1-3D模型和三角形的计算.png" alt="3-1-3D模型和三角形的计算.png" width="800">
-<p><em>图 1. 3D 模型与三角形的计算</em></p>
+<p><em>Figure 1. 3D models and the computation of triangles</em></p>
 </div>
 
-由两个点构成一个直线就可以发现，一根线我们只存储**两个端点的信息**，中间的像素点再时时计算渲染。我们可以由两个顶点坐标计算斜率和截距，就可以算出两条线中间的点的位置。虽然都是简单计算，只有大量简单的乘法和加法。但是 CPU 天生时执行复杂逻辑的，只能逐个计算，所以**计算时间非常长**。
+Since a straight line is formed by two points, we find that for a line we only store **the information of the two endpoints**, and the pixel points in the middle are computed and rendered in real time. From the coordinates of the two vertices we can compute the slope and intercept, and thus calculate the positions of the points between the two lines. Although these are all simple calculations—only a large number of simple multiplications and additions—the CPU is inherently built to execute complex logic and can only compute them one by one, so the **computation time is very long**.
 
-人们就想到创造出可以**大量并行计算简单的乘法和加法**的计算单元，就是GPU。CPU和GPU没有优劣之分，只是用来执行不同功能的单元。GPU的计算单元被称作**CUDA核心**。
-
-
-#### 1. 图形显示的萌芽（1980年代前）
-
-**没有GPU的时代**，电脑显示图形全靠CPU计算，**1981年**：IBM PC配备的CGA显示卡只能显示16色，像个电子相框，所有计算都由CPU完成，**1987年**：IBM推出VGA标准，能显示256色，但依然是纯显示功能，没有计算能力。
-
-**关键**在于1985年ATi公司成立，开始用ASIC技术做图形芯片。1992年ATi的Mach32图形卡首次集成**图形加速**功能，这是GPU的起始点。
-
-#### 2. 3D加速卡混战（1990年代）
-
-90年代是图形加速器的黄金时代，但还没有GPU这个正式名称。
-
-**里程碑事件**在**1994年**3DLabs发布Glint300SX，**第一颗PC用3D加速芯片**诞生；**1996年**，3dfx的Voodoo芯片让普通PC能跑3D游戏，开启消费级3D时代；**1997年**富士通发布个人电脑首款3D几何处理器，三菱推出支持**变换和光照(T&L)** 的芯片。
-
-但是各家标准混乱，互不兼容；只能处理特定3D任务，功能专一；当时叫3D加速卡，还没GPU概念。
-
-#### 3. GPU正式诞生：NVIDIA（1999-2006）
-
-**1999年**，NVIDIA发布GeForce 256，**首次提出GPU（图形处理器）的概念**。这个名字区分了传统CPU，宣告：**显卡的诞生**。
-
-GeForce 256具有革命性，**硬件T&L技术**上，将把**3D**图形的坐标变换、光照计算从CPU解放出来，变成了GPU专职。实现了**单芯片集成**，整合三角形构成、裁剪、纹理、渲染功能，并且是实现**性能飞跃**：让CPU的3D计算负担减轻80%以上。
-
-在2000年市场大洗牌，2000年后，3dfx、Matrox等老厂商逐渐退出，只剩NVIDIA GeForce和ATI Radeon争霸（ATI 2006年被AMD收购）。
-
-#### 4.可编程时代：（2001-2012）
-
-第一阶段：固定管线 Shader（2001-2006）
-
-**2001年**，微软DirectX 8引入**顶点着色器**和**像素着色器**，GPU可以跑简单程序了。以前GPU是固定流水线上的拧螺丝工人，现在变成了能执行简单指令了。
-
-第二阶段：统一渲染架构（2006-2012）
-
-**2006年**，NVIDIA发布GeForce 8800 GTX（G80核心），**首个统一渲染架构GPU**。原来顶点着色器和像素着色器是分开的，现在变成了通用的。计算资源可以动态分配，利用率从50%提升到90%+；同时发布**CUDA**技术，让GPU能跑C语言程序。
+People then thought of creating a computing unit that can **perform large amounts of simple multiplication and addition in parallel**, which is the GPU. There is no superiority or inferiority between the CPU and the GPU; they are simply units designed to perform different functions. The computing units of the GPU are called **CUDA cores**.
 
 
-| 架构  年份 | 核心技术 | 代表产品 |
+#### 1. The Sprouting of Graphics Display (Before the 1980s)
+
+**In the era without GPUs**, computers relied entirely on the CPU to compute graphics for display. **1981**: The CGA display card equipped in the IBM PC could only display 16 colors, like an electronic photo frame, with all computation done by the CPU. **1987**: IBM introduced the VGA standard, capable of displaying 256 colors, but it was still a pure display function with no computing capability.
+
+**The key** was that ATi was founded in 1985 and began using ASIC technology to make graphics chips. In 1992, ATi's Mach32 graphics card integrated **graphics acceleration** functionality for the first time, which was the starting point of the GPU.
+
+#### 2. The Melee of 3D Accelerator Cards (1990s)
+
+The 1990s were the golden age of graphics accelerators, but the formal name "GPU" did not yet exist.
+
+**Milestone events**: In **1994**, 3DLabs released the Glint300SX, and **the first 3D accelerator chip for PCs** was born; in **1996**, 3dfx's Voodoo chip enabled ordinary PCs to run 3D games, ushering in the consumer-grade 3D era; in **1997**, Fujitsu released the first 3D geometry processor for personal computers, and Mitsubishi introduced a chip supporting **Transform and Lighting (T&L)**.
+
+But standards among the various vendors were chaotic and mutually incompatible; the chips could only handle specific 3D tasks and were single-purpose; at the time they were called 3D accelerator cards, and there was still no concept of a GPU.
+
+#### 3. The Formal Birth of the GPU: NVIDIA (1999–2006)
+
+In **1999**, NVIDIA released the GeForce 256 and **proposed the concept of the GPU (Graphics Processing Unit) for the first time**. This name distinguished it from the traditional CPU and declared **the birth of the graphics card**.
+
+The GeForce 256 was revolutionary. In terms of **hardware T&L technology**, it liberated the coordinate transformation and lighting computation of **3D** graphics from the CPU, making them the GPU's dedicated job. It achieved **single-chip integration**, integrating the functions of triangle construction, clipping, texturing, and rendering, and it achieved a **performance leap**: reducing the CPU's 3D computation burden by more than 80%.
+
+In 2000 the market underwent a major reshuffle. After 2000, old vendors such as 3dfx and Matrox gradually withdrew, leaving only NVIDIA GeForce and ATI Radeon to compete for supremacy (ATI was acquired by AMD in 2006).
+
+#### 4. The Programmable Era: (2001–2012)
+
+Phase One: Fixed-Pipeline Shaders (2001–2006)
+
+In **2001**, Microsoft's DirectX 8 introduced the **vertex shader** and the **pixel shader**, and the GPU could run simple programs. Previously the GPU was like a worker tightening screws on a fixed assembly line; now it became capable of executing simple instructions.
+
+Phase Two: Unified Shader Architecture (2006–2012)
+
+In **2006**, NVIDIA released the GeForce 8800 GTX (the G80 core), **the first GPU with a unified shader architecture**. Originally the vertex shader and the pixel shader were separate; now they became general-purpose. Computing resources could be allocated dynamically, raising utilization from 50% to over 90%. At the same time, NVIDIA released **CUDA** technology, enabling the GPU to run C programs.
+
+
+| Architecture / Year | Core Technology | Representative Product |
 |------------|----------|----------|
-| Tesla (2006) | 引入CUDA，开启GPGPU | GTX 280 |
-| Fermi (2010) | 支持双精度计算、ECC纠错 | GTX 480 |
-| Kepler (2012) | 动态并行、高能效 | GTX 680 |
+| Tesla (2006) | Introduced CUDA, ushering in GPGPU | GTX 280 |
+| Fermi (2010) | Supported double-precision computation, ECC error correction | GTX 480 |
+| Kepler (2012) | Dynamic parallelism, high energy efficiency | GTX 680 |
 
-#### 5. 通用计算时代（2012-2018）
+#### 5. The General-Purpose Computing Era (2012–2018)
 
-**2012年**是转折点：AI研究人员用GPU训练深度神经网络，让AlexNet图像识别准确率震惊世界。从此GPU从游戏显卡升级为AI发动机。
+**2012** was the turning point: AI researchers used GPUs to train deep neural networks, making AlexNet's image-recognition accuracy astound the world. From then on, the GPU was upgraded from a gaming graphics card to an AI engine.
 
-英伟达构建了**NVIDIA CUDA生态**，让程序员轻松调用GPU算力。
+NVIDIA built the **NVIDIA CUDA ecosystem**, allowing programmers to easily harness GPU computing power.
 
-#### 6. CPU（中心处理器）和GPU（图形处理器）的区别
+#### 6. The Difference Between the CPU (Central Processing Unit) and the GPU (Graphics Processing Unit)
 
-CPU是我们最早接触的执行模型。程序按顺序运行，在单线程中逐步执行指令。要支持这种执行模式需要大型控制单元和快速运行能力，因为存在大量分支和条件控制逻辑。因此CPU会将大量芯片面积用于分支预测（下面这张图），虽然**核心数量有限但运行速度极快**。相比之下，GPU则拥有海量**计算单元**（ALU），就是那些绿色小方块。**只有极小部分芯片面积用于控制逻辑，用少量控制逻辑来协调海量并行运算的计算单元**。从概念上看，这体现了CPU和GPU的不同侧重点。
+The CPU is the execution model we first came into contact with. Programs run sequentially, executing instructions step by step in a single thread. Supporting this execution mode requires a large control unit and fast execution capability, because there is a great deal of branching and conditional control logic. Therefore the CPU devotes a large amount of chip area to branch prediction (see the figure below); although the **number of cores is limited, they run extremely fast**. By contrast, the GPU has a vast number of **computing units** (ALUs)—those little green squares. **Only a very small portion of the chip area is used for control logic, using a small amount of control logic to coordinate a huge number of parallel-computing units.** Conceptually, this reflects the different priorities of the CPU and the GPU.
 
-二者的设计目标截然不同，CPU优化延迟，追求**单个任务最快完成**。而**GPU优化吞吐量**，GPU不关心单个任务延迟，只追求所有任务整体最快完成。为此GPU配备大量可快速休眠唤醒的线程，虽然GPU每个任务的延迟较高，但整体完成时间反而领先CPU。这就是它们不同的设计理念和目标。因此，GPU的架构结构不同在于在于GPU会运行大量**流式多处理器**（SM）。
+The design goals of the two are completely different. The CPU optimizes latency, pursuing **the fastest completion of a single task**. The **GPU optimizes throughput**; the GPU does not care about the latency of a single task, and only pursues the fastest overall completion of all tasks. To this end, the GPU is equipped with a large number of threads that can be quickly put to sleep and woken up. Although the GPU's latency per task is higher, its overall completion time actually leads the CPU. This is their different design philosophy and goal. Therefore, the architectural difference of the GPU lies in the fact that the GPU runs a large number of **Streaming Multiprocessors** (SMs).
 
-CPU设计初衷是用来最小化单任务延迟，快速响应复杂逻辑，大部分晶体管用于控制逻辑和缓存，核心数量通常有4-64，可以执行乱序执行、分支预测、推测执行等等任务。
+The CPU was originally designed to minimize single-task latency and respond quickly to complex logic. Most of its transistors are used for control logic and cache. The number of cores is usually 4–64, and it can perform tasks such as out-of-order execution, branch prediction, and speculative execution.
 
-GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大部分晶体管用于算术逻辑单元（ALU），核心多而简，可以达到数千个（如 A100 有 6912 个 FP32 CUDA 核心）。它优化**吞吐量**，追求所有任务整体最快完成，为此配备大量可快速切换的线程来隐藏访存延迟，单个任务的延迟并非其优化目标。
+The GPU was originally designed to maximize data throughput and process simple computations in bulk. Most of its transistors are used for Arithmetic Logic Units (ALUs). Its cores are numerous but simple, reaching the thousands (e.g., the A100 has 6,912 FP32 CUDA cores). It optimizes **throughput**, pursuing the fastest overall completion of all tasks, and to this end is equipped with a large number of threads that can be switched quickly to hide memory-access latency; the latency of a single task is not its optimization target.
 
 <div align="center">
     <img src="images/3-2-GPU和CPU的结构.png" alt="3-2-GPU和CPU的结构.png" width="800">
-<p><em>图 2. GPU 和 CPU 的结构对比</em></p>
+<p><em>Figure 2. Structural comparison of the GPU and the CPU</em></p>
 </div>
 
-上面这幅图可以看到：**CPU的计算单元**（绿色部分）少，大部分用来**控制（Control）**和**缓存（Cache）**这决定了它可以进行**复杂的逻辑运算**，GPU则不同，他的**控制单元少（黄色部分）**,大部分都是**绿色的计算单元**，这决定了它可以进行**大量并行计算简单的乘法和加法运算**，在需要大量分支判断和复杂控制流的场景下，GPU的效率远低于CPU。GPU主要就是优化**吞吐量**，追求所有任务整体最快完成。控制逻辑仅占芯片面积的极小部分，计算单元（ALU）占绝大多数。所以我们在使用GPU时还要**CPU的调度**，一个好的GPU要配上好的CPU才能发挥作用。
+From the figure above, we can see that the **CPU's computing units** (the green part) are few, and most of it is used for **Control** and **Cache**. This determines that it can perform **complex logical operations**. The GPU is different: it has **few control units (the yellow part)**, and most of it is **green computing units**. This determines that it can perform **large amounts of parallel simple multiplication and addition**. In scenarios that require a lot of branch judgment and complex control flow, the GPU's efficiency is far lower than that of the CPU. The GPU mainly optimizes **throughput**, pursuing the fastest overall completion of all tasks. Control logic occupies only a tiny fraction of the chip area, while computing units (ALUs) make up the vast majority. Therefore, when we use a GPU, we still need **the CPU's scheduling**; a good GPU must be paired with a good CPU to fully realize its potential.
 
-到了AI时代，深度学习中的**矩阵**将GPU推上神坛。因为AI时代的核心是**神经网络**的计算，其中涉及到大量的**矩阵运算**，矩阵运算的本质是大量的**乘法和加法**，特别适合GPU来做这种**简单又重复**的运算，在2010年左右人们就开始利用GPU来进行AI相关的计算。
+In the AI era, the **matrices** in deep learning pushed the GPU to the altar. Because the core of the AI era is the computation of **neural networks**, which involves a large number of **matrix operations**, and the essence of matrix operations is a large number of **multiplications and additions**, this is particularly well suited to the GPU for such **simple and repetitive** operations. Around 2010, people began to use GPUs for AI-related computation.
 
-### 1.2 A100显卡核心的构成
+### 1.2 The Composition of the A100 GPU Core
 
-我们使用A100 来介绍GPU的具体结构
+We use the A100 to introduce the specific structure of a GPU.
 
 <div align="center">
     <img src="images/3-3-GPU的结构.png" alt="3-3-GPU的结构.png" width="800">
-<p><em>图 3. 显卡（GPU）的整体结构</em></p>
+<p><em>Figure 3. The overall structure of a graphics card (GPU)</em></p>
 </div>
 
-一张英伟达的的显卡剖面图如图，一张显卡由**供电、显卡核心、显存、显示接口和金手指**组成。
+A cross-sectional diagram of an NVIDIA graphics card is shown in the figure. A graphics card consists of **power supply, GPU core, video memory, display interfaces, and the gold fingers**.
 
-我们主要介绍显卡核心：显卡核心由**cuda core、控制单元和缓存单元等构成**。而 CPU 和 GPU 最大的不同就在于，GPU 负责的工作大多是重复性的 3D 建模或者渲染，而流处理器就是负责顶点运算或者像素运算，能动态的分配进行顶点运算和像素运算的流处理器数量，达到资源的高效利用。
+We mainly introduce the GPU core: the GPU core is composed of **CUDA cores, control units, cache units, and so on**. The biggest difference between the CPU and the GPU is that the work the GPU is responsible for is mostly repetitive 3D modeling or rendering, and the streaming processors are responsible for vertex operations or pixel operations, dynamically allocating the number of streaming processors performing vertex and pixel operations to achieve efficient resource utilization.
 
-**A100**是NVIDIA为数据中心设计的纯计算GPU，没有图形输出能力。
+**The A100** is a pure computing GPU that NVIDIA designed for data centers, with no graphics-output capability.
 
-#### 1.2.1 产品形态
+#### 1.2.1 Product Form Factor
 
-A100 有多种版本形态，这里我们统一介绍**PCIe 80GB 版本**。
+The A100 comes in multiple form-factor versions; here we uniformly introduce the **PCIe 80GB version**.
 
-GA100 是完整芯片的物理设计，实际产品会和白皮书中存在差异，核心原因是芯片分拣，制造这种包含542亿个晶体管的庞大芯片时，很难保证100%完美，为了不浪费有微小缺陷的芯片，NVIDIA会屏蔽掉有问题的部分，将其降级为规格稍低的产品出售。因此，A100 PCIe 80GB 版本 就是屏蔽了完整GA100芯片中1个GPC和另外2个TPC后的产物，最终得到 108个SM。
+GA100 is the physical design of the complete chip; actual products differ from the whitepaper. The core reason is chip binning: when manufacturing such a huge chip containing 54.2 billion transistors, it is very hard to guarantee 100% perfection. To avoid wasting chips with tiny defects, NVIDIA disables the problematic parts and sells them as slightly lower-spec products at a downgrade. Therefore, the A100 PCIe 80GB version is the product of disabling 1 GPC and another 2 TPCs from the complete GA100 chip, ultimately yielding 108 SMs.
 
-数据出自[NVIDIA A100 Tensor Core GPU Architecture](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
+Data source: [NVIDIA A100 Tensor Core GPU Architecture](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 
-**尺寸**为双槽全高，长267mm。**功耗**：00W（80GB版）。**散热**是**被动散热**，无风扇（依赖服务器风道）。**接口**为PCIe 4.0 x16金手指 + NVLink桥接器接口；**重量**约1.4公斤。
+**Dimensions**: dual-slot full-height, 267 mm long. **Power consumption**: 300W (80GB version). **Cooling** is **passive**, with no fan (relying on the server's airflow ducting). **Interface**: PCIe 4.0 x16 gold fingers + NVLink bridge connector; **weight** about 1.4 kg.
 
 
-####  1.2.2 PCB板级组件
+#### 1.2.2 PCB Board-Level Components
 
-**GA100 GPU核心芯片**
+**The GA100 GPU core chip**
 
-**封装**：巨型BGA封装，尺寸约55mm×55mm。**位置**：板卡正中央，焊在PCB上。542亿个**晶体管**，7nm工艺，面积826mm²。
+**Packaging**: a giant BGA package, about 55 mm × 55 mm. **Location**: at the very center of the board, soldered onto the PCB. 54.2 billion **transistors**, a 7 nm process, with an area of 826 mm².
 
-**HBM2e显存堆栈**（革命性设计）
-不同于消费级GPU的GDDR显存颗粒，A100采用**3D堆叠技术**：
+**HBM2e memory stacks** (a revolutionary design)
+Unlike the GDDR memory chips of consumer-grade GPUs, the A100 adopts **3D stacking technology**:
 
-#### 1.2.3 GA100 GPU核心架构
+#### 1.2.3 GA100 GPU Core Architecture
 
-Ampere架构拓扑如下：
+The Ampere architecture topology is as follows:
 
 <div align="center">
     <img src="images/3-4-GPU核心的架构.png" alt="3-4-GPU核心的架构.png" width="800">
-<p><em>图 4. GPU 核心的架构</em></p>
+<p><em>Figure 4. The architecture of the GPU core</em></p>
 </div>
 
-NVIDIA Ampere架构是NVIDIA于2020年发布的GPU架构，是其第八代GPU架构。它采用7纳米制程工艺，集成了高达542亿个晶体管，是当时世界上最大的7纳米芯片。该架构主要面向数据中心、人工智能、高性能计算及专业图形等领域
+The NVIDIA Ampere architecture is a GPU architecture released by NVIDIA in 2020, its eighth-generation GPU architecture. It uses a 7-nanometer process and integrates up to 54.2 billion transistors, making it the largest 7-nanometer chip in the world at the time. This architecture is mainly aimed at data centers, artificial intelligence, high-performance computing, and professional graphics.
 
-A100有四个层级的架构拓扑，首先是**GPC（图形处理簇）**，一个完整的PCIe 80GB 版本 核心有7个GPC；每GPC 8个**TPC（纹理处理簇）**，共54个TPC；每TPC 2个**SM（流式多处理器）**，共108个；每个SM有64个**CUDA核心**，一共有108 × 64 = **6,912个FP32 CUDA核心**。
+The A100 has a four-level architecture topology. First is the **GPC (Graphics Processing Cluster)**; a complete PCIe 80GB version core has 7 GPCs; each GPC has 8 **TPCs (Texture Processing Clusters)**, for a total of 54 TPCs; each TPC has 2 **SMs (Streaming Multiprocessors)**, for a total of 108; each SM has 64 **CUDA cores**, for a total of 108 × 64 = **6,912 FP32 CUDA cores**.
 
-然后是**Tensor Core**，每个SM有4个，实际有108 × 4 = 432个。除此之外还有5 个HBM2 显存堆栈
+Then there are the **Tensor Cores**, 4 per SM, for an actual total of 108 × 4 = 432. In addition, there are 5 HBM2 memory stacks.
 
-数据出自
+Data sources:
 
 [NVIDIA A100 Tensor Core GPU Architecture](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 
 [https://ar5iv.labs.arxiv.org/html/2405.11425#1](https://ar5iv.labs.arxiv.org/html/2405.11425#1)
 
-#### 1.2.4 SM（Streaming Multiprocessor，流式多处理器）内部结构
+#### 1.2.4 The Internal Structure of the SM (Streaming Multiprocessor)
 
-A100的SM是Ampere架构核心，相比消费级GPU有本质增强：
+The A100's SM is the core of the Ampere architecture, with fundamental enhancements compared with consumer-grade GPUs:
 
-SM是将线程块（Thread Block）映射到物理硬件并完成实际计算的根本单元。当GPU内核（Kernel）启动时，线程块被分配到空闲的SM上，SM负责将其内部的线程束（Warp，32线程）解码并派发至CUDA核心（处理通用运算）或Tensor Core（处理矩阵乘加运算）执行。没有SM的调度，CUDA核心和Tensor Core无法自主运行。
+The SM is the fundamental unit that maps a Thread Block onto physical hardware and completes the actual computation. When a GPU kernel is launched, thread blocks are assigned to idle SMs, and the SM is responsible for decoding the warps (32 threads each) within it and dispatching them to CUDA cores (which handle general-purpose operations) or Tensor Cores (which handle matrix multiply-accumulate operations) for execution. Without the SM's scheduling, the CUDA cores and Tensor Cores cannot run on their own.
 
 <div align="center">
     <img src="images/3-5-SM的架构.png" alt="3-5-SM的架构.png" width="800">
-<p><em>图 5. SM（流式多处理器）的架构</em></p>
+<p><em>Figure 5. The architecture of the SM (Streaming Multiprocessor)</em></p>
 </div>
 
-**SM的独特之处**是在于**CUDA核心**，64个/组， 实际配置为64个FP32 + 64个INT32，同时还有**第三代Tensor Core**，支持**结构化稀疏**，并和支持**双精度FP64**（消费级GPU没有）
+**The unique feature of the SM** lies in its **CUDA cores**, 64 per group, with an actual configuration of 64 FP32 + 64 INT32. In addition, there is the **third-generation Tensor Core**, which supports **structured sparsity** and also supports **double-precision FP64** (which consumer-grade GPUs do not have).
 
-####  1.2.5 tensor Core
+#### 1.2.5 Tensor Core
 
-NVIDIA A100 Tensor Core是其**第三代Tensor Core**技术，是A100 GPU专为**加速AI训练、高性能计算（HPC）和数据分析**而设计的核心计算单元。它通过专用硬件和全新精度格式，在矩阵乘法等核心运算上实现了数量级的性能飞跃。
+The NVIDIA A100 Tensor Core is its **third-generation Tensor Core** technology, the core computing unit specially designed for the A100 GPU to **accelerate AI training, high-performance computing (HPC), and data analytics**. Through dedicated hardware and brand-new precision formats, it achieves an order-of-magnitude performance leap in core operations such as matrix multiplication.
 
-Tensor Core是专为执行**矩阵乘加运算（FMA）** 而设计的硬件单元，在处理深度学习和科学计算中的核心运算时，效率远超通用CUDA核心。A100支持多种数据精度，特别是引入了创新的**TensorFloat-32 (TF32)** 格式。它能在不改变代码的情况下，以FP32的精度和范围实现接近FP16的运算速度。A100的Tensor Core支持**结构化稀疏**技术。它能利用AI模型中的稀疏性（即大量参数为零），将吞吐量**进一步提高一倍**。
+The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (FMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. It can achieve computation speed close to FP16 while maintaining the precision and range of FP32, without changing the code. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further double** throughput.
 
+The A100 Tensor Core provides astonishing computational throughput, with specific performance as follows:
 
-A100 Tensor Core提供了惊人的计算吞吐量，具体性能如下：
-
-| 精度 | 稠密 Tensor Core 性能 | 说明 |
+| Precision | Dense Tensor Core Performance | Description |
 |------|----------------------|----------------------|
-| FP16/BF16 | 312 TFLOPS | 半精度，深度学习的主力精度。 |
-| INT8      | 624 TOPS   |8位整数，主要用于AI推理，速度极快。 |
-| FP64      | 19.5 TFLOPS |双精度，满足科学计算等高精度需求。 |
-| TF32      | 156 TFLOPS |A100特有的精度。 |
+| FP16/BF16 | 312 TFLOPS | Half precision, the workhorse precision of deep learning. |
+| INT8      | 624 TOPS   | 8-bit integer, mainly used for AI inference, extremely fast. |
+| FP64      | 19.5 TFLOPS | Double precision, meeting the high-precision needs of scientific computing, etc. |
+| TF32      | 156 TFLOPS | A precision unique to the A100. |
 
-| 精度 | 稀疏 Tensor Core 性能 (2:4) | 说明 |
+| Precision | Sparse Tensor Core Performance (2:4) | Description |
 |------|----------------------------|----------------------------|
-| FP16/BF16 | 624 TFLOPS |半精度，深度学习的主力精度。 |
-| TF32      | 312 TFLOPS |A100特有的精度，FP32精度/范围，FP16速度。 |
-| INT8      | 1248 TOPS  |8位整数，主要用于AI推理，速度极快。 |
-| FP64      | 不支持稀疏，仍为 19.5 TFLOPS |
+| FP16/BF16 | 624 TFLOPS | Half precision, the workhorse precision of deep learning. |
+| TF32      | 312 TFLOPS | A precision unique to the A100, with FP32 precision/range at FP16 speed. |
+| INT8      | 1248 TOPS  | 8-bit integer, mainly used for AI inference, extremely fast. |
+| FP64      | Sparsity not supported, still 19.5 TFLOPS |
 
-数据出自[NVIDIA A100 ensor Core GPU](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf#1#1)
+Data source: [NVIDIA A100 Tensor Core GPU](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf#1#1)
 
-在GPU计算（尤其是A100的Tensor Core）语境下，**稠密**和**稀疏**指的是**数据处理方式**，直接决定了算力能否翻倍。
+In the context of GPU computing (especially the A100's Tensor Core), **dense** and **sparse** refer to the **way data is processed**, which directly determines whether the compute power can be doubled.
 
-简单来说 **稠密** 在计算时，把矩阵里所有的数字（包括0）都拿来参与乘加运算，。**稀疏**则**A100的2:4稀疏是结构化稀疏，权重矩阵每4个连续值中最多保留2个非零值，硬件在加载时只读取非零值和索引，直接跳过零值对应的计算**。因为很多0乘以任何数都是0，跳过它们能省下一半计算量，速度自然翻倍。
+Simply put, **dense** computation, during computation, takes all the numbers in the matrix (including zeros) to participate in the multiply-accumulate operations, none left out. **Sparse**: **the A100's 2:4 sparsity is structured sparsity, where at most 2 out of every 4 consecutive values in the weight matrix are kept as non-zero; the hardware, when loading, reads only the non-zero values and their indices, directly skipping the computation corresponding to the zero values.** Because zero multiplied by any number is zero, skipping them can save half the computation, so the speed naturally doubles.
 
-**1. 稠密计算（默认模式）**
+**1. Dense Computation (Default Mode)**
 
-就是标准的矩阵乘法。例如两个 1024x1024 的矩阵相乘，Tensor Core 需要执行约 10 亿次乘加运算。此时，A100 的 FP16 算力就是 **312 TFLOPS**（即每秒 312 万亿次）。这是它的基准速度。
+This is standard matrix multiplication. For example, multiplying two 1024×1024 matrices requires the Tensor Core to perform about 1 billion multiply-accumulate operations. In this case, the A100's FP16 compute power is **312 TFLOPS** (i.e., 312 trillion operations per second). This is its baseline speed.
 
-**2. 稀疏计算（加速模式）**
+**2. Sparse Computation (Accelerated Mode)**
 
-使用**结构化的数据**，A100 要求将矩阵权重**每连续的4个数值中，强制至少有2个是0**（即 2:4 稀疏度）。这不是随机的，必须满足这个固定数学模式。因为知道有一半是0，Tensor Core 在读取数据时会**自动压缩**，只读取那2个非零值和它们的索引位置去计算。计算量直接减半，所以 FP16 算力从 **312 TFLOPS** 升到 **624 TFLOPS**。
+Using **structured data**, the A100 requires that among **every 4 consecutive values in the matrix weights, at least 2 are forced to be 0** (i.e., 2:4 sparsity). This is not random; this fixed mathematical pattern must be satisfied. Because it knows half are zero, the Tensor Core **automatically compresses** the data when reading it, reading only those 2 non-zero values and their index positions to compute. The amount of computation is directly halved, so the FP16 compute power rises from **312 TFLOPS** to **624 TFLOPS**.
 
-前面提到过 A100 GPU拥有**432个**第三代Tensor Core，分布于**108个**流式多处理器（SM）中。Tensor Core采用**Warp-Level**的编程模型。一个Warp（32个线程）协同工作，将数据从显存加载到寄存器，再由Tensor Core执行矩阵运算。开发者可以通过**CUDA**、**cuDNN**等深度学习库，以及主流的AI框架（如PyTorch、TensorFlow）来调用Tensor Core。
+As mentioned earlier, the A100 GPU has **432** third-generation Tensor Cores, distributed across **108** Streaming Multiprocessors (SMs). The Tensor Core adopts a **Warp-Level** programming model. A warp (32 threads) works cooperatively to load data from video memory into registers, and then the Tensor Core performs the matrix operations. Developers can invoke Tensor Cores through deep learning libraries such as **CUDA** and **cuDNN**, as well as mainstream AI frameworks (such as PyTorch and TensorFlow).
 
-以上内容可以在[英伟达技术博客](https://developer.nvidia.com/blog/using-tensor-cores-in-cuda-fortran/)中查看详细描述
+A detailed description of the above can be found in the [NVIDIA technical blog](https://developer.nvidia.com/blog/using-tensor-cores-in-cuda-fortran/).
 
-## 2 GPU的执行模型
+## 2 The GPU Execution Model
 
-我们简单介绍了A100 GPU的结构，但是我们还不知道GPU是如何执行计算的，下面我们介绍GPU各个部分的是如何执行计算的。
+We have briefly introduced the structure of the A100 GPU, but we do not yet know how the GPU actually executes computation. Next, we introduce how the various parts of the GPU perform computation.
 
-### 2.1 SM流式处理器的执行流程
+### 2.1 The Execution Flow of the SM (Streaming Multiprocessor)
 
-我们可以将流式多处理器视为一个**M是GPU中独立调度和执行的基本硬件单元**。当使用Triton这类工具编程时，操作层级就对应着SM。在每个SM内部，它包含许多**流处理器**（SP），而每个流处理器会**并行执行大量线程**。可以这样理解，SM拥有一套**控制逻辑**，能决定执行内容，比如实现**分支判断**；而SP则负责将相同指令应用于不同数据片段。这样就能实现海量并行计算。在这种架构下，每个**SM是控制粒度的基本单元**，而单个SP能独立完成大量计算。以上一代GPUA100为例，它包含108个SM，这远超大多数CPU的核心数量。每个SM内部都集成有大量SP和专用矩阵乘法单元，这就是其计算模型的基本形态。每个SM能操控其专属组件（如张量核心）进行计算。
+We can regard the Streaming Multiprocessor as **the basic hardware unit in the GPU for independent scheduling and execution**. When programming with tools like Triton, the level of operation corresponds to the SM. Inside each SM, it contains many **Streaming Processors** (SPs), and each streaming processor **executes a large number of threads in parallel**. It can be understood this way: the SM has a set of **control logic** that can decide what to execute, such as implementing **branch judgment**; while the SP is responsible for applying the same instruction to different pieces of data. This enables massive parallel computation. Under this architecture, each **SM is the basic unit of control granularity**, while a single SP can independently complete a large amount of computation. Take the previous-generation GPU A100 as an example: it contains 108 SMs, far exceeding the core count of most CPUs. Each SM internally integrates a large number of SPs and dedicated matrix-multiplication units—this is the basic form of its computing model. Each SM can control its dedicated components (such as Tensor Cores) to perform computation.
 
-**线程调度与执行**
+**Thread Scheduling and Execution**
 
-SM同时管理**数千个线程**，决定哪个线程在何时使用哪个计算单元。它不像CPU那样为每个线程保存大量状态，而是轻量级切换，几乎没有开销。
+The SM manages **thousands of threads** simultaneously, deciding which thread uses which computing unit at what time. Unlike the CPU, it does not save a large amount of state for each thread; instead it performs lightweight switching with almost no overhead.
 
-**指令流水线**
+**Instruction Pipeline**
 
-SM内部有**4条独立的指令流水线**，每个时钟周期可以同时发射4条不同指令给不同的Warp（线程束）。
+The SM internally has **4 independent instruction pipelines**, and each clock cycle it can simultaneously issue 4 different instructions to different warps.
 
-**数据缓存与共享**
+**Data Caching and Sharing**
 
-SM内置**192KB的L1缓存/共享内存**，供本SM内所有CUDA核心快速存取数据，延迟比全局显存低100倍。
+The SM has a built-in **192KB L1 cache / shared memory**, allowing all CUDA cores within this SM to quickly access data, with latency 100 times lower than global video memory.
 
-### 2.2 执行模型的核心名词详解
+### 2.2 A Detailed Explanation of the Core Terms of the Execution Model
 
 <div align="center">
     <img src="images/3-6-SM的执行.png" alt="3-6-SM的执行.png" width="800">
-<p><em>图 6. SM 的执行流程</em></p>
+<p><em>Figure 6. The execution flow of the SM</em></p>
 </div>
 
-在GPU运行中，我们划分三个粒度层级来思考：**块（block）、线程束（warp）和线程（thread）**，这是粒度逐级细化的顺序。块是大型线程组，**每个块会被分配给一个SM处理**。可以把每个SM想象成**独立工作**的单元，而块就是分配给它的**处理单元**。在每个块内部包含**大量线程**，每个线程代表待执行的任务单元。这些线程在执行时会分组运行，这种分组称为线程束。每个线程束由32个连续编号的线程组成，从块中提取出来同步执行。通过这个示意图可以看到：多个块被分配给不同的SM，每个块内包含多个线程束，每个线程束又由大量线程组成。所有这些线程都会在不同数据上执行相同的指令，这就是基本执行模型。
+In GPU operation, we divide thinking into three levels of granularity: **block, warp, and thread**, which is the order of progressively finer granularity. A block is a large group of threads, and **each block is assigned to one SM for processing**. You can think of each SM as a unit that **works independently**, and the block as the **processing unit** assigned to it. Inside each block there are **a large number of threads**, and each thread represents a task unit to be executed. When these threads execute, they run in groups, and this grouping is called a warp. Each warp consists of 32 consecutively numbered threads, extracted from the block and executed synchronously. From this diagram we can see: multiple blocks are assigned to different SMs, each block contains multiple warps, and each warp in turn consists of a large number of threads. All these threads execute the same instruction on different data—this is the basic execution model.
 
 <div align="center">
     <img src="images/3-7-内存模型.png" alt="3-7-内存模型.png" width="800">
-<p><em>图 7. 执行模型的内存视图</em></p>
+<p><em>Figure 7. The memory view of the execution model</em></p>
 </div>
 
-#### 1. Warp（线程束）
+#### 1. Warp
 
-Warp的概念源于其工作机制：所有线程步调一致地执行同一指令，但处理各自不同的数据。在A100中，每个SM（流式多处理器）最多可以同时承载64个活跃的Warp。
+The concept of the warp originates from its working mechanism: all threads execute the same instruction in lockstep, but each processes its own different data. In the A100, each SM (Streaming Multiprocessor) can simultaneously host up to 64 active warps.
 
-一个**Warp**是32个线程组成的固定小组，是SM调度的**最小单元**。**Warp像"公交车"**，32个乘客（线程）必须**同站同下**，执行完全相同的指令。如果某个线程需要走不同分支（if-else），全车人要等它，这叫**Warp Divergence（线程束分化）**。
+A **warp** is a fixed group of 32 threads and is the **smallest unit** of SM scheduling. **A warp is like a "bus"**: the 32 passengers (threads) must **get on and off at the same stop**, executing exactly the same instruction. If some thread needs to take a different branch (if-else), the whole bus has to wait for it—this is called **Warp Divergence**.
 
-SM同时驻留**64个Warp**，4个Warp调度器每个管理16个Warp；Warp内32线程在**SIMD单元**上同步执行。Warp由SM的SIMT（单指令多线程）单元负责创建、管理和调度。当一个线程块（Thread Block）被分配给SM后，SM会将其中的线程按照连续的、递增的线程ID进行分组
+The SM simultaneously resides **64 warps**, with 4 warp schedulers each managing 16 warps; the 32 threads within a warp execute synchronously on the **SIMD units**. Warps are created, managed, and scheduled by the SM's SIMT (Single Instruction, Multiple Threads) unit. After a Thread Block is assigned to an SM, the SM groups the threads within it according to consecutive, increasing thread IDs.
 
-#### 2. Block（线程块）
+#### 2. Block
 
-Bock程序员指定的线程组，映射到**1个SM**上执行。Block必须全部映射到同一个SM上执行，不能拆分到多个SM。
-每个Block独占SM的**共享内存**和**寄存器资源**；Block内所有线程必须**在同一SM内**执行（不能跨SM）；
+A block is a group of threads specified by the programmer, mapped onto **1 SM** for execution. A block must be entirely mapped onto the same SM for execution and cannot be split across multiple SMs.
+Each block exclusively occupies the SM's **shared memory** and **register resources**; all threads within a block must execute **within the same SM** (they cannot cross SMs).
 
-#### 3. Thread（线程）
+#### 3. Thread
 
-线程是**最细粒度的执行单元**，每个线程执行同样的Kernel代码，但操作不同数据。Thread像"流水线上的工人"，每人负责一个数据元素（如向量中的一个数）。
+A thread is the **finest-grained execution unit**; each thread executes the same kernel code but operates on different data. A thread is like a "worker on an assembly line," each responsible for one data element (such as one number in a vector).
 
-每个线程有**私有寄存器**（每线程最多255个）；线程ID：`threadIdx.x` 决定它处理哪个数据
+Each thread has **private registers** (up to 255 per thread); the thread ID `threadIdx.x` determines which data it processes.
 
-#### 4. SIMT（单指令多线程）
+#### 4. SIMT (Single Instruction, Multiple Threads)
 
-GPU执行模型，多个线程（Warp）共享同一条指令，但操作不同数据。**SIMT（Single Instruction, Multiple Threads，单指令多线程）** 是NVIDIA GPU（包括A100）采用的**并行计算执行模型**。它由NVIDIA在G80架构中首次引入，是CUDA编程模型能屏蔽硬件细节、让开发者按多线程逻辑编程的理论基础。
+The GPU execution model in which multiple threads (a warp) share the same instruction but operate on different data. **SIMT (Single Instruction, Multiple Threads)** is the **parallel-computing execution model** adopted by NVIDIA GPUs (including the A100). It was first introduced by NVIDIA in the G80 architecture and is the theoretical basis by which the CUDA programming model can hide hardware details and let developers program according to multi-threaded logic.
 
-SIMT是SM（流式多处理器）**执行指令的根本方式**。当GPU内核启动后，SM内的**Warp调度器**以**线程束（Warp）**为单位（固定32个线程）获取一条指令，然后将该指令**广播**给Warp内的所有活动线程。每个线程在自己的CUDA核心或Tensor Core上，操作**私有寄存器**中存放的**不同数据**，实现“单指令处理多份数据”的并行。
+SIMT is the **fundamental way the SM (Streaming Multiprocessor) executes instructions**. After a GPU kernel is launched, the **warp scheduler** within the SM fetches an instruction at the granularity of a **warp** (a fixed 32 threads), and then **broadcasts** that instruction to all active threads within the warp. Each thread, on its own CUDA core or Tensor Core, operates on the **different data** stored in its **private registers**, achieving the parallelism of "one instruction processing multiple pieces of data."
 
-#### 5. 与SIMD（单指令多数据）的本质区别
-| 特性 | **SIMT（GPU）** | **SIMD（如CPU的AVX）** |
+#### 5. The Essential Difference from SIMD (Single Instruction, Multiple Data)
+| Feature | **SIMT (GPU)** | **SIMD (e.g., the CPU's AVX)** |
 | :--- | :--- | :--- |
-| **执行粒度** | 多线程（每个线程有独立指令地址计数器和寄存器状态） | 向量通道（整个向量共享单一指令地址） |
-| **分支处理** | **支持线程级分支**（if/else、循环），可独立执行不同路径 | 所有通道必须统一执行，分支困难 |
-| **硬件实现** | 硬件调度器动态管理线程掩码（Mask） | 编译器将数据打包为向量 |
+| **Execution granularity** | Multiple threads (each thread has its own independent instruction address counter and register state) | Vector lanes (the entire vector shares a single instruction address) |
+| **Branch handling** | **Supports thread-level branching** (if/else, loops), able to independently execute different paths | All lanes must execute uniformly; branching is difficult |
+| **Hardware implementation** | The hardware scheduler dynamically manages the thread mask | The compiler packs data into vectors |
 
-**线程束发散（Warp Divergence）**
+**Warp Divergence**
 
-尽管SIMT支持分支，但存在显著性能约束。当Warp内32个线程遇到**条件分支**（如`if (threadId % 2 == 0)`）时，部分线程满足条件（活跃），部分不满足（非活跃）。
+Although SIMT supports branching, there is a significant performance constraint. When the 32 threads within a warp encounter a **conditional branch** (such as `if (threadId % 2 == 0)`), some threads satisfy the condition (active) and some do not (inactive).
 
-SM无法让活跃和非活跃线程同时执行不同指令。它只能**先执行活跃线程路径**，通过**掩码（Mask）**屏蔽非活跃线程；然后**切换执行另一路径**，屏蔽上一批活跃线程。
+The SM cannot let active and inactive threads execute different instructions simultaneously. It can only **execute the active-thread path first**, masking the inactive threads via a **mask**; then **switch to executing the other path**, masking the previously active threads.
 
-若同一Warp内分支分歧严重，两条路径**串行执行**，性能损失接近一半（甚至更多）。因此，优化SIMT程序的关键在于**尽可能避免同一Warp内的分支分化**。
+If the branch divergence within the same warp is severe, the two paths **execute serially**, and the performance loss is close to half (or even more). Therefore, the key to optimizing SIMT programs is to **avoid branch divergence within the same warp as much as possible**.
 
-SIMT模型是**GPU高吞吐量的底层逻辑**,它将硬件上**SIMD式的密集计算**封装为**MIMD（多指令多数据）式的编程灵活性**，使开发者能写出类似CPU的多线程代码，而硬件通过Warp调度、掩码和收敛机制，自动将线程级并行映射为高吞吐量的计算流。这正是A100的SM能高效协同调度CUDA核心与Tensor Core的指令执行基础。
+The SIMT model is **the underlying logic of the GPU's high throughput**. It encapsulates hardware-level **SIMD-style dense computation** into **MIMD (Multiple Instruction, Multiple Data)-style programming flexibility**, enabling developers to write multi-threaded code similar to that of the CPU, while the hardware, through warp scheduling, masking, and convergence mechanisms, automatically maps thread-level parallelism into a high-throughput computation stream. This is precisely the basis on which the A100's SM can efficiently and cooperatively schedule the instruction execution of CUDA cores and Tensor Cores.
 
 
-### 2.3 GPU的内存模型
+### 2.3 The GPU Memory Model
 
 <div align="center">
     <img src="images/3-8-GPU的内存模型.png" alt="3-8-GPU的内存模型.png" width="800">
-<p><em>图 8. GPU 的内存层次模型</em></p>
+<p><em>Figure 8. The GPU's memory hierarchy model</em></p>
 </div>
 
-**内存距离SM越近，访问速度越快**。因此存在**极高速的内存类型（如L1缓存和共享内存）**，它们位于SM内部，具有**极快的读写速度**。像**寄存器这类需要频繁读写的元件，就应该放置在L1和共享内存中**。
+**The closer the memory is to the SM, the faster the access speed.** Therefore there exist **extremely high-speed memory types (such as the L1 cache and shared memory)** that are located inside the SM and have **extremely fast read/write speeds**. Components like **registers, which need to be read and written frequently, should be placed in the L1 and shared memory**.
 
-如图所示，这些绿色区域是SM集群，而**蓝色区域代表紧邻SM的L2缓存**,它们虽然不在SM内部，但物理位置仍然很近，**速度也相当快**（虽然比L1慢一个数量级）。在芯片外部（以这张3090或PCIeA100为例），GPU芯片旁边实际安装了**DRAM内存**，这意味着数据需要实际**离开芯片通过物理连接**进行传输。你可以在这张芯片图上看到边缘的这些黄色连接器。这些是HBM连接器，它们连接到实际GPU外部的DRAM芯片。
+As shown in the figure, these green regions are SM clusters, while **the blue region represents the L2 cache adjacent to the SMs**. Although they are not inside the SM, their physical location is still very close, and they are **quite fast** too (although an order of magnitude slower than L1). Outside the chip (take this 3090 or PCIe A100 as an example), **DRAM memory** is actually installed next to the GPU chip, which means the data must physically **leave the chip and travel through physical connections**. You can see these yellow connectors along the edge in this chip diagram. These are the HBM connectors, which connect to the DRAM chips outside the actual GPU.
 
-你可以从上图左侧看到访问这些存储所需的**速度**，SM内部存储器的访问速度要快很多，大约只需20个时钟周期就能从中获取数据，而访问L2缓存或全局内存则需要200到300个时钟周期。这个**10倍的差距会对性能造成严重影响**。如果某段计算需要访问全局内存，可能意味着你的SM会无工作可做，矩阵乘法全都完成了，任务耗尽，只能空转。这样**利用率就不会高**。这在某种程度上将成为思考内存架构的核心主题，也是理解GPU工作原理的关键。
+You can see on the left side of the figure above the **speed** required to access these memories. The access speed of the memory inside the SM is much faster—it takes only about 20 clock cycles to fetch data from it—whereas accessing the L2 cache or global memory takes 200 to 300 clock cycles. This **10x gap severely impacts performance**. If a piece of computation needs to access global memory, it may mean that your SM has no work to do—the matrix multiplications are all done, the tasks are exhausted, and it can only spin idle. In this case **utilization will not be high**. This will, to some extent, become the central theme in thinking about memory architecture, and it is also the key to understanding how the GPU works.
 
-首先是寄存器，**这是速度极快的存储单元**，用于保存单个数值型数据。本地内存、有共享内存、还有全局内存、他们在内存层次结构中逐级递增，速度也越来越慢。
+First are the registers, **which are extremely fast storage units** used to hold individual numeric data. Local memory, shared memory, and global memory increase progressively in the memory hierarchy, and their speed becomes slower and slower.
 
-**代码可以写入全局内存**，也可以写入常量内存（虽然这个不常用）。每个线程都能访问**自己的寄存器和共享内存**，但**跨线程块的信息需要写入全局内存**。这意味着当编写执行任务的线程时，理想情况下它们应该操作相同的小批量数据，这样就不用跨线程。我们可以将这小批量数据加载到共享内存中，所有线程都能高效访问共享内存，执行完毕后任务就完成了。这是最理想的执行模式。反之，**如果线程需要到处访问数据**，就必须访问**全局内存**，速度会非常非常慢。
-
----
-
-#### 2.3.1 第一层：全局内存（Global Memory）
-
-| 特性 | 参数  说明 |
-|------|------------|
-| **物理位置** | GPU芯片外的HBM2e显存堆栈，80GB版为HBM2e |
-| **容量** | A100: 80GB |
-| **带宽** | **～2T/s** (A100 80GB PCIe，HBM2e)； |
-| **延迟** | 290周期，不同基准测试不同，有多个不同值，这里采信的是[斯坦福大学cs336中的数据](https://cs336.stanford.edu/) |
-| **编程控制** | **手动管理** (`cudaMalloc`) |
-| **可见性** | 所有线程可访问 |
-
-全局内存可以存放模型的所有权重、激活值、梯度；训练数据、中间结果、最终输出，将**数据持久化**；我们通过PCIe从主机内存拷贝数据，是**CPU-GPU传输通道**。
-
-全局内存提供**海量容量**（80GB），能容纳大模型的巨大显存；成本相对低（HBM2e虽贵，但比SRAM便宜100倍）是GPU存储的基础。
+**Code can write to global memory** and can also write to constant memory (although this is not commonly used). Each thread can access **its own registers and shared memory**, but **information across thread blocks must be written to global memory**. This means that when writing the threads that execute a task, ideally they should operate on the same small batch of data, so that there is no need to cross threads. We can load this small batch of data into shared memory, all threads can efficiently access the shared memory, and once execution is complete the task is done. This is the most ideal execution mode. Conversely, **if a thread needs to access data all over the place**, it must access **global memory**, which is very, very slow.
 
 ---
 
-#### 2.3.2 第二层：L2缓存（二级缓存）
+#### 2.3.1 Level One: Global Memory
 
-| 特性 | 参数  说明 |
+| Feature | Parameter / Description |
 |------|------------|
-| **物理位置** | **GPU芯片内，所有SM共享** |
-| **容量** | **40MB** (A100) |
-| **带宽** | NVIDIA官方指出，A100的40MB L2缓存通过新的架构设计，[提供了相比Vello V100高达2.3倍的读取带宽](https://developer.nvidia.com/blog/nvidia-ampere-architecture-in-depth/)。虽然没有官方公布的精确数值，但业界普遍根据测试和推算，认为其带宽约为 5 TB/s |
-| **延迟** | 200周期 |
-| **编程控制** | **自动管理** (硬件控制) |
-| **可见性** | 所有SM所有线程 |
+| **Physical location** | The HBM2e memory stacks outside the GPU chip; the 80GB version uses HBM2e |
+| **Capacity** | A100: 80GB |
+| **Bandwidth** | **~2 TB/s** (A100 80GB PCIe, HBM2e); |
+| **Latency** | 290 cycles; this varies across benchmarks and has multiple different values—the value adopted here is from [Stanford's cs336 data](https://cs336.stanford.edu/) |
+| **Programming control** | **Manual management** (`cudaMalloc`) |
+| **Visibility** | Accessible to all threads |
 
-能够为**全局数据加速**，自动缓存全局内存的热点数据（如频繁访问的模型权重）；是**数据共享枢纽**，SM之间通过L2缓存交换数据；能**数据一致性保证**，所有SM看到的L2数据一致。
+Global memory can hold all of the model's weights, activations, and gradients; training data, intermediate results, and final outputs, achieving **data persistence**; we copy data from host memory via PCIe, so it is the **CPU-GPU transfer channel**.
 
-L2缓存能缓解内存墙瓶颈，这是L2缓存最根本的作用。L2缓存通过缓存频繁访问的数据（如模型权重），避免每次都访问速度慢的显存（HBM），这可以显著降低延迟、提升有效带宽。
-
-并且在NVIDIA架构中，所有GPU单元（包括所有SM）与显存（HBM）之间的数据通信都必须经过L2缓存。可以说，L2是整个GPU的数据总枢纽。与每个SM私有的L1缓存不同，L2缓存是整个GPU所有SM共享的。这意味着不同SM上的线程可以高效地共享数据，实现跨SM的数据通讯
+Global memory provides **massive capacity** (80GB), able to accommodate the huge memory footprint of large models; its cost is relatively low (HBM2e, though expensive, is 100 times cheaper than SRAM) and it is the foundation of GPU storage.
 
 ---
 
-#### 2.3.3 第三层：L1缓存 / 共享内存（Shared Memory）
+#### 2.3.2 Level Two: L2 Cache (Level-Two Cache)
 
-| 特性 | 参数  说明 |
+| Feature | Parameter / Description |
 |------|------------|
-| **物理位置** | **每个SM内部** |
-| **容量** | **[192KB/SM](https://developer.download.nvidia.cn/video/gputechconf/gtc/2020/presentations/s21819-optimizing-applications-for-nvidia-ampere-gpu-architecture.pdf?ref=blog.paperspace.com#3#1)**  |
-| **延迟** | 33周期 |
-| **编程控制** | **完全手动** (`__shared__`) |
-| **可见性** | **Block内所有线程可见** |
+| **Physical location** | **Inside the GPU chip, shared by all SMs** |
+| **Capacity** | **40MB** (A100) |
+| **Bandwidth** | NVIDIA officially states that the A100's 40MB L2 cache, through a new architectural design, [provides up to 2.3x the read bandwidth compared with the V100](https://developer.nvidia.com/blog/nvidia-ampere-architecture-in-depth/). Although there is no officially published exact figure, the industry generally, based on testing and estimation, considers its bandwidth to be about 5 TB/s |
+| **Latency** | 200 cycles |
+| **Programming control** | **Automatic management** (hardware-controlled) |
+| **Visibility** | All threads on all SMs |
 
+It can **accelerate global data** by automatically caching hot data from global memory (such as frequently accessed model weights); it is a **data-sharing hub**, where SMs exchange data through the L2 cache; and it can **guarantee data consistency**, so the L2 data seen by all SMs is consistent.
 
-它是一个**线程协作的仓库**，块(Block)内线程通过共享内存交换数据（如矩阵乘法的分块（Tiling）数据）；可以**手动性能优化**，可将热点数据显式放入共享内存，实现接近寄存器的速度；**L1缓存功能**当不手动使用时，自动作为L1缓存缓存全局内存数据。
+The L2 cache can alleviate the memory-wall bottleneck—this is the L2 cache's most fundamental role. By caching frequently accessed data (such as model weights), the L2 cache avoids accessing the slow video memory (HBM) every time, which can significantly reduce latency and improve effective bandwidth.
 
-L1**速度比L2快**，是GPU性能优化的核心；**灵活性**高，程序员可控，实现复杂算法。
+Moreover, in the NVIDIA architecture, all data communication between all GPU units (including all SMs) and the video memory (HBM) must pass through the L2 cache. It can be said that the L2 is the data hub of the entire GPU. Unlike the L1 cache, which is private to each SM, the L2 cache is shared by all SMs of the entire GPU. This means that threads on different SMs can efficiently share data, achieving cross-SM data communication.
 
-#### 2.3.4 第四层：寄存器文件（Register File）
+---
 
-| 特性 | 参数  说明 |
+#### 2.3.3 Level Three: L1 Cache / Shared Memory
+
+| Feature | Parameter / Description |
 |------|------------|
-| **物理位置** | **SM内，每个CUDA核心旁** |
-| **容量** | **256KB/SM** (A100) |
-| **编程控制** | **完全自动** (编译器分配) |
-| **可见性** | **线程私有** |
+| **Physical location** | **Inside each SM** |
+| **Capacity** | **[192KB/SM](https://developer.download.nvidia.cn/video/gputechconf/gtc/2020/presentations/s21819-optimizing-applications-for-nvidia-ampere-gpu-architecture.pdf?ref=blog.paperspace.com#3#1)**  |
+| **Latency** | 33 cycles |
+| **Programming control** | **Fully manual** (`__shared__`) |
+| **Visibility** | **Visible to all threads within a Block** |
 
-寄存器文件能做到**零延迟计算**，它存储线程的局部变量、临时结果。并且做到**极致并行**，每个线程255个寄存器，支持深度流水线。
+It is a **warehouse for thread cooperation**, where threads within a block exchange data through shared memory (such as the tiling data of matrix multiplication); it enables **manual performance optimization**, where hot data can be explicitly placed into shared memory to achieve speed close to that of registers; and it has the **L1 cache function**—when not used manually, it automatically serves as an L1 cache to cache data from global memory.
 
-寄存器文件的特点是**速度快**，1周期延迟。但是**昂贵**，寄存器文件的容量少。他的**容量限制决定并行度**，寄存器用量越少，SM能驻留的Warp越多。
+L1 is **faster than L2** and is the core of GPU performance optimization; it has high **flexibility**, being controllable by the programmer to implement complex algorithms.
+
+#### 2.3.4 Level Four: Register File
+
+| Feature | Parameter / Description |
+|------|------------|
+| **Physical location** | **Inside the SM, next to each CUDA core** |
+| **Capacity** | **256KB/SM** (A100) |
+| **Programming control** | **Fully automatic** (allocated by the compiler) |
+| **Visibility** | **Thread-private** |
+
+The register file can achieve **zero-latency computation**; it stores threads' local variables and temporary results. It also achieves **extreme parallelism**, with 255 registers per thread, supporting deep pipelining.
+
+The characteristic of the register file is that it is **fast**, with 1-cycle latency. But it is **expensive**, and the register file has a small capacity. Its **capacity limit determines the degree of parallelism**: the fewer registers used, the more warps an SM can reside.
 
 
-#### 2.3.5 GPU内的内存分这么多层的原因
+#### 2.3.5 Why GPU Memory Is Divided into So Many Levels
 
 
-在物理世界中，速度的上限就是光速，电信号在导线中传播需要时间，物理距离越短，传输延迟自然越低。片上（On-Chip）通信的延迟远低于片外（Off-Chip）通信。
+In the physical world, the upper limit of speed is the speed of light. It takes time for an electrical signal to propagate through a wire, and the shorter the physical distance, the naturally lower the transmission latency. The latency of on-chip communication is far lower than that of off-chip communication.
 
-越靠近GPU的计算核心的内存，速度极快，但是容量很少，这是由于芯片的空间限制。越远离GPU核心，内存容量就越大，但是速度就越低。分层是**唯一经济可行方案**。这是速度容量和成本的妥协。
+The closer the memory is to the GPU's computing cores, the faster its speed, but the smaller its capacity, due to the chip's space constraints. The farther from the GPU core, the larger the memory capacity, but the lower the speed. Layering is **the only economically feasible solution**. This is a compromise among speed, capacity, and cost.
 
-刚访问的数据很可能再次访问（如循环中的权重），这样放在全局内存的开销就很大。除此之外还有**空间局部性**，相邻数据很可能一起访问（如矩阵的同行元素）
+Data just accessed is very likely to be accessed again (such as the weights in a loop), so placing it in global memory incurs a large overhead. In addition, there is **spatial locality**: adjacent data is very likely to be accessed together (such as elements in the same row of a matrix).
 
-**GPU的解决方案**是划分层级：**L2缓存**利用时间局部性，缓存重复访问的权重；**共享内存**利用空间局部性，手动加载分块（Tiling）数据；**Warp**利用常量内存的广播特性，1次读取服务32线程。
+**The GPU's solution** is to divide into levels: the **L2 cache** exploits temporal locality, caching repeatedly accessed weights; **shared memory** exploits spatial locality, manually loading tiling data; and the **warp** exploits the broadcast feature of constant memory, serving 32 threads with a single read.
 
-#### 2.3.6 GPU内存和CPU内存的本质区别
+#### 2.3.6 The Essential Difference Between GPU Memory and CPU Memory
 
-下面这个表格就说明了GPU和CPU的区别：
+The table below illustrates the difference between the GPU and the CPU:
 
-| 特性 | GPU (A100) | CPU (Xeon) |
+| Feature | GPU (A100) | CPU (Xeon) |
 |------|------------|------------|
-| **主存带宽** | 2TGB/s | Xeon6可达数百GB/s |
-| **缓存控制** | 共享内存**手动控制** | 缓存完全自动 |
-| **线程寄存器** | [255个/线程](https://forums.developer.nvidia.com/t/whats-the-max-register-number-that-causes-slowdown/234969#main-container) | x86-64架构通用寄存器 16个/线程 (x86) |
-| **延迟容忍** | 通过Warp切换**隐藏延迟** | 降低延迟至上 |
-| **内存模型** | **共享内存显式同步** | 缓存一致性协议 |
+| **Main-memory bandwidth** | 2 TB/s | Xeon 6 can reach several hundred GB/s |
+| **Cache control** | Shared memory is **manually controlled** | Cache is fully automatic |
+| **Thread registers** | [255 per thread](https://forums.developer.nvidia.com/t/whats-the-max-register-number-that-causes-slowdown/234969#main-container) | The x86-64 architecture has 16 general-purpose registers per thread (x86) |
+| **Latency tolerance** | **Hides latency** through warp switching | Latency reduction above all |
+| **Memory model** | **Explicit synchronization of shared memory** | Cache-coherence protocol |
 
-**CPU和GPU的本质区别**是GPU内存系统是**为吞吐量优化**，容忍高延迟；CPU内存系统是**为延迟优化**，降低延迟。这导致GPU需要更多层级和手动控制。
-
-
-## 3 LLM 推理在 GPU 上的执行流程
-
-LLM在GPU上的推理，其核心是**自回归**地逐个生成token，整个过程可清晰地分为 **预处理** 、**Prefill（预填充）** 和**Decode（解码）** 三个阶段。这与之前学习的GPU执行模型紧密相关，且每个阶段对GPU资源的需求截然不同。
-
-### 3.1 为什么 LLM 推理离不开 GPU
-
-在拆解推理流程之前，我们先回答一个根本问题：为什么大模型推理几乎必须依赖 GPU？答案要回到前两章讲过的 GPU 架构与执行模型。
-
-**1. 推理的本质是海量矩阵运算。** Transformer 的每一层都由大规模的矩阵乘法（GEMM/GEMV）构成，注意力的 Q×Kᵀ、注意力加权求和、以及各层的线性投影和 FFN，本质都是大量简单的乘加运算。这正是 GPU 数千个 CUDA 核心和专用 Tensor Core 最擅长的工作，而 CPU 只有几十个重逻辑核心，串行处理这种规模的运算会慢上几个数量级。
-
-**2. 大模型需要极高的显存带宽。** 一个 70B 模型的 FP16 权重约 140GB，每生成一个 token 都要把相关权重从显存搬运到计算单元。GPU 的 HBM 显存带宽可达约 2TB/s，是远大于CPU 主存。推理速度在很大程度上由每秒能搬多少字节权重决定，这一点 CPU 内存系统根本无法满足。
-
-**3. GPU 用吞吐量掩盖延迟的设计恰好契合推理。** 推理时成百上千个 token、多个请求可以并行处理，GPU 通过 Warp 切换在等待访存时立刻调度其他就绪线程，把内存延迟通过调度消弭，使昂贵的计算单元和显存带宽持续满载。CPU 追求单任务低延迟，面对这种大批量同质任务反而无法发挥。
-
-**4. 软件生态的成熟。** CUDA、cuDNN 以及 PyTorch/TensorFlow 等框架，加上 FlashAttention、PagedAttention 等针对 GPU 内存层次深度优化的算子，使 GPU 成为 LLM 训练与推理事实上的标准平台。
-
-**LLM 推理是典型的计算密集 + 访存密集任务，而 GPU 正是为大规模并行计算和高带宽访存而生的硬件，两者高度契合，这就是推理离不开 GPU 的根本原因。**
-
-### 3.2 GPU执行矩阵乘法 与 Prefill、 Decode
-
-输入的所有token会作为**一个巨大的矩阵**被并行处理。矩阵乘法（GEMM）等运算占主导，**算术强度极高**，能有效利用GPU的Tensor Core。
+**The essential difference between the CPU and the GPU** is that the GPU memory system is **optimized for throughput** and tolerates high latency, while the CPU memory system is **optimized for latency** and reduces latency. This is why the GPU needs more levels and manual control.
 
 
-#### 3.2.1.  **CPU工作**：
+## 3 The Execution Flow of LLM Inference on the GPU
 
-CPU在主机内存中为输入矩阵（如Q和K）和结果矩阵分配空间，将输入矩阵数据（如Q和K矩阵）加载到CPU内存中，然后会调用CUDA API，在GPU的全局内存（Global Memory，即HBM） 上为输入和结果矩阵分配空间。
+The core of LLM inference on the GPU is **autoregressively** generating tokens one by one, and the whole process can be clearly divided into three stages: **preprocessing**, **Prefill**, and **Decode**. This is closely related to the GPU execution model we learned earlier, and each stage has completely different demands on GPU resources.
 
-CPU通过内核启动指令通知GPU开始执行计算。这个指令会定义GPU上需要启动的线程网格和线程块的规模。
+### 3.1 Why LLM Inference Is Inseparable from the GPU
 
-#### 3.2.2  数据传输
+Before breaking down the inference flow, let us first answer a fundamental question: why does large-model inference almost necessarily rely on the GPU? The answer goes back to the GPU architecture and execution model discussed in the previous two chapters.
 
-CPU和GPU是两个独立的计算单元，数据需要通过PCIe总线进行搬运。
+**1. The essence of inference is a huge amount of matrix operations.** Every layer of the Transformer is composed of large-scale matrix multiplications (GEMM/GEMV)—attention's Q×Kᵀ, the attention-weighted summation, and the linear projections and FFN of each layer are all, in essence, large amounts of simple multiply-accumulate operations. This is exactly the work that the GPU's thousands of CUDA cores and dedicated Tensor Cores are best at, whereas the CPU has only a few dozen heavy-logic cores, and serially processing operations of this scale would be several orders of magnitude slower.
 
-首先CPU 将输入矩阵数据从CPU内存拷贝到GPU的全局内存（HBM） 中。这个数据搬运过程是整个计算流程的主要瓶颈之一。因为PCIe 7 在 x16 配置下的双向总带宽为 [512 GB/s](https://pcisig.com/specifications/pcie-70-specification-version-03-now-available-members)，而A100 GPU访问其自身HBM显存的带宽高达2T/s。这个数量级的差异意味着，数据传输往往是整个流程中最耗时的环节之一。
+**2. Large models require extremely high memory bandwidth.** A 70B model's FP16 weights are about 140GB, and each generated token requires moving the relevant weights from video memory to the computing units. The GPU's HBM memory bandwidth can reach about 2 TB/s, far greater than that of CPU main memory. Inference speed is largely determined by how many bytes of weights can be moved per second, and the CPU memory system simply cannot meet this.
 
-#### 3.2.3 GPU 并行计算矩阵乘法
+**3. The GPU's design of hiding latency with throughput happens to fit inference.** During inference, hundreds or thousands of tokens and multiple requests can be processed in parallel. Through warp switching, the GPU immediately schedules other ready threads while waiting for memory access, eliminating memory latency through scheduling and keeping the expensive computing units and memory bandwidth continuously saturated. The CPU pursues low latency for a single task and, faced with such large-batch homogeneous tasks, cannot bring its strengths to bear.
 
-这是GPU发挥其并行计算能力的核心环节。
+**4. The maturity of the software ecosystem.** CUDA, cuDNN, and frameworks such as PyTorch/TensorFlow, together with operators deeply optimized for the GPU memory hierarchy such as FlashAttention and PagedAttention, make the GPU the de facto standard platform for LLM training and inference.
 
-1. **任务分解**：GPU的**线程调度器**会将巨大的矩阵乘法任务（如`Q×K^T`）分解成大量更小的、可以并行执行的任务块。
-2. **分块（Tiling）**：将输出矩阵C划分为多个**块（Tiles）**，每个块的计算任务分配给一个**线程块（Block）**。
+**LLM inference is a typical compute-intensive + memory-intensive task, and the GPU is precisely hardware born for large-scale parallel computation and high-bandwidth memory access. The two are highly compatible, and this is the fundamental reason why inference is inseparable from the GPU.**
 
-3. **细粒度分配**：在一个线程块内，进一步将任务分配给更小的**线程束（Warp）**，最终每个**线程（Thread）** 负责计算结果矩阵中的一个或几个元素。
+### 3.2 The GPU Executing Matrix Multiplication, and Prefill & Decode
 
-当一个**流式多处理器** 收到分配给它的任务块后，其内部会发生以下精细的数据流动和计算：
-1.  **加载到共享内存**：SM首先将计算所需的数据块从**全局内存（HBM）** 加载到速度更快的**共享内存** 中。这样能显著减少对慢速全局内存的重复访问。
-2.  **分配到寄存器**：接着，**线程** 会从共享内存中读取它负责计算的那部分数据，并存入速度最快的**寄存器** 中。
-3.  **核心计算**：最后，**CUDA核心或者Tensor Core**对寄存器中的数据进行乘加运算。
-4. **写回结果**：计算完成后，结果数据会从寄存器按原路经共享内存，最终写回**全局内存**。
-
-此过程参考[密歇根大学电子工程与计算机科学系文档](https://web.eecs.umich.edu/~fessler/irt/irt/mex/src/fdk/fdk-cuda-wei/doc/)
-
-### 3.4 Prefill 和 Decode阶段
-
-Prefill 和 Decode阶段 在第二章就详细讲过，这里不再赘述，只讲解GPU有关的内容。
-
-**Prefill阶段**：处理整个用户输入，是**批量的矩阵乘法（GEMM）**，**计算密集型**，主要依赖**Tensor Core**，会将所有用户输入一次性全部处理。是大规模并行的，此阶段是计算密集型，因为此阶段涉及大量的矩阵乘法（GEMM），能充分利用GPU的Tensor Core，在这个阶段，GPU算力是瓶颈，因此被称为**计算密集型** 任务。。
-
-**Decode（解码）阶段**：逐token生成输出，是**矩阵-向量乘法（GEMV）**，**访存密集型**，主要瓶颈在于从HBM搬运模型权重和KV Cache。它是严格串行的，在生成第一个Token后，模型进入Decode阶段。它的任务是自回归地，根据之前生成的所有Token和KV Cache，预测下一个Token。此阶段每次只处理**一个新token的向量**。主要的运算是矩阵-向量乘法，计算量远小于Prefill阶段。此时，**从显存（HBM）中读取整个模型的权重和庞大的KV Cache成为了性能瓶颈**。GPU的计算单元常常因等待数据而空闲。
+All the input tokens are processed in parallel as **one huge matrix**. Operations such as matrix multiplication (GEMM) dominate, the **arithmetic intensity is extremely high**, and they can effectively utilize the GPU's Tensor Cores.
 
 
-### 3.5 总结
+#### 3.2.1. **CPU work**:
 
-| 阶段 | 核心任务 | 计算类型 | GPU瓶颈 | 关键优化 |
+The CPU allocates space in host memory for the input matrices (such as Q and K) and the result matrix, loads the input matrix data (such as the Q and K matrices) into CPU memory, and then calls the CUDA API to allocate space for the input and result matrices on the GPU's global memory (Global Memory, i.e., HBM).
+
+The CPU notifies the GPU to begin executing the computation via a kernel-launch instruction. This instruction defines the scale of the thread grid and thread blocks that need to be launched on the GPU.
+
+#### 3.2.2 Data Transfer
+
+The CPU and the GPU are two independent computing units, and data needs to be moved across the PCIe bus.
+
+First, the CPU copies the input matrix data from CPU memory into the GPU's global memory (HBM). This data-movement process is one of the main bottlenecks of the entire computation flow. Because the bidirectional total bandwidth of PCIe 7 in an x16 configuration is [512 GB/s](https://pcisig.com/specifications/pcie-70-specification-version-03-now-available-members), while the A100 GPU accesses its own HBM memory at a bandwidth of up to 2 TB/s. This order-of-magnitude difference means that data transfer is often one of the most time-consuming links in the entire flow.
+
+#### 3.2.3 The GPU Computing Matrix Multiplication in Parallel
+
+This is the core link where the GPU brings its parallel-computing capability into play.
+
+1. **Task decomposition**: The GPU's **thread scheduler** decomposes the huge matrix-multiplication task (such as `Q×K^T`) into a large number of smaller task blocks that can be executed in parallel.
+2. **Tiling**: The output matrix C is divided into multiple **tiles**, and the computation task of each tile is assigned to one **block**.
+
+3. **Fine-grained allocation**: Within a block, the task is further allocated to smaller **warps**, and ultimately each **thread** is responsible for computing one or a few elements in the result matrix.
+
+After a **Streaming Multiprocessor** receives the task block assigned to it, the following fine-grained data flow and computation occur internally:
+1.  **Load into shared memory**: The SM first loads the data block needed for computation from **global memory (HBM)** into the faster **shared memory**. This can significantly reduce repeated access to the slow global memory.
+2.  **Allocate to registers**: Next, the **thread** reads the portion of data it is responsible for computing from shared memory and stores it in the fastest **registers**.
+3.  **Core computation**: Finally, the **CUDA cores or Tensor Cores** perform the multiply-accumulate operations on the data in the registers.
+4. **Write back the result**: After the computation is complete, the result data is written back from the registers along the original path via shared memory, and ultimately back to **global memory**.
+
+For this process, refer to the [document from the University of Michigan's Department of Electrical Engineering and Computer Science](https://web.eecs.umich.edu/~fessler/irt/irt/mex/src/fdk/fdk-cuda-wei/doc/).
+
+### 3.4 The Prefill and Decode Stages
+
+The Prefill and Decode stages were explained in detail in Chapter 2 and are not repeated here; we only explain the GPU-related content.
+
+**The Prefill stage**: processes the entire user input; it is **batched matrix multiplication (GEMM)**, **compute-intensive**, mainly relying on the **Tensor Core**, and processes all user input at once. It is massively parallel. This stage is compute-intensive because it involves a large amount of matrix multiplication (GEMM) and can fully utilize the GPU's Tensor Cores. In this stage, GPU compute power is the bottleneck, so it is called a **compute-intensive** task.
+
+**The Decode stage**: generates output token by token; it is **matrix-vector multiplication (GEMV)**, **memory-access-intensive**, with the main bottleneck being moving the model weights and the KV Cache from HBM. It is strictly serial. After generating the first token, the model enters the Decode stage. Its task is to autoregressively predict the next token based on all previously generated tokens and the KV Cache. This stage processes only **the vector of one new token** at a time. The main operation is matrix-vector multiplication, and the amount of computation is far smaller than in the Prefill stage. At this point, **reading the entire model's weights and the huge KV Cache from video memory (HBM) becomes the performance bottleneck**. The GPU's computing units are often idle while waiting for data.
+
+
+### 3.5 Summary
+
+| Stage | Core Task | Computation Type | GPU Bottleneck | Key Optimization |
 | :--- | :--- | :--- | :--- | :--- |
-| **Prefill** | 处理输入prompt | **计算密集型** | Tensor Core算力 | 最大化并行度，利用好矩阵乘法 |
-| **Decode** | 逐token生成 | **内存密集型** | 显存带宽 (HBM) | KV Cache、量化、Continuous Batching |
+| **Prefill** | Process the input prompt | **Compute-intensive** | Tensor Core compute power | Maximize parallelism, make good use of matrix multiplication |
+| **Decode** | Generate token by token | **Memory-intensive** | Video-memory bandwidth (HBM) | KV Cache, quantization, Continuous Batching |
 
-## 4、总结与测试题
+## 4. Summary and Quiz
 
-### 4.1 课程总结
+### 4.1 Course Summary
 
-本节课围绕 **GPU 硬件架构** 与 **大语言模型推理在 GPU 上的执行流程** 两大主线展开，核心内容可归纳为：
+This chapter revolves around two main threads—**GPU hardware architecture** and the **execution flow of large-language-model inference on the GPU**—and its core content can be summarized as:
 
-#### 1. **GPU 的诞生与设计哲学**：
+#### 1. **The Birth and Design Philosophy of the GPU**:
 
-GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计算单元（CUDA 核心）** 和**极少控制逻辑**换取**极高的数据吞吐量**，与 CPU 的“低延迟、复杂逻辑”设计目标形成鲜明对比。
+The GPU evolved from a graphics processor into an AI accelerator. Its essence is to trade **a large number of simple computing units (CUDA cores)** and **very little control logic** for **extremely high data throughput**, forming a sharp contrast with the CPU's "low-latency, complex-logic" design goal.
 
-#### 2. **A100 GPU 的层次化架构**：
+#### 2. **The Hierarchical Architecture of the A100 GPU**:
 
-从芯片全局（GPC → TPC → SM）到 SM 内部（CUDA 核心、Tensor Core、共享内存、寄存器文件），理解每个层级的作用和数据流动路径。其中 **SM** 是执行的基本原子单元，**Tensor Core** 是加速矩阵乘法的专用电路。
+From the chip's global level (GPC → TPC → SM) to the SM's internals (CUDA cores, Tensor Cores, shared memory, register file), understand the role of each level and the data-flow path. Among them, the **SM** is the basic atomic unit of execution, and the **Tensor Core** is the dedicated circuit that accelerates matrix multiplication.
 
-#### 3. **GPU 执行模型**：
+#### 3. **The GPU Execution Model**:
 
-以 **SIMT（单指令多线程）** 为核心，线程以 **Warp（32 线程）** 为调度单元，Block 映射到 SM，Thread 执行具体运算。关键概念包括 **Warp Divergence（分支发散）**、**内存合并访问**、**Warp 切换隐藏延迟**。
+With **SIMT (Single Instruction, Multiple Threads)** at its core, threads are scheduled at the granularity of a **warp (32 threads)**, blocks are mapped to SMs, and threads perform the specific operations. Key concepts include **Warp Divergence**, **coalesced memory access**, and **hiding latency through warp switching**.
 
-#### 4. **GPU 内存层次与瓶颈**：
-全局内存（HBM）带宽～2TB/s 但延迟高，L2 缓存（40MB）次之，共享内存（192KB/SM）和寄存器（256KB/SM）速度极快但容量小。**内存带宽增长远落后于算力增长**，这构成了“内存墙”，也是 LLM 推理的主要瓶颈。
+#### 4. **The GPU Memory Hierarchy and Bottlenecks**:
+Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) comes next; shared memory (192KB/SM) and registers (256KB/SM) are extremely fast but small in capacity. **The growth of memory bandwidth lags far behind the growth of compute power**, which constitutes the "memory wall" and is also the main bottleneck of LLM inference.
 
-#### 5. **LLM 推理的两阶段**：
+#### 5. **The Two Stages of LLM Inference**:
 
-**Prefill（预填充）**：处理输入提示，批量矩阵乘法（GEMM），**计算密集型**，Tensor Core 满载。
-**Decode（解码）**：逐 token 生成，矩阵-向量乘法（GEMV），**内存密集型**，HBM 带宽是瓶颈。
+**Prefill**: processes the input prompt, batched matrix multiplication (GEMM), **compute-intensive**, with the Tensor Core saturated.
+**Decode**: generates token by token, matrix-vector multiplication (GEMV), **memory-intensive**, with HBM bandwidth as the bottleneck.
 
 ---
 
-### 4.2 测试题
+### 4.2 Quiz
 
-1. LLM 推理的几个阶段分别是什么，各自有什么特点，为什么GPU成为LLM推理的主要工具？
+1. What are the stages of LLM inference, what are the characteristics of each, and why has the GPU become the main tool for LLM inference?
 
-2. 请简述 CPU 与 GPU 在架构设计上的本质区别，并说明为何 GPU 适合深度学习中的矩阵运算。
+2. Briefly describe the essential difference between the CPU and the GPU in architectural design, and explain why the GPU is suited to the matrix operations in deep learning.
 
-3. 描述 LLM 推理的 Prefill 和 Decode 两个阶段在计算类型、瓶颈资源以及典型优化手段上的不同。
+3. Describe the differences between the Prefill and Decode stages of LLM inference in terms of computation type, bottleneck resource, and typical optimization techniques.
 
 
-## 参考资料
+## References
 
 - [https://datawhalechina.github.io/diy-llm/chapter6/chapter6_GPU和GPU相关的优化.html](https://datawhalechina.github.io/diy-llm/chapter6/chapter6_%E7%AC%AC%E5%85%AD%E7%AB%A0GPU%E5%92%8CGPU%E7%9B%B8%E5%85%B3%E7%9A%84%E4%BC%98%E5%8C%96.html)
 - [https://cs336.stanford.edu/](https://cs336.stanford.edu/)
 - [https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
-- [NVIDIA A100 Tensor Core GPU 数据手册（中文版）](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf)
+- [NVIDIA A100 Tensor Core GPU Datasheet (Chinese version)](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf)
 - [https://ar5iv.labs.arxiv.org/html/2405.11425#1](https://ar5iv.labs.arxiv.org/html/2405.11425#1)
