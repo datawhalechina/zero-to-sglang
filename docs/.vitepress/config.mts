@@ -86,10 +86,14 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
 const engNav: DefaultTheme.NavItem[] = [
   { text: 'Home', link: '/eng/' },
   { text: 'Part 0', link: '/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit' },
+  { text: 'Part I', link: '/eng/part1/Chapter1_Introduction_to_LLM' },
+  { text: 'Part II', link: '/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like' },
+  { text: 'Part III', link: '/eng/part3/Chapter1_Attention-Backends-and-CUDA-Graph' },
+  { text: 'Part IV', link: '/eng/part4/Chapter1_Deploying-SGLang-with-the-Cookbook' },
   { text: 'Community', link: '/eng/community/' },
 ]
 
-// Sections are added here as their English chapters land.
+// Every chapter has a page; untranslated ones are placeholders (see course-material/eng/WRITING_TEMPLATE.md).
 const engSidebar: DefaultTheme.SidebarItem[] = [
   {
     text: 'Part 0 — Before you learn',
@@ -101,9 +105,44 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
   {
     text: 'Part I — Foundations',
     items: [
-      { text: 'Chapter 2 Inference', link: '/eng/part1/Chapter2_Introduction to Inference.md' },
+      { text: 'Chapter 1 Introduction to LLM', link: '/eng/part1/Chapter1_Introduction_to_LLM' },
+      { text: 'Chapter 2 Introduction to Inference', link: '/eng/part1/Chapter2_Introduction to Inference.md' },
+      { text: 'Chapter 3 Introduction to GPU', link: '/eng/part1/Chapter3_Introduction_to_GPU' },
       { text: 'Chapter 4 KV Cache', link: '/eng/part1/Chapter4_KV Cache The Core Data Structure of Inference.md' },
-      { text: 'Chapter 5 — Introduction to Benchmark', link: '/eng/part1/Chapter5_Introduction_to_Benchmark' },
+      { text: 'Chapter 5 Introduction to Benchmark', link: '/eng/part1/Chapter5_Introduction_to_Benchmark' },
+    ],
+  },
+  {
+    text: 'Part II — Build Your Own Mini SGL',
+    items: [
+      { text: 'Chapter 1 mini-sglang Overview', link: '/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like' },
+      { text: 'Chapter 2 Inside SGLang', link: '/eng/part2/Chapter2_Inside-SGLang' },
+      { text: 'Chapter 3 Forward Pass and Generation', link: '/eng/part2/Chapter3_Forward-Pass-and-Generation' },
+      { text: 'Chapter 4 KV Cache Optimization', link: '/eng/part2/Chapter4_KV-Cache-Optimization' },
+      { text: 'Chapter 5 HTTP and Concurrent Requests', link: '/eng/part2/Chapter5_HTTP-and-Concurrent-Requests' },
+      { text: 'Chapter 6 Continuous Batching and the Scheduler', link: '/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler' },
+      { text: 'Chapter 7 Paged KV Cache and Memory Management', link: '/eng/part2/Chapter7_Paged-KV-Cache-and-Memory-Management' },
+      { text: 'Chapter 8 RadixAttention and Prefix Caching', link: '/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching' },
+      { text: 'Chapter 9 Multi-process and Tensor Parallelism', link: '/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism' },
+      { text: 'Chapter 10 Speculative Decoding', link: '/eng/part2/Chapter10_Speculative-Decoding' },
+    ],
+  },
+  {
+    text: 'Part III — Advanced Inference Technique',
+    items: [
+      { text: 'Chapter 1 Attention Backends and CUDA Graph', link: '/eng/part3/Chapter1_Attention-Backends-and-CUDA-Graph' },
+      { text: 'Chapter 2 Quantization and Low-Precision Inference', link: '/eng/part3/Chapter2_Quantization-and-Low-Precision-Inference' },
+      { text: 'Chapter 3 Hierarchical Caching', link: '/eng/part3/Chapter3_Hierarchical-Caching' },
+      { text: 'Chapter 4 Scaling Out', link: '/eng/part3/Chapter4_Scaling-Out' },
+      { text: 'Chapter 5 Prefill-Decode Disaggregation', link: '/eng/part3/Chapter5_Prefill-Decode-Disaggregation' },
+    ],
+  },
+  {
+    text: 'Part IV — How to Make Contribution to SGLang',
+    items: [
+      { text: 'Chapter 1 Deploying SGLang with the Cookbook', link: '/eng/part4/Chapter1_Deploying-SGLang-with-the-Cookbook' },
+      { text: 'Chapter 2 Profiling and Trace Analysis', link: '/eng/part4/Chapter2_Profiling-and-Trace-Analysis' },
+      { text: 'Chapter 3 SGLang PR Workflow', link: '/eng/part4/Chapter3_SGLang-PR-Workflow' },
     ],
   },
   {
