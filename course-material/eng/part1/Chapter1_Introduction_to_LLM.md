@@ -236,7 +236,7 @@ The **learnable parameters** $\gamma$ (scale) and $\beta$ (shift) have the same 
 In deep learning, "residual" specifically refers to a **residual connection**, also known as a **skip connection**. It is a "shortcut" that connects layers of a neural network, allowing information to pass directly around certain layers.
 
 <div align="center">
-    <img src="./images/1-3-Add&Norm.png" alt="1-3-Add&Norm.png" width="400">
+    <img src="./images/1-3-Add&Norm.png" alt="1-3-Add&Norm.png" width="800">
 <p><em>Figure 3. Residual connection and layer normalization (Add & Norm)</em></p>
 </div>
 
@@ -266,7 +266,7 @@ Compared with the **later-proposed variant** Pre-Norm (normalize first, then the
 ### 4.4 Feed-Forward Network (Feed Forward) and Activation Functions
 
 <div align="center">
-    <img src="./images/1-4-FeedForward.png" alt="1-4-FeedForward.png" width="400">
+    <img src="./images/1-4-FeedForward.png" alt="1-4-FeedForward.png" width="800">
 <p><em>Figure 4. Feed-forward network (Feed Forward)</em></p>
 </div>
 
@@ -378,22 +378,20 @@ It handles all the engineering matters that enable the model to actually get wor
 
 **Context Window**: The maximum number of tokens the model can process at once, which determines how long a piece of text it can see. Today's mainstream flagship models generally support a 1M context window, roughly enough to fit in about 1.5 to 2 copies of *Dream of the Red Chamber*.
 
-## 6 Summary and Quiz
+## 6 Summary and Exercises
 
-### 6.1 Chapter Summary
+### 6.1 Summary
 
 In this chapter, we have built an overall understanding of large language models: an LLM is essentially a large-scale neural network that "predicts the next token," and under the scaling effect it gives rise to diverse emergent abilities. It has undergone rapid development from the proposal of the Transformer to today's flourishing of open-source models, while also having boundaries such as hallucination and knowledge staleness. Its core architecture, the Transformer, is composed of four major components—**positional encoding, multi-head attention, layer normalization and residual connections, and the feed-forward network**—and achieves efficient parallel computation on top of the self-attention mechanism. These concepts are the foundation for the subsequent study of inference pipelines and system optimization.
 
-### 6.2 Quiz
+### 6.2 Exercises
 
 1. Explain in one sentence what the core capability of an LLM is, and explain why "predicting the next token" can bring about such rich capabilities.
 2. Why does the self-attention mechanism need positional encoding? How does sinusoidal positional encoding provide positional information?
 4. Briefly describe the respective roles of residual connections and layer normalization.
 
-## Related Links
+## References
 
-[https://datawhalechina.github.io/diy-llm/chapter13](https://datawhalechina.github.io/diy-llm/chapter13/chapter13_%E7%AC%AC%E5%8D%81%E4%B8%89%E7%AB%A0%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%AE%AD%E7%BB%83%E6%B5%81%E7%A8%8B.html)
-
-[*Attention Is All You Need*](https://arxiv.org/abs/1706.03762)
-
-[https://www.donews.com](https://www.donews.com/news/detail/4/6512672.html#1)
+- [https://datawhalechina.github.io/diy-llm/chapter13](https://datawhalechina.github.io/diy-llm/chapter13/chapter13_%E7%AC%AC%E5%8D%81%E4%B8%89%E7%AB%A0%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%AE%AD%E7%BB%83%E6%B5%81%E7%A8%8B.html)
+- [*Attention Is All You Need*](https://arxiv.org/abs/1706.03762)
+- [https://www.donews.com](https://www.donews.com/news/detail/4/6512672.html#1)

@@ -465,9 +465,9 @@ The Prefill and Decode stages were explained in detail in Chapter 2 and are not 
 | **Prefill** | Process the input prompt | **Compute-intensive** | Tensor Core compute power | Maximize parallelism, make good use of matrix multiplication |
 | **Decode** | Generate token by token | **Memory-intensive** | Video-memory bandwidth (HBM) | KV Cache, quantization, Continuous Batching |
 
-## 5 Summary and Quiz
+## 5 Summary and Exercises
 
-### 5.1 Course Summary
+### 5.1 Summary
 
 This chapter revolves around two main threads—**GPU hardware architecture** and the **execution flow of large-language-model inference on the GPU**—and its core content can be summarized as:
 
@@ -493,7 +493,7 @@ Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) 
 
 ---
 
-### 5.2 Quiz
+### 5.2 Exercises
 
 1. What are the stages of LLM inference, what are the characteristics of each, and why has the GPU become the main tool for LLM inference?
 
