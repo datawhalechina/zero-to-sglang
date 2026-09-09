@@ -1,2 +1,2 @@
-# 第 3 章 Introduction to GPU（GPU 入门）
+# 第 3 章 GPU 入门
 

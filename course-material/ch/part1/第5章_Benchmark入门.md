@@ -1,4 +1,4 @@
-# 第 5 章 Introduction to Benchmark（Benchmark 入门）
+# 第 5 章 Benchmark 入门
 
 &emsp;&emsp;前面几章分析了推理过程，区分了 Prefill 与 Decode 的计算与访存特征，指出二者分别更接近 compute-bound 与 memory-bound。但这些结论仍停留在定性层面，当要验证系统优化、对比不同引擎或规划部署容量时，还需要量化的性能数据作为依据。benchmark（基准测试）正是获得这类数据、并保证其可复现与可对比的方法。
 
