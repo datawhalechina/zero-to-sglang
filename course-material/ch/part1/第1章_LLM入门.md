@@ -1,6 +1,6 @@
 # 第 1 章 Introduction to LLM（LLM 入门）
 
-## 0 本章学习目标
+## 0 1 本章学习目标
 
 欢迎来到 zero-to-sglang 课程的第一章。作为整个课程的起点，本章将带你建立对大语言模型（Large Language Model, LLM）的整体认知，为后续深入学习推理流程、GPU 架构与推理框架打下基础。
 
@@ -11,7 +11,7 @@
 3. 理解 LLM 的核心架构——Transformer，掌握位置编码、多头注意力、层归一化与残差连接、前馈网络等关键组件的作用。
 4. 熟悉贯穿全课程的关键基础概念（Token、参数、上下文窗口、自回归生成等）。
 
-## 1 LLM 的定义、简要发展与边界
+## 2 LLM 的定义、简要发展与边界
 
 **什么是 LLM。** 大语言模型是一类基于深度神经网络、在海量文本上训练的语言模型。它的核心能力是：给定一段文本，预测下一个最可能出现的 token（词元）。正是这种看似简单的"预测下一个词"的能力，在足够大的模型规模和数据规模下，涌现出了理解、推理、生成、翻译、编码等多样化能力。这里的大（Large）既指参数量大（从数十亿到数千亿甚至上万亿参数），也指训练数据量大。
 
@@ -22,27 +22,27 @@
 
 **能力边界。** LLM 虽然强大，但是本质其实是一个概率模型，根据输入不断预测下一个字符的概率，所以大模型有明确的局限，它可能产生看似合理却错误的内容（幻觉）；知识受限于训练数据的截止时间；对超出上下文窗口的长文本记忆有限；缺乏真正的因果推理与外部世界的实时感知。理解这些边界，有助于我们合理地使用和优化模型。
 
-## 2 LLM 的典型应用
+## 3 LLM 的典型应用
 
 LLM 已经渗透到大量实际场景中，典型应用包括：
 
-### 2.1 对话与问答：
+### 3.1 对话与问答
 
 传统对话助手是LLM的主要阵地 以聊天为主，用户提问、模型回答。从最开始的GPT3至今，传统对话助手有了很大进步，从单模态到多模态，从文字到图片，音频，从离线的聊天到可以联网搜索。对话助手在一部分占据了搜索引擎的生态位，大家有问题很有可能是去问AI，而不是去浏览器搜索。
 
-### 2.2 文本生成：
+### 3.2 文本生成
 
 内容生成与创作是LLM提效最显著的领域。现在大模型写作，撰写报告的应用常见已经非常常见，一些比较深入有公文写作、会议纪要，PDF、Doc直接生成，在文本生生成方面的应用已经非常广泛。
 
 同时大模型还在翻译层面大方光彩，大模型正在取代传统的机器翻译，各家模型厂商出的flash模型正在成为翻译界的主要角色
 
-### 2.3 代码相关：
+### 3.3 代码相关
 
 Claude code、Codex、Cursor是进来最火的AI 编程工具，国内的Qcode、Zcode、Codebuddy 等国内厂商的产品也在抢占市场，这些vibe coding 工具让行外人也能一句话生成一个作品，减轻程序员的工作压力，他们变得越来越火爆，以至于没用过他们就相当与“落伍”了
 
 这些应用的背后，都依赖模型高效的**推理**能力——这也正是本课程后续章节（推理流程、GPU、推理框架）要重点解决的问题。
 
-### 2.4 AI应用的基础：推理成本和延迟
+### 3.4 AI应用的基础：推理成本和延迟
 
 这些应用都是以大模型为核心的，大模型的输出对于ai工具是最重要的，我们在使用ai工具实质是在利用大模型的输出，大模型的输出又依托于推理，推理成本直接影响模型使用成本，推理延迟也会直接影响用户体验，因此推理成本和延迟至关重要。
 
@@ -54,7 +54,7 @@ LLM自回归生成特性导致内存需求随输入序列长度和批次大小�
 
 这些高效推理框架的出现，正是为了解决应用爆发后日益严峻的成本与延迟瓶颈，推动LLM从技术可用走向商业可赚。
 
-## 3 核心架构：Transformer
+## 4 核心架构：Transformer
 
 transformer模型的起源可以追溯到2017年，当时由Google研究团队在论文[《Attention Is All You Need》](https://arxiv.org/abs/1706.03762)中首次提出。该模型的核心创新是引入了**自注意力机制**（Self-Attention Mechanism），摒弃了传统的循环神经网络（RNN）和卷积神经网络（CNN）结构。自注意力机制允许模型在处理序列数据时并行计算，从而大幅提高了计算效率，并解决了长距离依赖问题。
 
@@ -63,7 +63,7 @@ transformer模型的起源可以追溯到2017年，当时由Google研究团队�
 <p><em>图 1. Transformer 的整体架构</em></p>
 </div>
 
-上述图中是Transformer 的 Block 结构，右边是**解码器Block**和**编码器Block，解码器和编码器堆叠*N就是transformer结构**
+上述图中是Transformer 的 Block 结构，左边是**编码器Block**，右边是**解码器Block**，解码器和编码器堆叠*N就是transformer结构
 
 ### 3.1 位置编码(Positional Encoding)--正余弦位置编码
 
@@ -238,7 +238,7 @@ $$
 残差 在深度学习中特指**残差连接**（Residual Connection），也称为**跳跃连接**（Skip Connection），是连接神经网络层与层之间的"捷径"，让信息可以直接绕过某些层传递。
 
 <div align="center">
-    <img src="./images/1-3-Add&Norm.png" alt="1-3-Add&Norm.png" width="400">
+    <img src="./images/1-3-Add&Norm.png" alt="1-3-Add&Norm.png" width="800">
 <p><em>图 3. 残差连接与层归一化（Add & Norm）</em></p>
 </div>
 
@@ -268,7 +268,7 @@ $$\text{output} = \text{LayerNorm}\big(x + \text{Sublayer}(x)\big)$$
 ### 3.4 前馈网络(Feed Forward)与激活函数
 
 <div align="center">
-    <img src="./images/1-4-FeedForward.png" alt="1-4-FeedForward.png" width="400">
+    <img src="./images/1-4-FeedForward.png" alt="1-4-FeedForward.png" width="800">
 <p><em>图 4. 前馈网络（Feed Forward）</em></p>
 </div>
 
@@ -391,12 +391,10 @@ RAG是实现上下文工程的一种关键技术手段，负责从长期记忆�
 
 1. 用一句话说明 LLM 的核心能力是什么，并解释为什么"预测下一个 token"能带来如此丰富的能力。
 2. 自注意力机制为什么需要位置编码？正余弦位置编码是如何提供位置信息的？
-4. 简述残差连接和层归一化各自的作用。
+3. 简述残差连接和层归一化各自的作用。
 
-## 相关链接
+## 参考资料
 
-[https://datawhalechina.github.io/diy-llm/chapter13](https://datawhalechina.github.io/diy-llm/chapter13/chapter13_%E7%AC%AC%E5%8D%81%E4%B8%89%E7%AB%A0%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%AE%AD%E7%BB%83%E6%B5%81%E7%A8%8B.html)
-
-[《Attention Is All You Need》](https://arxiv.org/abs/1706.03762)
-
-[https://www.donews.com](https://www.donews.com/news/detail/4/6512672.html#1)
+- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
+- [Diy-LLM 第十三章 大模型的基本训练流程](https://datawhalechina.github.io/diy-llm/chapter13/chapter13_%E7%AC%AC%E5%8D%81%E4%B8%89%E7%AB%A0%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%AE%AD%E7%BB%83%E6%B5%81%E7%A8%8B.html)
+- [腾讯云 FlexKV 解决推理成本瓶颈（DoNews）](https://www.donews.com/news/detail/4/6512672.html#1)
