@@ -1,6 +1,6 @@
 # Chapter 1 Introduction to LLM
 
-## Learning Objectives of This Chapter
+## 0 Learning Objectives of This Chapter
 
 Welcome to Chapter 1 of the zero-to-sglang course. As the starting point of the entire course, this chapter will help you build an overall understanding of Large Language Models (LLMs), laying the foundation for the later, deeper study of inference pipelines, GPU architecture, and inference frameworks.
 
@@ -65,7 +65,7 @@ The origin of the Transformer model can be traced back to 2017, when it was firs
 
 The figure above shows the block structure of the Transformer: on the right is the **decoder block** and the **encoder block. Stacking the decoder and encoder N times forms the Transformer structure.**
 
-### 3.1.1 Positional Encoding — Sinusoidal Positional Encoding
+### 3.1 Positional Encoding — Sinusoidal Positional Encoding
 
 $$
 \begin{align*}
@@ -74,7 +74,7 @@ PE_{(pos,2i+1)} &= \cos\left(\frac{pos}{10000^{2i/d_{\text{model}}}}\right)
 \end{align*}
 $$
 
-#### Variable definitions:
+**Variable definitions:**
 
 $pos$: the position of the token in the sequence (0, 1, 2, ..., N-1)
 $i$: the dimension index
@@ -104,7 +104,7 @@ This design brings several notable advantages. First, it is fully deterministic 
 
 Sinusoidal positional encoding was first proposed in *Attention Is All You Need* as the standard positional encoding scheme for the original Transformer. Although learnable positional embeddings, relative positional encodings, and other variants appeared later, sinusoidal encoding, thanks to its simplicity, efficiency, and training-free nature, is still widely used in many sequence-modeling scenarios or serves as a classic example for understanding the mechanism of positional encoding.
 
-### 3.1.2 Multi-Head Attention
+### 3.2 Multi-Head Attention
 
 <div align="center">
     <img src="./images/1-2-MultiHeadAttention.png" alt="1-2-MultiHeadAttention.png" width="800">
@@ -115,7 +115,7 @@ The attention mechanism mimics how human attention works. When a person looks at
 
 The multi-head attention mechanism is a core innovation of the Transformer model. By running multiple attention heads in parallel, it enables the model to simultaneously attend to multiple kinds of dependencies in the sequence from different perspectives and different semantic levels, thereby greatly enhancing its ability to model complex patterns. Below, starting from the approach and limitations of single-head attention, we gradually unfold the complete design of multi-head attention.
 
-#### 1. The Approach and Limitations of Single-Head Attention
+#### 3.2.1 The Approach and Limitations of Single-Head Attention
 
 The computation of single-head attention is based on the scaled dot-product attention mechanism. For an input sequence $X$ (of shape $[batchSize, seqLen, d_{model}]$), it is first mapped into the Query (Q), Key (K), and Value (V) through three sets of weight matrices:
 
@@ -133,11 +133,11 @@ Here $d_k = d_{model}$, and the scaling factor $\sqrt{d_k}$ is used to prevent t
 
 The limitation of single-head attention is that it can only compute one kind of query-key-value relationship, as if observing with only a single pair of eyes. This makes it difficult for the model to simultaneously capture multiple patterns such as syntactic structure, semantic association, and long-range dependency; the attention distribution tends to be too dispersed and cannot focus on multiple important subspaces. Therefore, the common practice is to repeat the attention mechanism multiple times, letting each head learn a different subspace representation, and finally merge the results.
 
-#### 2. The Design Idea of Multi-Head Attention
+#### 3.2.2 The Design Idea of Multi-Head Attention
 
 Multi-head attention splits the $d_{model}$-dimensional query, key, and value into $h$ independent heads. Each head performs attention computation in parallel in a lower-dimensional space ($d_k = d_{model} / h$), enabling the model to jointly extract information from multiple representation subspaces. Each head has its own projection matrices and can attend to different types of features—for example (this is just an example; we cannot determine the exact division of labor of each head), **some heads may focus on local syntactic structure, while others capture long-range semantic dependencies.** Of course, inside the model there is only a series of floating-point numbers, and we cannot know the precise division of labor, but practice has proven that this is useful.
 
-#### 3. The Detailed Computation Process of Multi-Head Attention
+#### 3.2.3 The Detailed Computation Process of Multi-Head Attention
 
 **Step 1: Multi-head splitting (assuming the input Q, K, V have already undergone linear projection)**
 
@@ -176,7 +176,7 @@ $$
 
 This output keeps the same dimension as the input, which facilitates subsequent operations such as residual connections.
 
-#### 4. The Specific Parameters in the Original Paper
+#### 3.2.4 The Specific Parameters in the Original Paper
 
 In *Attention Is All You Need*, the multi-head attention design adopts the following configuration:
 
@@ -187,9 +187,9 @@ In *Attention Is All You Need*, the multi-head attention design adopts the follo
 
 This setting makes the computational cost of multi-head attention roughly the same as that of single-head attention (each head computes in a lower-dimensional space, so the total computation is basically unchanged), yet significantly improves the model's representational power.
 
-### 3.1.3 Layer Normalization (LayerNorm) and Residual Connections
+### 3.3 Layer Normalization (LayerNorm) and Residual Connections
 
-#### 1. What Is Normalization
+#### 3.3.1 What Is Normalization
 
 **Normalization is a technique that scales data according to specific rules** so that it falls into a unified standard range or distribution. In deep learning, it mainly refers to transforming the activations or weights of intermediate layers of a neural network in order to stabilize the training process and accelerate convergence.
 
@@ -231,7 +231,7 @@ $$
 
 The **learnable parameters** $\gamma$ (scale) and $\beta$ (shift) have the same dimension as the input, letting the model learn the scaling and shifting on its own.
 
-#### 2. What Is a Residual
+#### 3.3.2 What Is a Residual
 
 In deep learning, "residual" specifically refers to a **residual connection**, also known as a **skip connection**. It is a "shortcut" that connects layers of a neural network, allowing information to pass directly around certain layers.
 
@@ -250,7 +250,7 @@ As can be seen in this figure, the so-called residual connection directly adds t
 
 From a mathematical perspective, the residual does not force the network to directly learn the ideal mapping $H(x)$; instead, it lets the network learn the "residual" $F(x)=H(x)−x$. If a layer does not need to perform a transformation, the network only needs to learn $F(x)≈0$, preserving the input $x$. If a transformation is needed, the network learns the correction to the input. In the extreme case: even if the $Layer$ learns poorly, it can at least guarantee $Output ≈ Input$, so it is no worse than not adding the deeper layer.
 
-#### 3. Layer Normalization and Residual Connections
+#### 3.3.3 Layer Normalization and Residual Connections
 
 In the original Transformer paper, Layer Normalization and the Residual Connection are core designs that work in tandem, together ensuring stable training of deep networks.
 In the original paper, the residual connection comes first, followed by normalization:
@@ -263,7 +263,7 @@ Compared with the **later-proposed variant** Pre-Norm (normalize first, then the
 
 **The residual connection ensures that gradients are propagated back directly, at least preserving the identity-mapping capability**, while **layer normalization standardizes the distribution after the addition, avoiding numerical explosion/vanishing**. **The combination of the two makes networks of 12 or even more layers trainable.**
 
-### 3.1.4 Feed-Forward Network (Feed Forward) and Activation Functions
+### 3.4 Feed-Forward Network (Feed Forward) and Activation Functions
 
 <div align="center">
     <img src="./images/1-4-FeedForward.png" alt="1-4-FeedForward.png" width="400">
@@ -272,7 +272,7 @@ Compared with the **later-proposed variant** Pre-Norm (normalize first, then the
 
 The activation function used in the original Transformer paper *Attention Is All You Need* is **ReLU** (Rectified Linear Unit), specifically applied in the **Position-wise Feed-Forward Networks**.
 
-#### 1. Where ReLU Is Applied
+#### 3.4.1 Where ReLU Is Applied
 
 In each layer of the encoder and decoder, the structure of the feed-forward network is:
 
@@ -282,7 +282,7 @@ $$
 
 The **first layer** is a **linear transformation** + **ReLU activation**, and the **second layer** is only a **linear transformation**, with no activation function.
 
-#### 2. Specific Parameter Configuration
+#### 3.4.2 Specific Parameter Configuration
 
 According to the original paper:
 
@@ -294,11 +294,11 @@ According to the original paper:
 
 The **complete pipeline** is: first a **512-dimensional input**, then a **linear layer (512→2048)**, then **ReLU**, then a **linear layer (2048→512)**, and finally the output.
 
-#### 3. Why Use ReLU?
+#### 3.4.3 Why Use ReLU?
 
 ReLU is **computationally efficient**; compared with Sigmoid/Tanh, ReLU's derivative is simple to compute (0 or 1).
 
-#### 4. The Basic Qualities a Good Activation Function Needs
+#### 3.4.4 The Basic Qualities a Good Activation Function Needs
 
 First, it must be **nonlinear**. An activation function must be nonlinear. For a linear function, no matter how deep the neural network is, it is always essentially a simple network that can only fit simple functions—a multi-layer network would degenerate into a single-layer linear model. A nonlinear function can increase the network's complexity and enable it to learn complex problems.
 
@@ -306,7 +306,7 @@ Second, it must have **differentiability**. It should be differentiable almost e
 
 Third, **computation must be simple and efficient**. An activation function is called billions of times during model inference and training, so under such high-magnitude computation, its computational cost should not be too high.
 
-### 3.2 Extended Reading: From This Course's Basics to the State-of-the-Art (SOTA)
+### 3.5 Extended Reading: From This Course's Basics to the State-of-the-Art (SOTA)
 
 As an introductory course, this course explains the most classic and fundamental Transformer components. However, industry and academia have been evolving rapidly, and many components have already been replaced by more advanced schemes. The table below only provides a **terminology comparison**, without detailed explanation, for interested students to follow as a guide and extend their learning on their own.
 
@@ -324,15 +324,15 @@ As an introductory course, this course explains the most classic and fundamental
 | Position extrapolation / long context | Fixed context length | → RoPE interpolation/extension (NTK, YaRN, etc.) → Long-context architectures |
 | Compute precision | FP32 | → FP16 / BF16 → FP8 → INT8 / INT4 |
 
-## 5 Key Foundational Concepts
+## 4 Key Foundational Concepts
 
-### 1. Prompt Engineering
+### 4.1 Prompt Engineering
 
 This is the most basic and direct way of interacting. A **prompt** is the instruction or question you give the AI—the input text that triggers the model to generate content. **Prompt engineering** is a systematic set of methods for studying and designing prompts, with the goal of making the AI output what you want more stably and accurately.
 
 It is like a document written for the AI; the key is to clearly state the background and requirements so that the model's output is more controllable. When a task becomes complex and a large amount of dynamic information needs to be stuffed into the prompt, the prompt becomes bloated and its effectiveness declines.
 
-### 2. Context Engineering
+### 4.2 Context Engineering
 
 If prompt engineering is about asking the question well, then context engineering is about preparing all the background material for the conversation. **Context** refers to all the information provided to the LLM during a single inference process, **including the prompt, conversation history, external data**, and so on. **Context engineering** is the discipline of designing and optimizing this information to improve the AI's understanding and task performance.
 
@@ -340,19 +340,19 @@ Context engineering is not about dumping all the material on the LLM. It is resp
 
 Doing context engineering well is important: you need to arrange what information to give the model at what moment. **The first reason is that the model's context window is limited**—feeding all the information into the model would exhaust its context window and also disperse the model's attention, which manifests as the model becoming "dumber." **The second reason is cost**—carrying all the information for inference every time consumes more tokens. Therefore, doing context engineering well is important.
 
-### 3. Skill
+### 4.3 Skill
 A **skill** can be understood as a **structured prompt** or a **professional skill pack for the AI to use**. It encapsulates the experience, workflow, and rules for completing a particular task into a reusable, standardized module. A skill tells the model how to do something and what tools to call.
 
 If a large model is a person, then a skill is the operating manual—or instruction booklet—that lets the brain accurately complete specific work. It solves the problem of the large model knowing what to do but not knowing exactly how to do it. Skills are the hands and feet of an Agent, the core capability unit for executing specific tasks.
 
-### 4. Retrieval-Augmented Generation (RAG)
+### 4.4 Retrieval-Augmented Generation (RAG)
 **RAG (Retrieval-Augmented Generation)** is a technique that lets the LLM first retrieve the latest, most relevant information from an external knowledge base before generating an answer.
 
 It effectively addresses two core pain points of LLMs: first, stale knowledge, since the model's training data has a cutoff date; and second, the tendency to confidently talk nonsense—that is, model hallucination. By introducing authoritative external knowledge as a basis, RAG can significantly improve the accuracy and reliability of answers.
 
 RAG is a key technical means for implementing context engineering. It is responsible for retrieving information from long-term memory (such as a vector database) to fill the model's short-term working memory (the context window).
 
-### 5. Agent
+### 4.5 Agent
 
 If all the previous concepts are about making the AI think and answer better, then an **Agent** is about making the AI start to act. An **AI Agent** is a software entity that can autonomously perceive its environment, understand goals, and execute tasks to achieve those goals.
 
@@ -360,13 +360,13 @@ It is like a person with the capacity for autonomous behavior. It has **autonomy
 
 A typical agent workflow is **goal decomposition + skill invocation + result verification**. After receiving a task, it decomposes the steps on its own, calls the corresponding skills to execute them, and checks the results.
 
-### 6. Harness
+### 4.6 Harness
 
 A **Harness** can be understood as the **runtime base or operating system of an agent**. It is not a specific model, but an engineering framework that provides the model with hands, feet, and a nervous system.
 
 It handles all the engineering matters that enable the model to actually get work done, such as tool invocation, task planning, execution scheduling, and memory management. A widely circulated formula is: **Model (brain) + Harness (hands, feet, and nervous system) = Agent**. It lets you build a custom Agent by combining various plugins, like building with blocks.
 
-### Other Foundational Concepts
+### 4.7 Other Foundational Concepts
 
 **Token**: The smallest unit into which text is split by the tokenizer. What the model actually processes is the integer IDs corresponding to the tokens. For DeepSeek, one token is roughly equivalent to 1.6–1.7 Chinese characters.
 
@@ -378,13 +378,13 @@ It handles all the engineering matters that enable the model to actually get wor
 
 **Context Window**: The maximum number of tokens the model can process at once, which determines how long a piece of text it can see. Today's mainstream flagship models generally support a 1M context window, roughly enough to fit in about 1.5 to 2 copies of *Dream of the Red Chamber*.
 
-## Summary and Quiz
+## 5 Summary and Quiz
 
-### Chapter Summary
+### 5.1 Chapter Summary
 
 In this chapter, we have built an overall understanding of large language models: an LLM is essentially a large-scale neural network that "predicts the next token," and under the scaling effect it gives rise to diverse emergent abilities. It has undergone rapid development from the proposal of the Transformer to today's flourishing of open-source models, while also having boundaries such as hallucination and knowledge staleness. Its core architecture, the Transformer, is composed of four major components—**positional encoding, multi-head attention, layer normalization and residual connections, and the feed-forward network**—and achieves efficient parallel computation on top of the self-attention mechanism. These concepts are the foundation for the subsequent study of inference pipelines and system optimization.
 
-### Quiz
+### 5.2 Quiz
 
 1. Explain in one sentence what the core capability of an LLM is, and explain why "predicting the next token" can bring about such rich capabilities.
 2. Why does the self-attention mechanism need positional encoding? How does sinusoidal positional encoding provide positional information?

@@ -2,7 +2,7 @@
 
 Welcome to the zero-to-sglang course. This is the second part of the course. In the previous chapter we introduced the specific process of large-model inference and learned about the life journey of a token as well as technologies such as the KV Cache. Next, we will introduce the architecture of the GPU and the execution flow of an LLM on the GPU. As the foundation of large-model training and inference, the GPU runs through the entire life cycle of a large model, so it is necessary for us to learn GPU-related knowledge. Let us now begin this chapter.
 
-## Chapter Overview
+## 0 Chapter Overview
 
 This chapter revolves around **GPU hardware architecture** and the **execution flow of large-model inference on the GPU**, and is divided into four parts:
 
@@ -19,7 +19,7 @@ We explain the three-level scheduling of Block/Warp/Thread under the SIMT execut
 We explain why LLM inference is inseparable from the GPU, and break inference down into three stages: preprocessing, the compute-intensive Prefill, and the memory-intensive Decode.
 
 
-## 1. GPU Architecture Fundamentals
+## 1 GPU Architecture Fundamentals
 
 ### 1.1 The Origin of the GPU: The Graphics Processor
 
@@ -37,13 +37,13 @@ Since a straight line is formed by two points, we find that for a line we only s
 People then thought of creating a computing unit that can **perform large amounts of simple multiplication and addition in parallel**, which is the GPU. There is no superiority or inferiority between the CPU and the GPU; they are simply units designed to perform different functions. The computing units of the GPU are called **CUDA cores**.
 
 
-#### 1. The Sprouting of Graphics Display (Before the 1980s)
+#### 1.1.1 The Sprouting of Graphics Display (Before the 1980s)
 
 **In the era without GPUs**, computers relied entirely on the CPU to compute graphics for display. **1981**: The CGA display card equipped in the IBM PC could only display 16 colors, like an electronic photo frame, with all computation done by the CPU. **1987**: IBM introduced the VGA standard, capable of displaying 256 colors, but it was still a pure display function with no computing capability.
 
 **The key** was that ATi was founded in 1985 and began using ASIC technology to make graphics chips. In 1992, ATi's Mach32 graphics card integrated **graphics acceleration** functionality for the first time, which was the starting point of the GPU.
 
-#### 2. The Melee of 3D Accelerator Cards (1990s)
+#### 1.1.2 The Melee of 3D Accelerator Cards (1990s)
 
 The 1990s were the golden age of graphics accelerators, but the formal name "GPU" did not yet exist.
 
@@ -51,7 +51,7 @@ The 1990s were the golden age of graphics accelerators, but the formal name "GPU
 
 But standards among the various vendors were chaotic and mutually incompatible; the chips could only handle specific 3D tasks and were single-purpose; at the time they were called 3D accelerator cards, and there was still no concept of a GPU.
 
-#### 3. The Formal Birth of the GPU: NVIDIA (1999–2006)
+#### 1.1.3 The Formal Birth of the GPU: NVIDIA (1999–2006)
 
 In **1999**, NVIDIA released the GeForce 256 and **proposed the concept of the GPU (Graphics Processing Unit) for the first time**. This name distinguished it from the traditional CPU and declared **the birth of the graphics card**.
 
@@ -59,7 +59,7 @@ The GeForce 256 was revolutionary. In terms of **hardware T&L technology**, it l
 
 In 2000 the market underwent a major reshuffle. After 2000, old vendors such as 3dfx and Matrox gradually withdrew, leaving only NVIDIA GeForce and ATI Radeon to compete for supremacy (ATI was acquired by AMD in 2006).
 
-#### 4. The Programmable Era: (2001–2012)
+#### 1.1.4 The Programmable Era: (2001–2012)
 
 Phase One: Fixed-Pipeline Shaders (2001–2006)
 
@@ -76,13 +76,13 @@ In **2006**, NVIDIA released the GeForce 8800 GTX (the G80 core), **the first GP
 | Fermi (2010) | Supported double-precision computation, ECC error correction | GTX 480 |
 | Kepler (2012) | Dynamic parallelism, high energy efficiency | GTX 680 |
 
-#### 5. The General-Purpose Computing Era (2012–2018)
+#### 1.1.5 The General-Purpose Computing Era (2012–2018)
 
 **2012** was the turning point: AI researchers used GPUs to train deep neural networks, making AlexNet's image-recognition accuracy astound the world. From then on, the GPU was upgraded from a gaming graphics card to an AI engine.
 
 NVIDIA built the **NVIDIA CUDA ecosystem**, allowing programmers to easily harness GPU computing power.
 
-#### 6. The Difference Between the CPU (Central Processing Unit) and the GPU (Graphics Processing Unit)
+#### 1.1.6 The Difference Between the CPU (Central Processing Unit) and the GPU (Graphics Processing Unit)
 
 The CPU is the execution model we first came into contact with. Programs run sequentially, executing instructions step by step in a single thread. Supporting this execution mode requires a large control unit and fast execution capability, because there is a great deal of branching and conditional control logic. Therefore the CPU devotes a large amount of chip area to branch prediction (see the figure below); although the **number of cores is limited, they run extremely fast**. By contrast, the GPU has a vast number of **computing units** (ALUs)—those little green squares. **Only a very small portion of the chip area is used for control logic, using a small amount of control logic to coordinate a huge number of parallel-computing units.** Conceptually, this reflects the different priorities of the CPU and the GPU.
 
@@ -244,7 +244,7 @@ In GPU operation, we divide thinking into three levels of granularity: **block, 
 <p><em>Figure 7. The memory view of the execution model</em></p>
 </div>
 
-#### 1. Warp
+#### 2.2.1 Warp
 
 The concept of the warp originates from its working mechanism: all threads execute the same instruction in lockstep, but each processes its own different data. In the A100, each SM (Streaming Multiprocessor) can simultaneously host up to 64 active warps.
 
@@ -252,24 +252,25 @@ A **warp** is a fixed group of 32 threads and is the **smallest unit** of SM sch
 
 The SM simultaneously resides **64 warps**, with 4 warp schedulers each managing 16 warps; the 32 threads within a warp execute synchronously on the **SIMD units**. Warps are created, managed, and scheduled by the SM's SIMT (Single Instruction, Multiple Threads) unit. After a Thread Block is assigned to an SM, the SM groups the threads within it according to consecutive, increasing thread IDs.
 
-#### 2. Block
+#### 2.2.2 Block
 
 A block is a group of threads specified by the programmer, mapped onto **1 SM** for execution. A block must be entirely mapped onto the same SM for execution and cannot be split across multiple SMs.
 Each block exclusively occupies the SM's **shared memory** and **register resources**; all threads within a block must execute **within the same SM** (they cannot cross SMs).
 
-#### 3. Thread
+#### 2.2.3 Thread
 
 A thread is the **finest-grained execution unit**; each thread executes the same kernel code but operates on different data. A thread is like a "worker on an assembly line," each responsible for one data element (such as one number in a vector).
 
 Each thread has **private registers** (up to 255 per thread); the thread ID `threadIdx.x` determines which data it processes.
 
-#### 4. SIMT (Single Instruction, Multiple Threads)
+#### 2.2.4 SIMT (Single Instruction, Multiple Threads)
 
 The GPU execution model in which multiple threads (a warp) share the same instruction but operate on different data. **SIMT (Single Instruction, Multiple Threads)** is the **parallel-computing execution model** adopted by NVIDIA GPUs (including the A100). It was first introduced by NVIDIA in the G80 architecture and is the theoretical basis by which the CUDA programming model can hide hardware details and let developers program according to multi-threaded logic.
 
 SIMT is the **fundamental way the SM (Streaming Multiprocessor) executes instructions**. After a GPU kernel is launched, the **warp scheduler** within the SM fetches an instruction at the granularity of a **warp** (a fixed 32 threads), and then **broadcasts** that instruction to all active threads within the warp. Each thread, on its own CUDA core or Tensor Core, operates on the **different data** stored in its **private registers**, achieving the parallelism of "one instruction processing multiple pieces of data."
 
-#### 5. The Essential Difference from SIMD (Single Instruction, Multiple Data)
+#### 2.2.5 The Essential Difference from SIMD (Single Instruction, Multiple Data)
+
 | Feature | **SIMT (GPU)** | **SIMD (e.g., the CPU's AVX)** |
 | :--- | :--- | :--- |
 | **Execution granularity** | Multiple threads (each thread has its own independent instruction address counter and register state) | Vector lanes (the entire vector shares a single instruction address) |
@@ -419,7 +420,7 @@ Before breaking down the inference flow, let us first answer a fundamental quest
 All the input tokens are processed in parallel as **one huge matrix**. Operations such as matrix multiplication (GEMM) dominate, the **arithmetic intensity is extremely high**, and they can effectively utilize the GPU's Tensor Cores.
 
 
-#### 3.2.1. **CPU work**:
+#### 3.2.1 **CPU work**:
 
 The CPU allocates space in host memory for the input matrices (such as Q and K) and the result matrix, loads the input matrix data (such as the Q and K matrices) into CPU memory, and then calls the CUDA API to allocate space for the input and result matrices on the GPU's global memory (Global Memory, i.e., HBM).
 
@@ -448,7 +449,7 @@ After a **Streaming Multiprocessor** receives the task block assigned to it, the
 
 For this process, refer to the [document from the University of Michigan's Department of Electrical Engineering and Computer Science](https://web.eecs.umich.edu/~fessler/irt/irt/mex/src/fdk/fdk-cuda-wei/doc/).
 
-### 3.4 The Prefill and Decode Stages
+### 3.3 The Prefill and Decode Stages
 
 The Prefill and Decode stages were explained in detail in Chapter 2 and are not repeated here; we only explain the GPU-related content.
 
@@ -457,35 +458,35 @@ The Prefill and Decode stages were explained in detail in Chapter 2 and are not 
 **The Decode stage**: generates output token by token; it is **matrix-vector multiplication (GEMV)**, **memory-access-intensive**, with the main bottleneck being moving the model weights and the KV Cache from HBM. It is strictly serial. After generating the first token, the model enters the Decode stage. Its task is to autoregressively predict the next token based on all previously generated tokens and the KV Cache. This stage processes only **the vector of one new token** at a time. The main operation is matrix-vector multiplication, and the amount of computation is far smaller than in the Prefill stage. At this point, **reading the entire model's weights and the huge KV Cache from video memory (HBM) becomes the performance bottleneck**. The GPU's computing units are often idle while waiting for data.
 
 
-### 3.5 Summary
+### 3.4 Summary
 
 | Stage | Core Task | Computation Type | GPU Bottleneck | Key Optimization |
 | :--- | :--- | :--- | :--- | :--- |
 | **Prefill** | Process the input prompt | **Compute-intensive** | Tensor Core compute power | Maximize parallelism, make good use of matrix multiplication |
 | **Decode** | Generate token by token | **Memory-intensive** | Video-memory bandwidth (HBM) | KV Cache, quantization, Continuous Batching |
 
-## 4. Summary and Quiz
+## 4 Summary and Quiz
 
 ### 4.1 Course Summary
 
 This chapter revolves around two main threads—**GPU hardware architecture** and the **execution flow of large-language-model inference on the GPU**—and its core content can be summarized as:
 
-#### 1. **The Birth and Design Philosophy of the GPU**:
+#### 4.1.1 **The Birth and Design Philosophy of the GPU**:
 
 The GPU evolved from a graphics processor into an AI accelerator. Its essence is to trade **a large number of simple computing units (CUDA cores)** and **very little control logic** for **extremely high data throughput**, forming a sharp contrast with the CPU's "low-latency, complex-logic" design goal.
 
-#### 2. **The Hierarchical Architecture of the A100 GPU**:
+#### 4.1.2 **The Hierarchical Architecture of the A100 GPU**:
 
 From the chip's global level (GPC → TPC → SM) to the SM's internals (CUDA cores, Tensor Cores, shared memory, register file), understand the role of each level and the data-flow path. Among them, the **SM** is the basic atomic unit of execution, and the **Tensor Core** is the dedicated circuit that accelerates matrix multiplication.
 
-#### 3. **The GPU Execution Model**:
+#### 4.1.3 **The GPU Execution Model**:
 
 With **SIMT (Single Instruction, Multiple Threads)** at its core, threads are scheduled at the granularity of a **warp (32 threads)**, blocks are mapped to SMs, and threads perform the specific operations. Key concepts include **Warp Divergence**, **coalesced memory access**, and **hiding latency through warp switching**.
 
-#### 4. **The GPU Memory Hierarchy and Bottlenecks**:
+#### 4.1.4 **The GPU Memory Hierarchy and Bottlenecks**:
 Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) comes next; shared memory (192KB/SM) and registers (256KB/SM) are extremely fast but small in capacity. **The growth of memory bandwidth lags far behind the growth of compute power**, which constitutes the "memory wall" and is also the main bottleneck of LLM inference.
 
-#### 5. **The Two Stages of LLM Inference**:
+#### 4.1.5 **The Two Stages of LLM Inference**:
 
 **Prefill**: processes the input prompt, batched matrix multiplication (GEMM), **compute-intensive**, with the Tensor Core saturated.
 **Decode**: generates token by token, matrix-vector multiplication (GEMV), **memory-intensive**, with HBM bandwidth as the bottleneck.
