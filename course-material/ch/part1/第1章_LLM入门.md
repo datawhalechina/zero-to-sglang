@@ -159,7 +159,7 @@ $$
 \text{Head}_i = \text{Attention}(Q_i, K_i, V_i) = \text{softmax}\left(\frac{Q_i K_i^T}{\sqrt{d_k}}\right)V_i
 $$
 
-其中 $Q_i, K_i, V_i$ 的形状均为$[batchSize, seqLen, d_k]$，因此 $ Q_i K_i^T$ 的形状为 $[batchSize, seqLen, seqLen]$，表示该头内部所有位置两两之间的注意力分数。该头的输出 $\text{Head}_i$ 形状同样为 $[batchSize, seqLen, d_k]$。
+其中 $Q_i, K_i, V_i$ 的形状均为 $[batchSize, seqLen, d_k]$，因此 $Q_i K_i^T$ 的形状为 $[batchSize, seqLen, seqLen]$，表示该头内部所有位置两两之间的注意力分数。该头的输出 $\text{Head}_i$ 形状同样为 $[batchSize, seqLen, d_k]$。
 
 **第三步：拼接与最终线性变换**
 
