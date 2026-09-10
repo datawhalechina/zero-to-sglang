@@ -168,7 +168,7 @@ The SM is the fundamental unit that maps a Thread Block onto physical hardware a
 
 The NVIDIA A100 Tensor Core is its **third-generation Tensor Core** technology, the core computing unit specially designed for the A100 GPU to **accelerate AI training, high-performance computing (HPC), and data analytics**. Through dedicated hardware and brand-new precision formats, it achieves an order-of-magnitude performance leap in core operations such as matrix multiplication.
 
-The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (FMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. It can achieve computation speed close to FP16 while maintaining the precision and range of FP32, without changing the code. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further increase** throughput.
+The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (FMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. TF32 uses an 8-bit exponent and a 10-bit mantissa, providing the numerical range of FP32 and the mantissa precision of FP16. Tensor Cores perform multiplication in TF32 and accumulate the results in FP32. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further increase** throughput.
 
 The A100 Tensor Core provides astonishing computational throughput, with specific performance as follows:
 
@@ -177,12 +177,12 @@ The A100 Tensor Core provides astonishing computational throughput, with specifi
 | FP16/BF16 | 312 TFLOPS | Half precision, the workhorse precision of deep learning. |
 | INT8      | 624 TOPS   | 8-bit integer, mainly used for AI inference, extremely fast. |
 | FP64      | 19.5 TFLOPS | Double precision, meeting the high-precision needs of scientific computing, etc. |
-| TF32      | 156 TFLOPS | A precision unique to the A100. |
+| TF32      | 156 TFLOPS | FP32 numerical range, FP16 mantissa precision, and FP32 accumulation. |
 
 | Precision | Sparse Tensor Core Performance (2:4) | Description |
 |------|----------------------------|----------------------------|
 | FP16/BF16 | 624 TFLOPS | Half precision, the workhorse precision of deep learning. |
-| TF32      | 312 TFLOPS | A precision unique to the A100, with FP32 precision/range at FP16 speed. |
+| TF32      | 312 TFLOPS | FP32 numerical range, FP16 mantissa precision, and FP32 accumulation. |
 | INT8      | 1248 TOPS  | 8-bit integer, mainly used for AI inference, extremely fast. |
 | FP64      | Sparsity not supported, still 19.5 TFLOPS |
 
@@ -289,7 +289,7 @@ The SIMT model is **the underlying logic of the GPU's high throughput**. It enca
 <p><em>Figure 8. The GPU's memory hierarchy model</em></p>
 </div>
 
-**The closer the memory is to the SM, the faster the access speed.** Therefore there exist **extremely high-speed memory types (such as the L1 cache and shared memory)** that are located inside the SM and have **extremely fast read/write speeds**. Components like **registers, which need to be read and written frequently, should be placed in the L1 and shared memory**.
+**The closer the memory is to the SM, the faster the access speed.** Therefore there exist **extremely high-speed memory types (such as the L1 cache and shared memory)** that are located inside the SM and have **extremely fast read/write speeds**. The **register file** resides inside the SM and stores thread-private variables and computation results.
 
 As shown in the figure, these green regions are SM clusters, while **the blue region represents the L2 cache adjacent to the SMs**. Although they are not inside the SM, their physical location is still very close, and they are **quite fast** too (although an order of magnitude slower than L1). Outside the chip (take this 3090 or PCIe A100 as an example), **DRAM memory** is actually installed next to the GPU chip, which means the data must physically **leave the chip and travel through physical connections**. You can see these yellow connectors along the edge in this chip diagram. These are the HBM connectors, which connect to the DRAM chips outside the actual GPU.
 
@@ -342,14 +342,14 @@ Moreover, in the NVIDIA architecture, all data communication between all GPU uni
 | Feature | Parameter / Description |
 |------|------------|
 | **Physical location** | **Inside each SM** |
-| **Capacity** | **[192KB/SM](https://developer.download.nvidia.cn/video/gputechconf/gtc/2020/presentations/s21819-optimizing-applications-for-nvidia-ampere-gpu-architecture.pdf?ref=blog.paperspace.com#3#1)**  |
-| **Latency** | 33 cycles |
-| **Programming control** | **Fully manual** (`__shared__`) |
-| **Visibility** | **Visible to all threads within a Block** |
+| **Capacity** | 192KB/SM combined L1 cache and shared memory, with [up to 164KB/SM configurable as shared memory](https://docs.nvidia.com/cuda/ampere-tuning-guide/) |
+| **Latency** | Measurements in Figure 8: 33 cycles for L1 cache and 23/19 cycles for shared-memory loads/stores |
+| **Programming control** | L1 cache is managed automatically by hardware; shared memory is used explicitly by the program (`__shared__`) |
+| **Visibility** | L1 cache serves threads on the SM; each block’s shared memory is accessible to threads within that block |
 
-It is a **warehouse for thread cooperation**, where threads within a block exchange data through shared memory (such as the tiling data of matrix multiplication); it enables **manual performance optimization**, where hot data can be explicitly placed into shared memory to achieve speed close to that of registers; and it has the **L1 cache function**—when not used manually, it automatically serves as an L1 cache to cache data from global memory.
+The L1 cache is managed automatically by hardware and caches data accessed by threads. Shared memory is used explicitly by the program to exchange data among threads in the same block, for example to reuse tiles in matrix multiplication.
 
-L1 is **faster than L2** and is the core of GPU performance optimization; it has high **flexibility**, being controllable by the programmer to implement complex algorithms.
+L1 cache hits and data reuse in shared memory both reduce accesses to the next memory level.
 
 #### 3.3.4 Level Four: Register File
 
@@ -416,15 +416,15 @@ All the input tokens are processed in parallel as **one huge matrix**. Operation
 
 #### 4.2.1 **CPU work**:
 
-The CPU allocates space in host memory for the input matrices (such as Q and K) and the result matrix, loads the input matrix data into CPU memory, and then calls the CUDA API to allocate space for the input and result matrices on the GPU's global memory.
+During model loading, the weights are transferred into GPU memory. When a request arrives, the CPU tokenizes the input and prepares the token IDs and other inputs.
 
 The CPU notifies the GPU to begin executing the computation via a kernel-launch instruction. This instruction defines the scale of the thread grid and thread blocks that need to be launched on the GPU.
 
 #### 4.2.2 Data Transfer
 
-The CPU and the GPU are two independent computing units, and data needs to be moved across the PCIe bus.
+The CPU transfers the token IDs and other inputs to the GPU through the A100’s PCIe 4.0 x16 interface.
 
-First, the CPU copies the input matrix data from CPU memory into the GPU's global memory (HBM). This data-movement process is one of the main bottlenecks of the entire computation flow. Because the bidirectional total bandwidth of PCIe 7 in an x16 configuration is [512 GB/s](https://pcisig.com/specifications/pcie-70-specification-version-03-now-available-members), while the A100 GPU accesses its own HBM memory at a bandwidth of up to 2 TB/s. This order-of-magnitude difference means that data transfer is often one of the most time-consuming links in the entire flow.
+The GPU performs embedding and linear projections to produce Q, K, and V, then computes attention and the feed-forward network. Intermediate results remain on the GPU for subsequent operations, ultimately producing an output token.
 
 #### 4.2.3 The GPU Computing Matrix Multiplication in Parallel
 
@@ -478,7 +478,7 @@ From the chip's global level (GPC → TPC → SM) to the SM's internals (CUDA co
 With **SIMT (Single Instruction, Multiple Threads)** at its core, threads are scheduled at the granularity of a **warp (32 threads)**, blocks are mapped to SMs, and threads perform the specific operations. Key concepts include **Warp Divergence**, **coalesced memory access**, and **hiding latency through warp switching**.
 
 #### 5.1.4 **The GPU Memory Hierarchy and Bottlenecks**:
-Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) comes next; shared memory (192KB/SM) and registers (256KB/SM) are extremely fast but small in capacity. **The growth of memory bandwidth lags far behind the growth of compute power**, which constitutes the "memory wall" and is also the main bottleneck of LLM inference.
+Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) comes next; each SM has 192KB of combined L1 cache and shared memory, with up to 164KB configurable as shared memory; the 256KB/SM register file stores thread-private data. **The growth of memory bandwidth lags far behind the growth of compute power**, which constitutes the "memory wall" and is also the main bottleneck of LLM inference.
 
 #### 5.1.5 **The Two Stages of LLM Inference**:
 
