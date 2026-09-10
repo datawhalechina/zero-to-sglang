@@ -63,7 +63,7 @@ The origin of the Transformer model can be traced back to 2017, when it was firs
 <p><em>Figure 1. The overall architecture of the Transformer</em></p>
 </div>
 
-The figure above shows the block structure of the Transformer: on the right is the **decoder block** and the **encoder block. Stacking the decoder and encoder N times forms the Transformer structure.**
+The figure above shows the block structure of the Transformer: on the left is the **encoder block**, and on the right is the **decoder block**. Stacking the decoder and encoder N times forms the Transformer structure.
 
 ### 4.1 Positional Encoding — Sinusoidal Positional Encoding
 
@@ -388,7 +388,7 @@ In this chapter, we have built an overall understanding of large language models
 
 1. Explain in one sentence what the core capability of an LLM is, and explain why "predicting the next token" can bring about such rich capabilities.
 2. Why does the self-attention mechanism need positional encoding? How does sinusoidal positional encoding provide positional information?
-4. Briefly describe the respective roles of residual connections and layer normalization.
+3. Briefly describe the respective roles of residual connections and layer normalization.
 
 ## References
 

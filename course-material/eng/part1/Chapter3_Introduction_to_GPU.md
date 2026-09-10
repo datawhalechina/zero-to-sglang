@@ -101,7 +101,7 @@ We use the A100 to introduce the specific structure of a GPU.
 
 <div align="center">
     <img src="./images/3-3-gpu-structure.png" alt="3-3-gpu-structure.png" width="800">
-<p><em>Figure 3. The overall structure of a graphics card (GPU)</em></p>
+<p><em>Figure 3. The overall structure of a graphics card (GPU). The board carrying the components is the printed circuit board (PCB).</em></p>
 </div>
 
 A cross-sectional diagram of an NVIDIA graphics card is shown in the figure. A graphics card consists of **power supply, GPU core, video memory, display interfaces, and the gold fingers**.
@@ -210,7 +210,7 @@ We have briefly introduced the structure of the A100 GPU, but we do not yet know
 
 ### 3.1 The Execution Flow of the SM (Streaming Multiprocessor)
 
-We can regard the Streaming Multiprocessor as **the basic hardware unit in the GPU for independent scheduling and execution**. When programming with tools like Triton, the level of operation corresponds to the SM. Inside each SM, it contains many **Streaming Processors** (SPs), and each streaming processor **executes a large number of threads in parallel**. It can be understood this way: the SM has a set of **control logic** that can decide what to execute, such as implementing **branch judgment**; while the SP is responsible for applying the same instruction to different pieces of data. This enables massive parallel computation. Under this architecture, each **SM is the basic unit of control granularity**, while a single SP can independently complete a large amount of computation. Take the A100 as an example: it contains 108 SMs, far exceeding the core count of most CPUs. Each SM internally integrates a large number of SPs and dedicated matrix-multiplication units—this is the basic form of its computing model. Each SM can control its dedicated components (such as Tensor Cores) to perform computation.
+We can regard the Streaming Multiprocessor as **the basic hardware unit in the GPU for independent scheduling and execution**. When programming with tools like Triton, the level of operation corresponds to a block, which is assigned to an SM for execution. Inside each SM, it contains many **Streaming Processors** (SPs), and each streaming processor **executes a large number of threads in parallel**. It can be understood this way: the SM has a set of **control logic** that can decide what to execute, such as implementing **branch judgment**; while the SP is responsible for applying the same instruction to different pieces of data. This enables massive parallel computation. Under this architecture, each **SM is the basic unit of control granularity**, while a single SP can independently complete a large amount of computation. Take the A100 as an example: it contains 108 SMs, far exceeding the core count of most CPUs. Each SM internally integrates a large number of SPs and dedicated matrix-multiplication units—this is the basic form of its computing model. Each SM can control its dedicated components (such as Tensor Cores) to perform computation.
 
 **Thread Scheduling and Execution**
 
@@ -409,7 +409,7 @@ Before breaking down the inference flow, let us first answer a fundamental quest
 
 **LLM inference is a typical compute-intensive + memory-intensive task, and the GPU is precisely hardware born for large-scale parallel computation and high-bandwidth memory access. The two are highly compatible, and this is the fundamental reason why inference is inseparable from the GPU.**
 
-### 4.2 The GPU Executing Matrix Multiplication, and Prefill & Decode
+### 4.2 The GPU Inference Execution Process
 
 All the input tokens are processed in parallel as **one huge matrix**. Operations such as matrix multiplication (GEMM) dominate, the **arithmetic intensity is extremely high**, and they can effectively utilize the GPU's Tensor Cores.
 

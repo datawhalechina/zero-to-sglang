@@ -118,7 +118,7 @@ GA100 是完整芯片的物理设计，实际产品会和白皮书中存在差�
 
 数据出自[NVIDIA A100 Tensor Core GPU Architecture](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 
-**尺寸**为双槽全高，长267mm。**功耗**：00W（80GB版）。**散热**是**被动散热**，无风扇（依赖服务器风道）。**接口**为PCIe 4.0 x16金手指 + NVLink桥接器接口；**重量**约1.4公斤。
+**尺寸**为双槽全高，长267mm。**功耗**：300W（80GB版）。**散热**是**被动散热**，无风扇（依赖服务器风道）。**接口**为PCIe 4.0 x16金手指 + NVLink桥接器接口；**重量**约1.4公斤。
 
 
 #### 2.2.2 PCB板级组件
@@ -383,7 +383,7 @@ L1**速度比L2快**，是GPU性能优化的核心；**灵活性**高，程序�
 
 | 特性 | GPU (A100) | CPU (Xeon) |
 |------|------------|------------|
-| **主存带宽** | 2TGB/s | Xeon6可达数百GB/s |
+| **主存带宽** | 2 TB/s | Xeon6可达数百GB/s |
 | **缓存控制** | 共享内存**手动控制** | 缓存完全自动 |
 | **线程寄存器** | [255个/线程](https://forums.developer.nvidia.com/t/whats-the-max-register-number-that-causes-slowdown/234969#main-container) | x86-64架构通用寄存器 16个/线程 (x86) |
 | **延迟容忍** | 通过Warp切换**隐藏延迟** | 降低延迟至上 |
