@@ -4,19 +4,13 @@ Welcome to the zero-to-sglang course. This is the second part of the course. In 
 
 ## 1 Chapter Overview
 
-This chapter revolves around **GPU hardware architecture** and the **execution flow of large-model inference on the GPU**, and is divided into four parts:
+This chapter revolves around **GPU hardware architecture** and the **execution flow of large-model inference on the GPU**, and is divided into three parts:
 
-1.  GPU architecture fundamentals:
+1. **GPU architecture fundamentals**: Starting from the origin of the GPU as a graphics processor, we compare the design philosophies of the CPU and the GPU (low latency vs. high throughput), and take the A100 as an example to break down GPC→TPC→SM→CUDA/Tensor Core.
 
-Starting from the origin of the GPU as a graphics processor, we compare the design philosophies of the CPU and the GPU (low latency vs. high throughput), and take the A100 as an example to break down GPC→TPC→SM→CUDA/Tensor Core.
+2. **The GPU execution model**: We explain the three-level scheduling of Block/Warp/Thread under the SIMT execution model, as well as the multi-level memory hierarchy of registers→shared memory→L2→global memory.
 
-2. The GPU execution model:
-
-We explain the three-level scheduling of Block/Warp/Thread under the SIMT execution model, as well as the multi-level memory hierarchy of registers→shared memory→L2→global memory.
-
-3. The execution flow of LLM inference on the GPU:
-
-We explain why LLM inference is inseparable from the GPU, and break inference down into three stages: preprocessing, the compute-intensive Prefill, and the memory-intensive Decode.
+3. **The execution flow of LLM inference on the GPU**: We explain why LLM inference is inseparable from the GPU, and break inference down into three stages: preprocessing, the compute-intensive Prefill, and the memory-intensive Decode.
 
 
 ## 2 GPU Architecture Fundamentals
@@ -174,7 +168,7 @@ The SM is the fundamental unit that maps a Thread Block onto physical hardware a
 
 The NVIDIA A100 Tensor Core is its **third-generation Tensor Core** technology, the core computing unit specially designed for the A100 GPU to **accelerate AI training, high-performance computing (HPC), and data analytics**. Through dedicated hardware and brand-new precision formats, it achieves an order-of-magnitude performance leap in core operations such as matrix multiplication.
 
-The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (FMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. It can achieve computation speed close to FP16 while maintaining the precision and range of FP32, without changing the code. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further double** throughput.
+The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (FMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. It can achieve computation speed close to FP16 while maintaining the precision and range of FP32, without changing the code. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further increase** throughput.
 
 The A100 Tensor Core provides astonishing computational throughput, with specific performance as follows:
 
@@ -200,7 +194,7 @@ Simply put, **dense** computation, during computation, takes all the numbers in 
 
 **1. Dense Computation (Default Mode)**
 
-This is standard matrix multiplication. For example, multiplying two 1024×1024 matrices requires the Tensor Core to perform about 1 billion multiply-accumulate operations. In this case, the A100's FP16 compute power is **312 TFLOPS** (i.e., 312 trillion operations per second). This is its baseline speed.
+It is essentially standard matrix multiplication. For example, multiplying two 1024×1024 matrices requires the Tensor Core to perform about 1 billion multiply-accumulate operations. In this case, the A100's FP16 compute power is **312 TFLOPS** (i.e., 312 trillion operations per second). This is its baseline speed.
 
 **2. Sparse Computation (Accelerated Mode)**
 
@@ -216,7 +210,7 @@ We have briefly introduced the structure of the A100 GPU, but we do not yet know
 
 ### 3.1 The Execution Flow of the SM (Streaming Multiprocessor)
 
-We can regard the Streaming Multiprocessor as **the basic hardware unit in the GPU for independent scheduling and execution**. When programming with tools like Triton, the level of operation corresponds to the SM. Inside each SM, it contains many **Streaming Processors** (SPs), and each streaming processor **executes a large number of threads in parallel**. It can be understood this way: the SM has a set of **control logic** that can decide what to execute, such as implementing **branch judgment**; while the SP is responsible for applying the same instruction to different pieces of data. This enables massive parallel computation. Under this architecture, each **SM is the basic unit of control granularity**, while a single SP can independently complete a large amount of computation. Take the previous-generation GPU A100 as an example: it contains 108 SMs, far exceeding the core count of most CPUs. Each SM internally integrates a large number of SPs and dedicated matrix-multiplication units—this is the basic form of its computing model. Each SM can control its dedicated components (such as Tensor Cores) to perform computation.
+We can regard the Streaming Multiprocessor as **the basic hardware unit in the GPU for independent scheduling and execution**. When programming with tools like Triton, the level of operation corresponds to the SM. Inside each SM, it contains many **Streaming Processors** (SPs), and each streaming processor **executes a large number of threads in parallel**. It can be understood this way: the SM has a set of **control logic** that can decide what to execute, such as implementing **branch judgment**; while the SP is responsible for applying the same instruction to different pieces of data. This enables massive parallel computation. Under this architecture, each **SM is the basic unit of control granularity**, while a single SP can independently complete a large amount of computation. Take the A100 as an example: it contains 108 SMs, far exceeding the core count of most CPUs. Each SM internally integrates a large number of SPs and dedicated matrix-multiplication units—this is the basic form of its computing model. Each SM can control its dedicated components (such as Tensor Cores) to perform computation.
 
 **Thread Scheduling and Execution**
 
@@ -228,7 +222,7 @@ The SM internally has **4 independent instruction pipelines**, and each clock cy
 
 **Data Caching and Sharing**
 
-The SM has a built-in **192KB L1 cache / shared memory**, allowing all CUDA cores within this SM to quickly access data, with latency 100 times lower than global video memory.
+The SM has a built-in **192KB L1 cache / shared memory**, allowing all CUDA cores within this SM to quickly access data, with much lower latency than global video memory.
 
 ### 3.2 A Detailed Explanation of the Core Terms of the Execution Model
 
@@ -285,7 +279,7 @@ The SM cannot let active and inactive threads execute different instructions sim
 
 If the branch divergence within the same warp is severe, the two paths **execute serially**, and the performance loss is close to half (or even more). Therefore, the key to optimizing SIMT programs is to **avoid branch divergence within the same warp as much as possible**.
 
-The SIMT model is **the underlying logic of the GPU's high throughput**. It encapsulates hardware-level **SIMD-style dense computation** into **MIMD (Multiple Instruction, Multiple Data)-style programming flexibility**, enabling developers to write multi-threaded code similar to that of the CPU, while the hardware, through warp scheduling, masking, and convergence mechanisms, automatically maps thread-level parallelism into a high-throughput computation stream. This is precisely the basis on which the A100's SM can efficiently and cooperatively schedule the instruction execution of CUDA cores and Tensor Cores.
+The SIMT model is **the underlying logic of the GPU's high throughput**. It encapsulates hardware-level **SIMD-style dense computation** into **SPMD-style programming flexibility**, enabling developers to write multi-threaded code similar to that of the CPU, while the hardware, through warp scheduling, masking, and convergence mechanisms, automatically maps thread-level parallelism into a high-throughput computation stream. This is precisely the basis on which the A100's SM can efficiently and cooperatively schedule the instruction execution of CUDA cores and Tensor Cores.
 
 
 ### 3.3 The GPU Memory Model
@@ -299,7 +293,7 @@ The SIMT model is **the underlying logic of the GPU's high throughput**. It enca
 
 As shown in the figure, these green regions are SM clusters, while **the blue region represents the L2 cache adjacent to the SMs**. Although they are not inside the SM, their physical location is still very close, and they are **quite fast** too (although an order of magnitude slower than L1). Outside the chip (take this 3090 or PCIe A100 as an example), **DRAM memory** is actually installed next to the GPU chip, which means the data must physically **leave the chip and travel through physical connections**. You can see these yellow connectors along the edge in this chip diagram. These are the HBM connectors, which connect to the DRAM chips outside the actual GPU.
 
-You can see on the left side of the figure above the **speed** required to access these memories. The access speed of the memory inside the SM is much faster—it takes only about 20 clock cycles to fetch data from it—whereas accessing the L2 cache or global memory takes 200 to 300 clock cycles. This **10x gap severely impacts performance**. If a piece of computation needs to access global memory, it may mean that your SM has no work to do—the matrix multiplications are all done, the tasks are exhausted, and it can only spin idle. In this case **utilization will not be high**. This will, to some extent, become the central theme in thinking about memory architecture, and it is also the key to understanding how the GPU works.
+You can see on the left side of the figure above the **speed** required to access these memories. The access speed of the memory inside the SM is much faster—it takes only about 20 clock cycles to fetch data from it—whereas accessing the L2 cache or global memory takes 200 to 300 clock cycles. This **gap severely impacts performance**. If a piece of computation needs to access global memory, it may mean that your SM has no work to do—the matrix multiplications are all done, the tasks are exhausted, and it can only spin idle. In this case **utilization will not be high**. This will, to some extent, become the central theme in thinking about memory architecture, and it is also the key to understanding how the GPU works.
 
 First are the registers, **which are extremely fast storage units** used to hold individual numeric data. Local memory, shared memory, and global memory increase progressively in the memory hierarchy, and their speed becomes slower and slower.
 
@@ -335,9 +329,9 @@ Global memory provides **massive capacity** (80GB), able to accommodate the huge
 | **Programming control** | **Automatic management** (hardware-controlled) |
 | **Visibility** | All threads on all SMs |
 
-It can **accelerate global data** by automatically caching hot data from global memory (such as frequently accessed model weights); it is a **data-sharing hub**, where SMs exchange data through the L2 cache; and it can **guarantee data consistency**, so the L2 data seen by all SMs is consistent.
+The L2 cache can **accelerate global data** by automatically caching hot data from global memory (such as frequently accessed model weights); it is a **data-sharing hub**, where SMs exchange data through the L2 cache; and it can **guarantee data consistency**, so the L2 data seen by all SMs is consistent.
 
-The L2 cache can alleviate the memory-wall bottleneck—this is the L2 cache's most fundamental role. By caching frequently accessed data (such as model weights), the L2 cache avoids accessing the slow video memory (HBM) every time, which can significantly reduce latency and improve effective bandwidth.
+The L2 cache can also alleviate the memory-wall bottleneck—this is the L2 cache's most fundamental role. By caching frequently accessed data (such as model weights), the L2 cache avoids accessing the slow video memory (HBM) every time, which can significantly reduce latency and improve effective bandwidth.
 
 Moreover, in the NVIDIA architecture, all data communication between all GPU units (including all SMs) and the video memory (HBM) must pass through the L2 cache. It can be said that the L2 is the data hub of the entire GPU. Unlike the L1 cache, which is private to each SM, the L2 cache is shared by all SMs of the entire GPU. This means that threads on different SMs can efficiently share data, achieving cross-SM data communication.
 
@@ -368,7 +362,7 @@ L1 is **faster than L2** and is the core of GPU performance optimization; it has
 
 The register file can achieve **zero-latency computation**; it stores threads' local variables and temporary results. It also achieves **extreme parallelism**, with 255 registers per thread, supporting deep pipelining.
 
-The characteristic of the register file is that it is **fast**, with 1-cycle latency. But it is **expensive**, and the register file has a small capacity. Its **capacity limit determines the degree of parallelism**: the fewer registers used, the more warps an SM can reside.
+The characteristic of the register file is that it is **fast**, but **expensive**, because the register file has a small capacity. Its **capacity limit determines the degree of parallelism**: the fewer registers used, the more warps an SM can reside.
 
 
 #### 3.3.5 Why GPU Memory Is Divided into So Many Levels
@@ -376,9 +370,9 @@ The characteristic of the register file is that it is **fast**, with 1-cycle lat
 
 In the physical world, the upper limit of speed is the speed of light. It takes time for an electrical signal to propagate through a wire, and the shorter the physical distance, the naturally lower the transmission latency. The latency of on-chip communication is far lower than that of off-chip communication.
 
-The closer the memory is to the GPU's computing cores, the faster its speed, but the smaller its capacity, due to the chip's space constraints. The farther from the GPU core, the larger the memory capacity, but the lower the speed. Layering is **the only economically feasible solution**. This is a compromise among speed, capacity, and cost.
+The closer the memory is to the GPU's computing cores, the faster its speed, but the smaller its capacity, due to the chip's space constraints. The farther from the GPU core, the larger the memory capacity, but the lower the speed.
 
-Data just accessed is very likely to be accessed again (such as the weights in a loop), so placing it in global memory incurs a large overhead. In addition, there is **spatial locality**: adjacent data is very likely to be accessed together (such as elements in the same row of a matrix).
+In addition, data just accessed is very likely to be accessed again (such as the weights in a loop), so placing it in global memory incurs a large overhead. There is also **spatial locality**: adjacent data is very likely to be accessed together (such as elements in the same row of a matrix).
 
 **The GPU's solution** is to divide into levels: the **L2 cache** exploits temporal locality, caching repeatedly accessed weights; **shared memory** exploits spatial locality, manually loading tiling data; and the **warp** exploits the broadcast feature of constant memory, serving 32 threads with a single read.
 
@@ -422,7 +416,7 @@ All the input tokens are processed in parallel as **one huge matrix**. Operation
 
 #### 4.2.1 **CPU work**:
 
-The CPU allocates space in host memory for the input matrices (such as Q and K) and the result matrix, loads the input matrix data (such as the Q and K matrices) into CPU memory, and then calls the CUDA API to allocate space for the input and result matrices on the GPU's global memory (Global Memory, i.e., HBM).
+The CPU allocates space in host memory for the input matrices (such as Q and K) and the result matrix, loads the input matrix data into CPU memory, and then calls the CUDA API to allocate space for the input and result matrices on the GPU's global memory.
 
 The CPU notifies the GPU to begin executing the computation via a kernel-launch instruction. This instruction defines the scale of the thread grid and thread blocks that need to be launched on the GPU.
 
