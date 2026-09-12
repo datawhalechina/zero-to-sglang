@@ -14,8 +14,6 @@ Use [Chapter 1 Introduction to LLM](./part1/Chapter1_Introduction_to_LLM.md) as 
 - Leave one blank line between paragraphs and between headings and content. Do not simulate paragraph spacing with repeated blank lines, `<br>`, or trailing spaces.
 - Preserve indentation inside code blocks, nested lists and their continuation lines, the single separator space after a blockquote marker, and structural indentation inside math and HTML containers. These are not first-line paragraph indentation. Always use fenced code blocks for code.
 
-The two Part 0 lessons also need an introduction after the title and must follow the paragraph rules. Their level-1 titles are `# Part 0.1 Coding Ethics and Open-Source Spirit` and `# Part 0.2 Deploy Your First SGLang Server`. They retain their introductory and procedural section structure; the learning objectives, numbering, and endings for Parts I–IV are not required. A placeholder containing only a title and a writing-in-progress notice is exempt from the introduction, objectives, and ending requirements until body content is added.
-
 ## Copyable chapter skeleton
 
 Replace the chapter number, title, and placeholder text. When adding body sections, keep numbering continuous and update the summary section numbers accordingly.
