@@ -144,15 +144,16 @@ Based on this flow, we can examine the underlying computation of Prefill and Dec
 &emsp;&emsp;The Prefill stage performs **one complete forward pass** over the prompt currently scheduled (either a single request or a batch of packed requests). The model **processes all input tokens in parallel**, **builds and writes the initial KV cache**, and produces the logits for the first generated token. Consider Prefill for LLaMA-7B:
 
 - Two user requests, with a total of **N = 3000** tokens.
-- Model config: $L = 32$ layers, hidden dimension $d = 4096$, FFN intermediate dimension approximately $4d = 16384$, and $\text{heads} = 32$ attention heads.
+- Model config: $L = 32$ layers, hidden dimension $d = 4096$ , FFN intermediate dimension approximately $\frac{8}{3}d=10923$ , and $\text{heads} = 32$ attention heads.
 
 **1. FLOPs estimate for one complete forward pass over one batch**
 
 The main computations in one forward pass are:
 
-- **QKV + output projection**: four linear layers, totaling $2 \times 4 \times N d^{2}$.
-- **FFN**: two linear layers for up-projection and down-projection, totaling $2 \times 2 \times (4d \times Nd)$.
-- **Attention core computation**: $QK^{\top}$ and score $\times V$, totaling $2 \times 2 \times N^{2} d$.
+- **QKV + Output Projection** 4 linear layers, totaling $2 \times 4 \times Nd^{2}=8Nd^2$ 
+- **FFN** 2 up-projection layers + 1 down-projection layer, totaling $2 \times 3 \times (\frac{8}{3}d \times Nd)=16Nd^2$ 
+- **Attention Core Computation**  $QK^{\top}$ and $\mathrm{score}\times V$, totaling $2 \times 2 \times N^{2}d=4N^{2}d$ .
+
 
 The total for one layer is $24 N d^{2} + 4 N^{2} d$, and for the entire model $\text{Total FLOPs} \approx L \times \bigl(24 N d^{2} + 4 N^{2} d\bigr)$. Substituting the values, the computation per layer is:
 
@@ -204,7 +205,8 @@ Here, $S$ is the current sequence length, i.e., the number of historical tokens 
 - **Linear projections + FFN**: $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOPs/layer}$.
 - **Attention**: $4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOPs/layer}$.
 
-&emsp;&emsp;The **total memory traffic** is approximately **15.5 GB** (including both reads and writes; the newly written 0.5 MB can be considered negligible). Assuming the same A100 40GB, with an HBM bandwidth of 1.6 TB/s, the theoretical minimum time required to transfer approximately 15.5 GB of data between HBM and the compute units is $\frac{15.5\ \text{GB}}{1600\ \text{GB/s}} \approx 9.7\ \text{ms}$. Compared with the theoretical computation time based on the $\text{FLOPs}$, the memory transfer time is longer; therefore, **the GPU's compute units cannot be fully utilized**.
+&emsp;&emsp;**Total computation for 32 layers = Linear Projection + FFN + Attention** ≈ **14.4 GFLOPs**. Based on the peak computational performance of an **A100 40GB**, the theoretical computation time is only approximately **0.05 ms**. However, the actual latency is far higher than this value, and more importantly, **memory consumption is the bigger bottleneck**.
+
 
 **2. Memory traffic and bottleneck analysis**
 
