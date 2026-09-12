@@ -187,6 +187,10 @@ No. The course starts from inference concepts. Low-level topics such as attentio
 </details>
 
 
+## 💬 Reader Community
+
+Join the zero-to-sglang reader community to learn together, ask questions, and share ideas: [Join our Discord community](https://discord.gg/4CVfSBgCuu)
+
 ## 👥 Contributors
 
 
