@@ -2,7 +2,7 @@
 
 Welcome to the zero-to-sglang course. This is the second part of the course. In the previous chapter we introduced the specific process of large-model inference and learned about the life journey of a token as well as technologies such as the KV Cache. Next, we will introduce the architecture of the GPU and the execution flow of an LLM on the GPU. As the foundation of large-model training and inference, the GPU runs through the entire life cycle of a large model, so it is necessary for us to learn GPU-related knowledge. Let us now begin this chapter.
 
-## 1 Chapter Overview
+## 1 Learning Objectives
 
 This chapter revolves around **GPU hardware architecture** and the **execution flow of large-model inference on the GPU**, and is divided into three parts:
 
@@ -11,7 +11,6 @@ This chapter revolves around **GPU hardware architecture** and the **execution f
 2. **The GPU execution model**: We explain the three-level scheduling of Block/Warp/Thread under the SIMT execution model, as well as the multi-level memory hierarchy of registers→shared memory→L2→global memory.
 
 3. **The execution flow of LLM inference on the GPU**: We explain why LLM inference is inseparable from the GPU, and break inference down into three stages: preprocessing, the compute-intensive Prefill, and the memory-intensive Decode.
-
 
 ## 2 GPU Architecture Fundamentals
 
@@ -29,7 +28,6 @@ When we open a 3D model in a game, we can see that the 3D model is composed of o
 Since a straight line is formed by two points, we find that for a line we only store **the information of the two endpoints**, and the pixel points in the middle are computed and rendered in real time. From the coordinates of the two vertices we can compute the slope and intercept, and thus calculate the positions of the points between the two lines. Although these are all simple calculations—only a large number of simple multiplications and additions—the CPU is inherently built to execute complex logic and can only compute them one by one, so the **computation time is very long**.
 
 People then thought of creating a computing unit that can **perform large amounts of simple multiplication and addition in parallel**, which is the GPU. There is no superiority or inferiority between the CPU and the GPU; they are simply units designed to perform different functions. The computing units of the GPU are called **CUDA cores**.
-
 
 #### 2.1.1 The Sprouting of Graphics Display (Before the 1980s)
 
@@ -62,7 +60,6 @@ In **2001**, Microsoft's DirectX 8 introduced the **vertex shader** and the **pi
 Phase Two: Unified Shader Architecture (2006–2012)
 
 In **2006**, NVIDIA released the GeForce 8800 GTX (the G80 core), **the first GPU with a unified shader architecture**. Originally the vertex shader and the pixel shader were separate; now they became general-purpose. Computing resources could be allocated dynamically, raising utilization from 50% to over 90%. At the same time, NVIDIA released **CUDA** technology, enabling the GPU to run C programs.
-
 
 | Architecture / Year | Core Technology | Representative Product |
 |------------|----------|----------|
@@ -119,7 +116,6 @@ GA100 is the physical design of the complete chip; actual products differ from t
 Data source: [NVIDIA A100 Tensor Core GPU Architecture](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 
 **Dimensions**: dual-slot full-height, 267 mm long. **Power consumption**: 300W (80GB version). **Cooling** is **passive**, with no fan (relying on the server's airflow ducting). **Interface**: PCIe 4.0 x16 gold fingers + NVLink bridge connector; **weight** about 1.4 kg.
-
 
 #### 2.2.2 PCB Board-Level Components
 
@@ -281,7 +277,6 @@ If the branch divergence within the same warp is severe, the two paths **execute
 
 The SIMT model is **the underlying logic of the GPU's high throughput**. It encapsulates hardware-level **SIMD-style dense computation** into **SPMD-style programming flexibility**, enabling developers to write multi-threaded code similar to that of the CPU, while the hardware, through warp scheduling, masking, and convergence mechanisms, automatically maps thread-level parallelism into a high-throughput computation stream. This is precisely the basis on which the A100's SM can efficiently and cooperatively schedule the instruction execution of CUDA cores and Tensor Cores.
 
-
 ### 3.3 The GPU Memory Model
 
 <div align="center">
@@ -364,9 +359,7 @@ The register file can achieve **zero-latency computation**; it stores threads' l
 
 The characteristic of the register file is that it is **fast**, but **expensive**, because the register file has a small capacity. Its **capacity limit determines the degree of parallelism**: the fewer registers used, the more warps an SM can reside.
 
-
 #### 3.3.5 Why GPU Memory Is Divided into So Many Levels
-
 
 In the physical world, the upper limit of speed is the speed of light. It takes time for an electrical signal to propagate through a wire, and the shorter the physical distance, the naturally lower the transmission latency. The latency of on-chip communication is far lower than that of off-chip communication.
 
@@ -390,7 +383,6 @@ The table below illustrates the difference between the GPU and the CPU:
 
 **The essential difference between the CPU and the GPU** is that the GPU memory system is **optimized for throughput** and tolerates high latency, while the CPU memory system is **optimized for latency** and reduces latency. This is why the GPU needs more levels and manual control.
 
-
 ## 4 The Execution Flow of LLM Inference on the GPU
 
 The core of LLM inference on the GPU is **autoregressively** generating tokens one by one, and the whole process can be clearly divided into three stages: **preprocessing**, **Prefill**, and **Decode**. This is closely related to the GPU execution model we learned earlier, and each stage has completely different demands on GPU resources.
@@ -412,7 +404,6 @@ Before breaking down the inference flow, let us first answer a fundamental quest
 ### 4.2 The GPU Inference Execution Process
 
 All the input tokens are processed in parallel as **one huge matrix**. Operations such as matrix multiplication (GEMM) dominate, the **arithmetic intensity is extremely high**, and they can effectively utilize the GPU's Tensor Cores.
-
 
 #### 4.2.1 **CPU work**:
 
@@ -451,7 +442,6 @@ The Prefill and Decode stages were explained in detail in Chapter 2 and are not 
 
 **The Decode stage**: generates output token by token; it is **matrix-vector multiplication (GEMV)**, **memory-access-intensive**, with the main bottleneck being moving the model weights and the KV Cache from HBM. It is strictly serial. After generating the first token, the model enters the Decode stage. Its task is to autoregressively predict the next token based on all previously generated tokens and the KV Cache. This stage processes only **the vector of one new token** at a time. The main operation is matrix-vector multiplication, and the amount of computation is far smaller than in the Prefill stage. At this point, **reading the entire model's weights and the huge KV Cache from video memory (HBM) becomes the performance bottleneck**. The GPU's computing units are often idle while waiting for data.
 
-
 ### 4.4 Summary
 
 | Stage | Core Task | Computation Type | GPU Bottleneck | Key Optimization |
@@ -478,6 +468,7 @@ From the chip's global level (GPC → TPC → SM) to the SM's internals (CUDA co
 With **SIMT (Single Instruction, Multiple Threads)** at its core, threads are scheduled at the granularity of a **warp (32 threads)**, blocks are mapped to SMs, and threads perform the specific operations. Key concepts include **Warp Divergence**, **coalesced memory access**, and **hiding latency through warp switching**.
 
 #### 5.1.4 **The GPU Memory Hierarchy and Bottlenecks**:
+
 Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) comes next; each SM has 192KB of combined L1 cache and shared memory, with up to 164KB configurable as shared memory; the 256KB/SM register file stores thread-private data. **The growth of memory bandwidth lags far behind the growth of compute power**, which constitutes the "memory wall" and is also the main bottleneck of LLM inference.
 
 #### 5.1.5 **The Two Stages of LLM Inference**:
@@ -494,7 +485,6 @@ Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) 
 2. Briefly describe the essential difference between the CPU and the GPU in architectural design, and explain why the GPU is suited to the matrix operations in deep learning.
 
 3. Describe the differences between the Prefill and Decode stages of LLM inference in terms of computation type, bottleneck resource, and typical optimization techniques.
-
 
 ## References
 

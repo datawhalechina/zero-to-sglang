@@ -1,8 +1,8 @@
-# Chapter 5 — Introduction to Benchmark
+# Chapter 5 Introduction to Benchmark
 
 The previous chapters analyzed the inference process and distinguished the compute and memory-access characteristics of Prefill and Decode, pointing out that they are closer to compute-bound and memory-bound respectively. These conclusions are still qualitative. To verify system optimizations, compare different engines, or plan deployment capacity, we need quantitative performance data. A benchmark is exactly the method for obtaining such data while keeping results reproducible and comparable.
 
-## 1 Learning objectives
+## 1 Learning Objectives
 
 The rest of this course will build a mini-sglang from scratch and analyze SGLang in depth. Along the way, whether each change is effective needs to be validated quantitatively with benchmarks. This chapter lays that foundation. By the end of this chapter, you should be able to:
 

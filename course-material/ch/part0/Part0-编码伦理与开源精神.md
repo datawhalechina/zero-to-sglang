@@ -1,6 +1,4 @@
-# Part 0 — Before you learn
-
-## 0.1 Coding ethics and open-source spirit
+# Part 0.1 编码伦理与开源精神
 
 欢迎来到 zero-to-sglang 课程，作为课程的第一课，所谓德成而上，艺成而下，我们希望在进行技术教学之前，能够传播良好的开源精神，以及如何在开源社区中与他人沟通交流合作。在 AI 时代下，写代码比审查代码要简单太多，所以我们也希望所有开源贡献者能为自己的代码负责，尊重技术，也尊重每一个 reviewer 的时间。
 

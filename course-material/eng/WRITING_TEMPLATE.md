@@ -2,7 +2,58 @@
 
 How to explain, how deep to go, and what tone to use are up to the author. This template only covers two things: **a uniform structure**, and **a few hard rules that must not be broken**.
 
-The rules below are enforced by CI: every chapter file changed in a PR is run through `python3 scripts/check_chapters.py`, and a PR that fails cannot be merged. Run it locally before submitting: `python3 scripts/check_chapters.py course-material/eng/part1/Chapter2_Introduction-to-Inference.md`, or `--all` for every chapter.
+CI checks introduction placement, paragraph indentation, heading levels, ending structure, and image formatting. Authors and reviewers still need to verify that introductions explain the context and learning objectives are accurate. Every PR runs `python3 scripts/check_chapters.py --all`. Run the same command locally before submitting; to check a single file, use `python3 scripts/check_chapters.py "course-material/eng/part1/Chapter2_Introduction to Inference.md"`.
+
+## Chapter opening and paragraph formatting
+
+Use [Chapter 1 Introduction to LLM](./part1/Chapter1_Introduction_to_LLM.md) as the formatting reference. Both editions follow the same structure.
+
+- Begin with the level-1 chapter title, an introduction, `## 1 Learning Objectives`, and then the body sections, in that order.
+- Place the introduction directly after the chapter title and before the first level-2 heading. Use one or more prose paragraphs to explain the background, the chapter's topic, and its connection to surrounding chapters. Do not add a separate introduction heading or substitute a list of learning objectives for the introduction.
+- Start ordinary prose at the beginning of the line, with **no paragraph indentation**. Do not prefix paragraphs with spaces, tabs, full-width or Unicode wide spaces, `&emsp;`, `&ensp;`, `&nbsp;`, or their numeric entities. Do not use HTML/CSS to create first-line indentation.
+- Leave one blank line between paragraphs and between headings and content. Do not simulate paragraph spacing with repeated blank lines, `<br>`, or trailing spaces.
+- Preserve indentation inside code blocks, nested lists and their continuation lines, the single separator space after a blockquote marker, and structural indentation inside math and HTML containers. These are not first-line paragraph indentation. Always use fenced code blocks for code.
+
+The two Part 0 lessons also need an introduction after the title and must follow the paragraph rules. Their level-1 titles are `# Part 0.1 Coding Ethics and Open-Source Spirit` and `# Part 0.2 Deploy Your First SGLang Server`. They retain their introductory and procedural section structure; the learning objectives, numbering, and endings for Parts I–IV are not required. A placeholder containing only a title and a writing-in-progress notice is exempt from the introduction, objectives, and ending requirements until body content is added.
+
+## Copyable chapter skeleton
+
+Replace the chapter number, title, and placeholder text. When adding body sections, keep numbering continuous and update the summary section numbers accordingly.
+
+```markdown
+# Chapter N Chapter Title
+
+Write the introduction here: explain the background, the chapter's topic, and its connection to surrounding chapters.
+
+## 1 Learning Objectives
+
+After completing this chapter, you will be able to:
+
+1. First learning objective.
+2. Second learning objective.
+
+## 2 Body Section Title
+
+Start prose at the beginning of the line, with no leading spaces or whitespace entities.
+
+### 2.1 Subsection Title
+
+Separate this paragraph from the previous one with a blank line.
+
+## 3 Summary and Exercises
+
+### 3.1 Summary
+
+Summarize the chapter's key ideas.
+
+### 3.2 Exercises
+
+1. Write an exercise here, without an answer.
+
+## References
+
+- [Title of a source actually cited](https://example.com/source)
+```
 
 ## Files and images
 
@@ -18,7 +69,7 @@ There is exactly one level-1 heading in the whole file: the chapter title, in th
 # Chapter 2 Introduction to Inference
 ```
 
-Level-2 headings are sections. Level-3 headings are numbered "section.index", level-4 headings "section.index.index":
+Level-2 headings are sections, starting with `## 1 Learning Objectives`. Level-3 headings are numbered "section.index", level-4 headings "section.index.index":
 
 ```markdown
 ## 2 balabala
