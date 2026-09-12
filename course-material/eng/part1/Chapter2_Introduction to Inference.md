@@ -144,15 +144,16 @@ Based on this flow, we can examine the underlying computation of Prefill and Dec
 &emsp;&emsp;The Prefill stage performs **one complete forward pass** over the prompt currently scheduled (either a single request or a batch of packed requests). The model **processes all input tokens in parallel**, **builds and writes the initial KV cache**, and produces the logits for the first generated token. Consider Prefill for LLaMA-7B:
 
 - Two user requests, with a total of **N = 3000** tokens.
-- Model config: $L = 32$ layers, hidden dimension $d = 4096$, FFN intermediate dimension approximately $4d = 16384$, and $\text{heads} = 32$ attention heads.
+- Model config: $L = 32$ layers, hidden dimension $d = 4096$ , FFN intermediate dimension approximately $\frac{8}{3}d=10923$ , and $\text{heads} = 32$ attention heads.
 
 **1. FLOPs estimate for one complete forward pass over one batch**
 
 The main computations in one forward pass are:
 
-- **QKV + output projection**: four linear layers, totaling $2 \times 4 \times N d^{2}$.
-- **FFN**: two linear layers for up-projection and down-projection, totaling $2 \times 2 \times (4d \times Nd)$.
-- **Attention core computation**: $QK^{\top}$ and score $\times V$, totaling $2 \times 2 \times N^{2} d$.
+- **QKV + Output Projection** 4 linear layers, totaling $2 \times 4 \times Nd^{2}=8Nd^2$ 
+- **FFN** 2 up-projection layers + 1 down-projection layer, totaling $2 \times 3 \times (\frac{8}{3}d \times Nd)=16Nd^2$ 
+- **Attention Core Computation**  $QK^{\top}$ and $\mathrm{score}\times V$, totaling $2 \times 2 \times N^{2}d=4N^{2}d$ .
+
 
 The total for one layer is $24 N d^{2} + 4 N^{2} d$, and for the entire model $\text{Total FLOPs} \approx L \times \bigl(24 N d^{2} + 4 N^{2} d\bigr)$. Substituting the values, the computation per layer is:
 
@@ -204,7 +205,8 @@ Here, $S$ is the current sequence length, i.e., the number of historical tokens 
 - **Linear projections + FFN**: $24 \times 4096^2 \approx 4.0 \times 10^8 \text{ FLOPs/layer}$.
 - **Attention**: $4 \times 3000 \times 4096 \approx 4.9 \times 10^7 \text{ FLOPs/layer}$.
 
-&emsp;&emsp;**Total for 32 layers = linear projections + FFN + attention ≈ 14.4 GFLOPs**. Using the A100's peak compute rate, the theoretical compute time is only about **0.05 ms**. Actual latency is much higher, and the larger issue is GPU-memory traffic.
+&emsp;&emsp;**Total computation for 32 layers = Linear Projection + FFN + Attention** ≈ **14.4 GFLOPs**. Based on the peak computational performance of an **A100 40GB**, the theoretical computation time is only approximately **0.05 ms**. However, the actual latency is far higher than this value, and more importantly, **memory consumption is the bigger bottleneck**.
+
 
 **2. Memory traffic and bottleneck analysis**
 
@@ -388,7 +390,7 @@ The comparison shows that:
 
 **3. Bottleneck diagnosis for LLaMA-7B on an A100**
 
-&emsp;&emsp;Run LLaMA-7B on an A100 with the same model configuration as above and bf16 computation. The ridge point is $\frac{312 \times 10^{12}}{2.039 \times 10^{12}} \approx 153 \text{ FLOPs/Byte}$.
+&emsp;&emsp;Run LLaMA-7B on an A100  G40 with the same model configuration as above and bf16 computation. The ridge point is $\frac{312 \times 10^{12}}{1.6 \times 10^{12}} \approx 195 \text{ FLOPs/Byte}$.
 
 **Prefill AI**, assuming an input sequence length of $N = 100$:
 
