@@ -248,19 +248,20 @@ export default defineConfig({
 
   // The Chinese edition used to live at the site root (/part1/..., /community/...).
   // Emit a redirect stub at every old URL so links shared before the move keep working,
-  // and make the site root land on the Chinese edition.
+  // while the site root lands on the English edition.
   buildEnd(siteConfig) {
     for (const page of siteConfig.pages) {
       const url = siteConfig.rewrites.map[page] ?? page
       if (!url.startsWith('ch/')) continue
       const rest = url.slice('ch/'.length).replace(/\.md$/, '.html')
-      const target = rest === 'index.html' ? `${base}ch/` : `${base}ch/${rest}`
+      const isHome = rest === 'index.html'
+      const target = isHome ? `${base}eng/` : `${base}ch/${rest}`
       const href = encodeURI(target)
       const out = join(siteConfig.outDir, rest)
       mkdirSync(dirname(out), { recursive: true })
       writeFileSync(
         out,
-        `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">` +
+        `<!DOCTYPE html><html lang="${isHome ? 'en-US' : 'zh-CN'}"><head><meta charset="utf-8">` +
           `<title>Redirecting…</title>` +
           `<meta http-equiv="refresh" content="0; url=${href}">` +
           `<link rel="canonical" href="${href}">` +

@@ -10,6 +10,9 @@ hero:
       text: 开始学习
       link: /ch/part0/Part0-编码伦理与开源精神
     - theme: alt
+      text: English
+      link: /eng/
+    - theme: alt
       text: 查看 GitHub
       link: https://github.com/datawhalechina/zero-to-sglang
 

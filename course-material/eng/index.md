@@ -29,6 +29,6 @@ features:
 
 ## English edition
 
-The English edition is being translated from the Chinese original, part by part. Part 0 is available now and more parts are on the way. Until a chapter lands here, the [Chinese edition](/ch/) is the complete reference.
+Part 0 and Part I are available in English, with further writing and review in progress. Parts II–IV are under development. You can switch to the [Chinese edition](/ch/) at any time.
 
 Want to help translate? See the [writing template](https://github.com/datawhalechina/zero-to-sglang/blob/main/course-material/eng/WRITING_TEMPLATE.md) and open a PR.

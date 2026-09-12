@@ -12,14 +12,14 @@ Source layout vs. site URL (mirrors `rewrites` in docs/.vitepress/config.mts):
 Source checks:
   * every nav / sidebar / locale link in docs/.vitepress/config.mts points to an existing page
   * every chapter page under course-material/*/part*/ is reachable from the sidebar (no orphans)
-  * every relative link, href and src in README.md, README_en.md and every markdown file
+  * every relative link, href and src in README*.md and every markdown file
     under course-material/ and community/ resolves to an existing file
     (links inside fenced code blocks are ignored)
 
 Build checks (--dist):
   * the site root, /ch/ and /eng/ home pages were emitted
   * every markdown page under course-material/ and community/ produced an HTML file
-  * every Chinese page has a redirect stub at its pre-move root-level URL
+  * the site root redirects to English; old Chinese chapter URLs still redirect to Chinese
 
 Only stdlib is used. Exit status is 1 when any error is found.
 """
@@ -31,6 +31,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 REPO = Path(__file__).resolve().parent.parent
 CONFIG = REPO / "docs" / ".vitepress" / "config.mts"
@@ -147,7 +148,7 @@ def resolve_relative(src: Path, target: str) -> Path:
 
 
 def check_links(rep: Report) -> None:
-    files = [REPO / "README.md", REPO / "README_en.md"]
+    files = sorted(REPO.glob("README*.md"))
     for root in content_roots():
         files.extend(sorted(root.rglob("*.md")))
     for f in files:
@@ -186,6 +187,11 @@ def check_dist(dist: Path, rep: Report) -> None:
             stub = dist / Path(*url.parts[1:])
             if not stub.exists():
                 rep.error(page, 1, f"missing redirect stub for the old URL: {Path(*url.parts[1:])}")
+                continue
+            target = "/zero-to-sglang/eng/" if url == Path("ch/index.html") else f"/zero-to-sglang/{url}"
+            html = unquote(stub.read_text(encoding="utf-8"))
+            if f'content="0; url={target}"' not in html:
+                rep.error(stub, 1, f"incorrect redirect target: expected {target}")
 
 
 def main(argv: list[str]) -> int:
