@@ -97,15 +97,15 @@ In the AI era, the **matrices** in deep learning pushed the GPU to the altar. Be
 This section uses the A100 PCIe 80GB to introduce the board, the GPU and HBM package, and the compute units inside the GPU die.
 
 <div align="center">
-    <img src="../../ch/part1/images/3-3-A100-PCIe-80GB.png" alt="A100 PCIe 80GB board with a passive heat sink covering the GPU and HBM package" width="800">
-<p><em>Figure 3. A100 PCIe 80GB board exterior (image source: PNY product page)</em></p>
+    <img src="./images/3-3-A100-80GB-PCB.svg" alt="A100 80GB PCIe PCB with labels for the GPU core, HBM, PCIe edge connector and NVLink bridge connectors" width="800">
+<p><em>Figure 3. A100 80GB PCIe PCB with the heat sink removed (photograph: Stas Bekman, 2022; rotated and annotated)</em></p>
 </div>
 
-Figure 3 shows the board with its passive heat sink installed; the GPU and HBM package sits underneath it. The board communicates with the host through PCIe, receives power through an auxiliary power connector, and provides NVLink connectors for GPU-to-GPU communication. The A100 is designed for data-center computing and has no video-output connectors for a monitor.
+Figure 3 shows the PCB with the heat sink removed. The GPU die and neighboring HBM stacks are visible inside the central metal reinforcing frame, with power-delivery circuitry around them. The PCIe edge connector along the bottom communicates with the host; the three groups of NVLink bridge connectors along the top provide GPU-to-GPU communication. The A100 is designed for data-center computing and has no video-output connectors for a monitor.
 
 The GPU die contains **CUDA cores, Tensor Cores, control units, and caches**. The architecture diagrams below show how these components are organized.
 
-The image comes from the [PNY NVIDIA A100 80GB product page](https://www.pny.com/nvidia-a100-80gb). See the [NVIDIA A100 80GB PCIe Product Brief](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf) for the board form factor and interfaces.
+The photograph comes from [Stas Bekman’s A100 80GB PCIe teardown](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/). See the [NVIDIA A100 80GB PCIe Product Brief](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf) for the board form factor and interfaces.
 
 #### 2.2.1 Product Form Factor
 
@@ -125,7 +125,7 @@ The GA100 die contains 54.2 billion transistors, uses a 7 nm process, and has an
 
 **HBM2e memory stacks**
 
-The A100 PCIe 80GB uses HBM2e. Each HBM stack contains multiple stacked DRAM dies and sits beside the GPU die within the same package. The heat sink in Figure 3 covers these internal components.
+The A100 PCIe 80GB uses HBM2e. Each HBM stack contains multiple stacked DRAM dies and sits beside the GPU die within the same package. The HBM label in Figure 3 identifies the location of one stack.
 
 #### 2.2.3 GA100 GPU Core Architecture
 
@@ -494,5 +494,5 @@ Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) 
 - [https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 - [NVIDIA A100 Tensor Core GPU Datasheet (Chinese version)](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf)
 - [https://ar5iv.labs.arxiv.org/html/2405.11425#1](https://ar5iv.labs.arxiv.org/html/2405.11425#1)
-- [PNY NVIDIA A100 80GB product page (Figure 3 source)](https://www.pny.com/nvidia-a100-80gb)
+- [Stas Bekman: A100 80GB PCIe teardown and water-cooling installation (Figure 3 source)](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/)
 - [NVIDIA A100 80GB PCIe Product Brief](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)

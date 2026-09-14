@@ -97,15 +97,15 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 本节以 A100 PCIe 80GB 为例，依次介绍板卡、GPU 与 HBM 封装，以及芯片内部的计算单元。
 
 <div align="center">
-    <img src="./images/3-3-A100-PCIe-80GB.png" alt="A100 PCIe 80GB 板卡外观，被动散热器覆盖 GPU 与 HBM 封装" width="800">
-<p><em>图 3. A100 PCIe 80GB 板卡外观（图片来源：PNY 产品页）</em></p>
+    <img src="./images/3-3-A100-80GB-PCB.svg" alt="A100 80GB PCIe PCB 正面，标注 GPU 核心、HBM、PCIe 金手指与 NVLink 桥接接口" width="800">
+<p><em>图 3. A100 80GB PCIe 拆除散热器后的 PCB 正面（摄影：Stas Bekman，2022；旋转并添加标注）</em></p>
 </div>
 
-图 3 展示的是带被动散热器的板卡外观，GPU 与 HBM 封装位于散热器下方。板卡通过 PCIe 接口与主机通信，通过辅助供电接口获得电力，并提供用于 GPU 间互连的 NVLink 接口。A100 面向数据中心计算，没有用于连接显示器的视频输出接口。
+图 3 展示拆除散热器后的 PCB。中央金属加固框内可见 GPU 裸片及其旁边的 HBM 显存堆栈，外围为供电电路。图中下沿的 PCIe 金手指用于与主机通信，上沿三组 NVLink 桥接接口用于 GPU 间互连。A100 面向数据中心计算，没有用于连接显示器的视频输出接口。
 
 GPU 芯片内部包含 **CUDA Core、Tensor Core、控制单元和缓存**等组件。后面的架构图将进一步展示这些组件的组织方式。
 
-图片来自 [PNY NVIDIA A100 80GB 产品页](https://www.pny.com/nvidia-a100-80gb)，板卡形态与接口说明参见 [NVIDIA A100 80GB PCIe 产品简介](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)。
+照片来自 [Stas Bekman 的 A100 80GB PCIe 拆机记录](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/)，板卡形态与接口说明参见 [NVIDIA A100 80GB PCIe 产品简介](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)。
 
 #### 2.2.1 产品形态
 
@@ -125,7 +125,7 @@ GA100 裸片包含 542 亿个晶体管，采用 7nm 工艺，面积为 826mm²�
 
 **HBM2e 显存堆栈**
 
-A100 PCIe 80GB 使用 HBM2e。每个 HBM 堆栈由多层 DRAM 堆叠而成，位于 GPU 裸片旁边，与 GPU 一同封装。图 3 的散热器遮挡了这些内部组件。
+A100 PCIe 80GB 使用 HBM2e。每个 HBM 堆栈由多层 DRAM 堆叠而成，位于 GPU 裸片旁边，与 GPU 一同封装。图 3 的 HBM 标注指向其中一个堆栈的位置。
 
 #### 2.2.3 GA100 GPU核心架构
 
@@ -494,5 +494,5 @@ GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计�
 - [https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 - [NVIDIA A100 Tensor Core GPU 数据手册（中文版）](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf)
 - [https://ar5iv.labs.arxiv.org/html/2405.11425#1](https://ar5iv.labs.arxiv.org/html/2405.11425#1)
-- [PNY NVIDIA A100 80GB 产品页（图 3 来源）](https://www.pny.com/nvidia-a100-80gb)
+- [Stas Bekman：A100 80GB PCIe 拆机与水冷改装记录（图 3 来源）](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/)
 - [NVIDIA A100 80GB PCIe 产品简介](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)
