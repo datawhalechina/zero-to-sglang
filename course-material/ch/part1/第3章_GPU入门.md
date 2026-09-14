@@ -94,18 +94,18 @@ GPU的设计初衷是最大化数据吞吐量，批量处理简单计算，大�
 
 ### 2.2 A100显卡核心的构成
 
-我们使用A100 来介绍GPU的具体结构
+本节以 A100 PCIe 80GB 为例，依次介绍板卡、GPU 与 HBM 封装，以及芯片内部的计算单元。
 
 <div align="center">
-    <img src="./images/3-3-GPU的结构.png" alt="3-3-GPU的结构.png" width="800">
-<p><em>图 3. 显卡（GPU）的整体结构</em></p>
+    <img src="./images/3-3-A100-80GB-PCB.svg" alt="A100 80GB PCIe PCB 正面，标注 GPU 核心、HBM、PCIe 金手指与 NVLink 桥接接口" width="800">
+<p><em>图 3. A100 80GB PCIe 拆除散热器后的 PCB 正面（摄影：Stas Bekman，2022；旋转并添加标注）</em></p>
 </div>
 
-一张英伟达的的显卡剖面图如图，一张显卡由**供电、显卡核心、显存、显示接口和金手指**组成。
+图 3 展示拆除散热器后的 PCB。中央金属加固框内可见 GPU 裸片及其旁边的 HBM 显存堆栈，外围为供电电路。图中下沿的 PCIe 金手指用于与主机通信，上沿三组 NVLink 桥接接口用于 GPU 间互连。A100 面向数据中心计算，没有用于连接显示器的视频输出接口。
 
-我们主要介绍显卡核心：显卡核心由**cuda core、控制单元和缓存单元等构成**。而 CPU 和 GPU 最大的不同就在于，GPU 负责的工作大多是重复性的 3D 建模或者渲染，而流处理器就是负责顶点运算或者像素运算，能动态的分配进行顶点运算和像素运算的流处理器数量，达到资源的高效利用。
+GPU 芯片内部包含 **CUDA Core、Tensor Core、控制单元和缓存**等组件。后面的架构图将进一步展示这些组件的组织方式。
 
-**A100**是NVIDIA为数据中心设计的纯计算GPU，没有图形输出能力。
+照片来自 [Stas Bekman 的 A100 80GB PCIe 拆机记录](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/)，板卡形态与接口说明参见 [NVIDIA A100 80GB PCIe 产品简介](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)。
 
 #### 2.2.1 产品形态
 
@@ -117,14 +117,15 @@ GA100 是完整芯片的物理设计，实际产品会和白皮书中存在差�
 
 **尺寸**为双槽全高，长267mm。**功耗**：300W（80GB版）。**散热**是**被动散热**，无风扇（依赖服务器风道）。**接口**为PCIe 4.0 x16金手指 + NVLink桥接器接口；**重量**约1.4公斤。
 
-#### 2.2.2 PCB板级组件
+#### 2.2.2 GPU 与 HBM 封装
 
 **GA100 GPU核心芯片**
 
-**封装**：巨型BGA封装，尺寸约55mm×55mm。**位置**：板卡正中央，焊在PCB上。542亿个**晶体管**，7nm工艺，面积826mm²。
+GA100 裸片包含 542 亿个晶体管，采用 7nm 工艺，面积为 826mm²。GPU 裸片与 HBM 显存堆栈通过硅中介层互连，组成安装在 PCB 上的封装。
 
-**HBM2e显存堆栈**（革命性设计）
-不同于消费级GPU的GDDR显存颗粒，A100采用**3D堆叠技术**：
+**HBM2e 显存堆栈**
+
+A100 PCIe 80GB 使用 HBM2e。每个 HBM 堆栈由多层 DRAM 堆叠而成，位于 GPU 裸片旁边，与 GPU 一同封装。图 3 的 HBM 标注指向其中一个堆栈的位置。
 
 #### 2.2.3 GA100 GPU核心架构
 
@@ -132,7 +133,7 @@ Ampere架构拓扑如下：
 
 <div align="center">
     <img src="./images/3-4-GPU核心的架构.png" alt="3-4-GPU核心的架构.png" width="800">
-<p><em>图 4. GPU 核心的架构</em></p>
+<p><em>图 4. 完整 GA100 芯片设计（8 个 GPC、128 个 SM）；A100 产品启用 108 个 SM</em></p>
 </div>
 
 NVIDIA Ampere架构是NVIDIA于2020年发布的GPU架构，是其第八代GPU架构。它采用7纳米制程工艺，集成了高达542亿个晶体管，是当时世界上最大的7纳米芯片。该架构主要面向数据中心、人工智能、高性能计算及专业图形等领域
@@ -286,7 +287,7 @@ SIMT模型是**GPU高吞吐量的底层逻辑**,它将硬件上**SIMD式的密�
 
 **内存距离SM越近，访问速度越快**。因此存在**极高速的内存类型（如L1缓存和共享内存）**，它们位于SM内部，具有**极快的读写速度**。**寄存器文件**位于 SM 内部，保存线程私有的变量和计算结果。
 
-如图所示，这些绿色区域是SM集群，而**蓝色区域代表紧邻SM的L2缓存**,它们虽然不在SM内部，但物理位置仍然很近，**速度也相当快**（虽然比L1慢一个数量级）。在芯片外部（以这张3090或PCIeA100为例），GPU芯片旁边实际安装了**DRAM内存**，这意味着数据需要实际**离开芯片通过物理连接**进行传输。你可以在这张芯片图上看到边缘的这些黄色连接器。这些是HBM连接器，它们连接到实际GPU外部的DRAM芯片。
+图 8 右侧展示 GA100 裸片：绿色区域包含 SM，蓝色区域包含片上的 L2 缓存，边缘标注的 HBM2(e) PHY 是与 HBM 通信的物理接口电路。HBM 堆栈位于 GPU 裸片外，通过同一封装内的硅中介层与 GPU 连接；图中的 PHY 区域是芯片电路，并非板卡上的外接连接器。
 
 你可以从上图左侧看到访问这些存储所需的**速度**，SM内部存储器的访问速度要快很多，大约只需20个时钟周期就能从中获取数据，而访问L2缓存或全局内存则需要200到300个时钟周期。这个**差距会对性能造成严重影响**。如果某段计算需要访问全局内存，可能意味着你的SM会无工作可做，矩阵乘法全都完成了，任务耗尽，只能空转。这样**利用率就不会高**。这在某种程度上将成为思考内存架构的核心主题，也是理解GPU工作原理的关键。
 
@@ -493,3 +494,5 @@ GPU 从图形处理器演进为 AI 加速器，其本质是以**大量简单计�
 - [https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 - [NVIDIA A100 Tensor Core GPU 数据手册（中文版）](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf)
 - [https://ar5iv.labs.arxiv.org/html/2405.11425#1](https://ar5iv.labs.arxiv.org/html/2405.11425#1)
+- [Stas Bekman：A100 80GB PCIe 拆机与水冷改装记录（图 3 来源）](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/)
+- [NVIDIA A100 80GB PCIe 产品简介](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)
