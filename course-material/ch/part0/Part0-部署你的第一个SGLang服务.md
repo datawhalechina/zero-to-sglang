@@ -1,9 +1,9 @@
-# Part 0 — Before you learn
-
-## 本地 GPU 部署 SGLang
+# Part 0.2 部署你的第一个 SGLang 服务
 
 本课在你自己的 GPU 上用 SGLang 跑起 Qwen3-0.6B（Qwen3 系列最小的模型，权重约 1.5 GB，4 GB 显存可跑，作为教学模型），并发出第一个请求。后续课程中，我们会教大家如何build自己的mini-sglang，并且serve起来大模型。
 （也可以让自己的coding agent看本课的内容然后自动化跑一跑）
+
+## 本地 GPU 部署 SGLang
 
 ### 环境要求
 

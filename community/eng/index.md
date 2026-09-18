@@ -22,4 +22,4 @@ Fork, branch from `main`, write, open a PR. Go through the [PR requirements](./P
 
 | Date | Directory | Title | Author |
 |------|------|------|------|
-| | | | |
+| 2026-09-14 | `notes/` | [Learning SGLang: an illustrated, step-by-step tour of an inference engine](./notes/learning-sglang/learning-sglang.md) | [WilsonZheng0327](https://github.com/WilsonZheng0327) |

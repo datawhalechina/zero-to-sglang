@@ -9,6 +9,8 @@ course-material/eng/WRITING_TEMPLATE.md (English chapters):
 
   * file name        第N章_中文标题.md            /  ChapterN_English-Title.md
   * one H1           # 第 N 章 中文标题            /  # Chapter N Title
+  * opening          title, prose introduction, then ## 1 本章学习目标 / Learning Objectives
+  * paragraphs       no leading whitespace or whitespace entities in prose
   * sections         ## N ...  ### N.M ...  #### N.M.K ...   numbered, continuous, nothing below H4
   * ending           ## K 总结与测试题 (K.1 课程总结, K.2 测试题) then ## 参考资料
                      ## K Summary and Exercises (K.1 Summary, K.2 Exercises) then ## References
@@ -19,8 +21,8 @@ course-material/eng/WRITING_TEMPLATE.md (English chapters):
 
 Only course-material/ is checked; community/ is out of scope for this script.
 
-A chapter file whose only heading is the H1 is treated as a placeholder: only the
-file name, the H1 and the naming rule are checked.
+A placeholder contains only the H1 and the standard writing-in-progress notice.
+Part 0 follows the opening and paragraph rules but keeps its own section structure.
 
 Only stdlib is used. Exit status is 1 when any error is found.
 """
@@ -28,6 +30,7 @@ Only stdlib is used. Exit status is 1 when any error is found.
 from __future__ import annotations
 
 import argparse
+import html
 import os
 import re
 import sys
@@ -61,7 +64,9 @@ IMG_TAG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 MD_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 ATTR_RE = re.compile(r"""(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
-FENCE_RE = re.compile(r"^\s*(```|~~~)")
+FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
+LIST_RE = re.compile(r"^( *)(?:[-+*]|\d+[.)]) +")
+PLACEHOLDER_NOTICES = {"本章内容撰写中，敬请期待。", "This chapter is being written. Stay tuned."}
 
 
 @dataclass(frozen=True)
@@ -129,12 +134,12 @@ def outside_code(lines: list[str]):
     """Yield (line_no, line) for lines that are not inside a fenced code block."""
     fence = None
     for i, line in enumerate(lines, 1):
-        m = FENCE_RE.match(line)
+        m = FENCE_RE.match(re.sub(r"^[ \t]*(?:> ?)+", "", line))
         if m:
-            marker = m.group(1)
+            marker, suffix = m.groups()
             if fence is None:
                 fence = marker
-            elif marker == fence:
+            elif marker[0] == fence[0] and len(marker) >= len(fence) and not suffix.strip():
                 fence = None
             continue
         if fence is None:
@@ -152,6 +157,79 @@ def check_naming(path: Path, lines: list[str], rep: Report) -> None:
 def part_of(path: Path) -> int | None:
     m = re.fullmatch(r"part([1-4])", path.parent.name)
     return int(m.group(1)) if m else None
+
+
+def is_placeholder(lines: list[str]) -> bool:
+    content = [line for line in lines if line.strip()]
+    return (len(content) == 2 and content[0].startswith("# ")
+            and content[1] in PLACEHOLDER_NOTICES)
+
+
+def check_opening(path: Path, lines: list[str], rep: Report) -> None:
+    if is_placeholder(lines):
+        return
+    content = [(i, line) for i, line in outside_code(lines) if line.strip()]
+    if not content or not content[0][1].startswith("# "):
+        rep.error(path, 1, "start the chapter with its level-1 title")
+        return
+    title_line = content[0][0]
+    # The first content after the title must be prose, not a heading, list,
+    # quote, image, comment, fence, or formula standing in for an introduction.
+    following = [(i, line) for i, line in enumerate(lines, 1)
+                 if i > title_line and line.strip()]
+    intro = following[0][1].lstrip() if following else ""
+    if (not html.unescape(intro).strip()
+            or re.match(r"^(?:[#><|!`~$]|[-+*](?:\s|$)|\d+[.)]\s)", intro)
+            or re.fullmatch(r"(?:[-*_]\s*){3,}", intro)):
+        rep.error(path, title_line + 1, "add a prose introduction between the chapter title and the first section")
+    if path.parent.name == "part0":
+        return
+    first_section = next(((i, line) for i, line in content if line.startswith("## ")), None)
+    objectives = "本章学习目标" if lang_of(path).key == "ch" else "Learning Objectives"
+    if first_section is None or first_section[1] != f"## 1 {objectives}":
+        rep.error(path, first_section[0] if first_section else title_line,
+                  f"the first section must be '## 1 {objectives}'")
+
+
+def check_paragraphs(path: Path, lines: list[str], rep: Report) -> None:
+    """Check prose indentation while preserving Markdown's structural indentation."""
+    list_columns: list[int] = []
+    in_math = False
+    for i, line in outside_code(lines):
+        if not line.strip():
+            continue
+        stripped = line.lstrip(" \t")
+        if stripped.startswith("$$"):
+            if stripped.count("$$") == 1:
+                in_math = not in_math
+            continue
+        if in_math:
+            continue
+        indent = len(line) - len(stripped)
+        while list_columns and indent < list_columns[-1]:
+            list_columns.pop()
+        item = LIST_RE.match(line)
+        if item:
+            list_columns.append(item.end())
+            prose = line[item.end():]
+        elif stripped.startswith(">"):
+            prose = re.sub(r"^(?:> ?)+", "", stripped)
+        elif stripped.startswith("<"):
+            # HTML layout indentation is harmless, but whitespace entities at
+            # the start of a paragraph and CSS text-indent still indent prose.
+            prose = re.sub(r"^(?:<[^>]+>)+", "", stripped)
+        else:
+            prose = stripped if list_columns else line
+        decoded = html.unescape(prose)
+        if decoded and decoded[0].isspace():
+            rep.error(path, i, "prose must start without spaces, tabs, or whitespace entities")
+        if re.search(r"\btext-indent\s*:", line, re.IGNORECASE):
+            rep.error(path, i, "do not use CSS text-indent to indent paragraphs")
+        if HEADING_RE.match(line):
+            if i > 1 and lines[i - 2].strip():
+                rep.error(path, i, "leave a blank line before a heading")
+            if i < len(lines) and lines[i].strip():
+                rep.error(path, i, "leave a blank line after a heading")
 
 
 def check_images(path: Path, lang: Lang, part: int, chapter: int,
@@ -220,8 +298,11 @@ def check_chapter(path: Path, lang: Lang, rep: Report) -> None:
     check_images(path, lang, part, chapter, lines, rep)
 
     h2s = [h for h in headings if h[1] == 2]
-    if not h2s:
+    if is_placeholder(lines):
         # Placeholder chapter: nothing more to check.
+        return
+    if not h2s:
+        rep.error(path, 1, "a written chapter must contain numbered sections and references")
         return
 
     # --- level-2 sections: numbered 1..K, then the unnumbered references section last
@@ -371,6 +452,10 @@ def main(argv: list[str]) -> int:
             continue
         checked += 1
         check_naming(path, read_lines(path), rep)
+        if re.fullmatch(r"part[0-4]", path.parent.name):
+            lines = read_lines(path)
+            check_opening(path, lines, rep)
+            check_paragraphs(path, lines, rep)
         if is_chapter_file(path):
             check_chapter(path, lang, rep)
 

@@ -1,8 +1,8 @@
 # Chapter 1 Introduction to LLM
 
-## 1 Learning Objectives of This Chapter
-
 Welcome to Chapter 1 of the zero-to-sglang course. As the starting point of the entire course, this chapter will help you build an overall understanding of Large Language Models (LLMs), laying the foundation for the later, deeper study of inference pipelines, GPU architecture, and inference frameworks.
+
+## 1 Learning Objectives
 
 After completing this chapter, you will be able to:
 
@@ -341,11 +341,13 @@ Context engineering is not about dumping all the material on the LLM. It is resp
 Doing context engineering well is important: you need to arrange what information to give the model at what moment. **The first reason is that the model's context window is limited**—feeding all the information into the model would exhaust its context window and also disperse the model's attention, which manifests as the model becoming "dumber." **The second reason is cost**—carrying all the information for inference every time consumes more tokens. Therefore, doing context engineering well is important.
 
 ### 5.3 Skill
+
 A **skill** can be understood as a **structured prompt** or a **professional skill pack for the AI to use**. It encapsulates the experience, workflow, and rules for completing a particular task into a reusable, standardized module. A skill tells the model how to do something and what tools to call.
 
 If a large model is a person, then a skill is the operating manual—or instruction booklet—that lets the brain accurately complete specific work. It solves the problem of the large model knowing what to do but not knowing exactly how to do it. Skills are the hands and feet of an Agent, the core capability unit for executing specific tasks.
 
 ### 5.4 Retrieval-Augmented Generation (RAG)
+
 **RAG (Retrieval-Augmented Generation)** is a technique that lets the LLM first retrieve the latest, most relevant information from an external knowledge base before generating an answer.
 
 It effectively addresses two core pain points of LLMs: first, stale knowledge, since the model's training data has a cutoff date; and second, the tendency to confidently talk nonsense—that is, model hallucination. By introducing authoritative external knowledge as a basis, RAG can significantly improve the accuracy and reliability of answers.
