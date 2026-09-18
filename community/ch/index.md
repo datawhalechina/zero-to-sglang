@@ -22,4 +22,4 @@ Fork，从 `main` 切分支，写完提 PR。提之前把 [PR 要求](./PR_requi
 
 | 日期 | 目录 | 标题 | 作者 |
 |------|------|------|------|
-| | | | |
+| 2026-09-14 | `notes/` | [llm-engine-viz：交互式 LLM 推理可视化](./notes/llm-engine-viz/原理可视化.md) | [KevinEZ06](https://github.com/KevinEZ06) |

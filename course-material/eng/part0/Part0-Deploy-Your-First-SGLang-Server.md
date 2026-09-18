@@ -1,9 +1,9 @@
-# Part 0 — Before you learn
-
-## Deploying SGLang on a local GPU
+# Part 0.2 Deploy Your First SGLang Server
 
 In this lesson you will use SGLang to run Qwen3-0.6B on your own GPU and send your first request. Qwen3-0.6B is the smallest model in the Qwen3 family: about 1.5 GB of weights, runs in 4 GB of VRAM, and serves as our teaching model. Later in the course we will show you how to build your own mini-sglang and serve a model with it.
 (You can also point your coding agent at this lesson and let it run through the steps automatically.)
+
+## Deploying SGLang on a local GPU
 
 ### Requirements
 

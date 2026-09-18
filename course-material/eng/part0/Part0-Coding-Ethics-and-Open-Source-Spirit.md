@@ -1,6 +1,4 @@
-# Part 0 — Before you learn
-
-## 0.1 Coding ethics and open-source spirit
+# Part 0.1 Coding Ethics and Open-Source Spirit
 
 Welcome to zero-to-sglang. This first lesson is not about technology. There is an old saying that character comes before craft, and before we teach you anything technical we want to pass on a healthy open-source spirit, and show how to communicate and collaborate with others in an open-source community. In the AI era, writing code has become far easier than reviewing it, so we hope every open-source contributor takes responsibility for their own code, respects the craft, and respects every reviewer's time.
 
