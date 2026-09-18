@@ -1,0 +1,11 @@
+.vp-doc img {
+  cursor: zoom-in;
+}
+
+.image-lightbox__image {
+  cursor: grab;
+}
+
+.image-lightbox__stage.is-dragging .image-lightbox__image {
+  cursor: grabbing;
+}
