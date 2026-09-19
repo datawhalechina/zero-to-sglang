@@ -34,11 +34,11 @@ LLM 已经渗透到大量实际场景中，典型应用包括：
 
 内容生成与创作是LLM提效最显著的领域。现在大模型写作，撰写报告的应用常见已经非常常见，一些比较深入有公文写作、会议纪要，PDF、Doc直接生成，在文本生生成方面的应用已经非常广泛。
 
-同时大模型还在翻译层面大方光彩，大模型正在取代传统的机器翻译，各家模型厂商出的flash模型正在成为翻译界的主要角色
+同时大模型还在翻译层面大放光彩，大模型正在取代传统的机器翻译，各家模型厂商出的flash模型正在成为翻译界的主要角色
 
 ### 3.3 代码相关
 
-Claude code、Codex、Cursor是进来最火的AI 编程工具，国内的Qcode、Zcode、Codebuddy 等国内厂商的产品也在抢占市场，这些vibe coding 工具让行外人也能一句话生成一个作品，减轻程序员的工作压力，他们变得越来越火爆，以至于没用过他们就相当与“落伍”了
+Claude Code、Codex、Cursor是近来最火的AI 编程工具，国内的 Qoder、ZCode、CodeBuddy 等国内厂商的产品也在抢占市场，这些 vibe coding 工具让行外人也能一句话生成一个作品，减轻程序员的工作压力，他们变得越来越火爆，以至于没用过他们就相当与“落伍”了
 
 这些应用的背后，都依赖模型高效的**推理**能力——这也正是本课程后续章节（推理流程、GPU、推理框架）要重点解决的问题。
 
@@ -56,14 +56,14 @@ LLM自回归生成特性导致内存需求随输入序列长度和批次大小�
 
 ## 4 核心架构：Transformer
 
-transformer模型的起源可以追溯到2017年，当时由Google研究团队在论文[《Attention Is All You Need》](https://arxiv.org/abs/1706.03762)中首次提出。该模型的核心创新是引入了**自注意力机制**（Self-Attention Mechanism），摒弃了传统的循环神经网络（RNN）和卷积神经网络（CNN）结构。自注意力机制允许模型在处理序列数据时并行计算，从而大幅提高了计算效率，并解决了长距离依赖问题。
+Transformer模型的起源可以追溯到2017年，当时由Google研究团队在论文[《Attention Is All You Need》](https://arxiv.org/abs/1706.03762)中首次提出。该模型的核心创新是引入了**自注意力机制**（Self-Attention Mechanism），摒弃了传统的循环神经网络（RNN）和卷积神经网络（CNN）结构。自注意力机制允许模型在处理序列数据时并行计算，从而大幅提高了计算效率，并解决了长距离依赖问题。
 
 <div align="center">
     <img src="./images/1-1-transformer.png" alt="1-1-transformer.png" width="800">
 <p><em>图 1. Transformer 的整体架构</em></p>
 </div>
 
-上述图中是Transformer 的 Block 结构，左边是**编码器Block**，右边是**解码器Block**，解码器和编码器堆叠*N就是transformer结构
+上述图中是 Transformer 的 Block 结构，左边是**编码器Block**，右边是**解码器Block**，解码器和编码器堆叠*N就是 Transformer结构
 
 ### 4.1 位置编码(Positional Encoding)--正余弦位置编码
 
