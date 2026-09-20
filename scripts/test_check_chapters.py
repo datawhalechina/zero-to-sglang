@@ -1,4 +1,4 @@
-"""Regression tests for chapter opening and prose indentation rules."""
+"""Regression tests for chapter naming, opening, and prose indentation rules."""
 
 import contextlib
 import io
@@ -15,6 +15,58 @@ from check_chapters import (
     is_placeholder,
     outside_code,
 )
+
+
+class ChapterFilenameTests(unittest.TestCase):
+    def check_name(self, lang: str, filename: str, heading: str) -> str:
+        path = REPO / "course-material" / lang / "part2" / filename
+        lines = [f"# {heading}", "", "This chapter is being written. Stay tuned."]
+        output = io.StringIO()
+        with patch("check_chapters.read_lines", return_value=lines):
+            with contextlib.redirect_stdout(output):
+                check_chapter(path, LANGS[lang], Report())
+        return output.getvalue()
+
+    def test_localized_titles_and_suffixes_are_accepted(self):
+        cases = [
+            ("ch", "第1章_mini-sglang：推理引擎长什么样.md", "第 1 章 推理引擎"),
+            ("ch", "第2章_一个请求的旅程.md", "第 2 章 一个请求的旅程"),
+            ("ch", "第2章_一个请求的旅程_代码.md", "第 2 章 一个请求的旅程（代码走读）"),
+            ("eng", "Chapter2_Inside-SGLang.md", "Chapter 2 Inside SGLang"),
+            ("eng", "Chapter2_Inside-SGLang_code.md", "Chapter 2 Inside SGLang (Code Walkthrough)"),
+        ]
+        for lang, filename, heading in cases:
+            with self.subTest(filename=filename):
+                self.assertEqual(self.check_name(lang, filename, heading), "")
+
+    def test_title_language_excludes_prefix_and_suffix(self):
+        for filename in ("第2章_InsideSGLang.md", "第2章_InsideSGLang_代码.md"):
+            with self.subTest(filename=filename):
+                self.assertIn("Chinese title", self.check_name("ch", filename, "第 2 章 示例"))
+        result = self.check_name("eng", "Chapter2_一个请求的旅程.md", "Chapter 2 Example")
+        self.assertIn("English title", result)
+
+    def test_legacy_and_wrong_language_markers_are_rejected(self):
+        cases = [
+            ("ch", "第2章_code部分_一个请求的旅程.md", "第 2 章 示例"),
+            ("ch", "第2章_代码_一个请求的旅程.md", "第 2 章 示例"),
+            ("ch", "第2章_一个请求的旅程_code.md", "第 2 章 示例"),
+            ("eng", "Chapter2_Coding_Inside-SGLang.md", "Chapter 2 Example"),
+            ("eng", "Chapter2_Inside-SGLang_代码.md", "Chapter 2 Example"),
+            ("eng", "Chapter2_Inside-SGLang_CODE.md", "Chapter 2 Example"),
+        ]
+        for lang, filename, heading in cases:
+            with self.subTest(filename=filename):
+                self.assertIn("put the coding marker after the title", self.check_name(lang, filename, heading))
+
+    def test_coding_heading_requires_suffix(self):
+        cases = [
+            ("ch", "第2章_一个请求的旅程.md", "第 2 章 示例（代码走读）"),
+            ("eng", "Chapter2_Inside-SGLang.md", "Chapter 2 Example (Code Walkthrough)"),
+        ]
+        for lang, filename, heading in cases:
+            with self.subTest(filename=filename):
+                self.assertIn("coding documents must end in", self.check_name(lang, filename, heading))
 
 
 class ChapterLayoutTests(unittest.TestCase):

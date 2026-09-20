@@ -74,7 +74,7 @@
 | [4. KV Cache: The Core Data Structure of Inference](<course-material/eng/part1/Chapter4_KV Cache The Core Data Structure of Inference.md>) | Deriving KV Cache from attention, cache lifecycle, quantitative memory analysis | ✅ |
 | [5. Introduction to Benchmark](course-material/eng/part1/Chapter5_Introduction_to_Benchmark.md) | Core metrics such as TTFT / TPOT / ITL / Goodput, percentiles and tail latency, how to design, run and read a benchmark | 🔄 |
 | <strong>Part II — Build Your Own Mini SGL</strong> | | |
-| 1. mini-sglang: what an inference engine looks like | Overall architecture of an inference engine, module breakdown, roadmap for this part | 📝 |
+| [1. mini-sglang: What an Inference Engine Looks Like](course-material/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like.md) | Overall architecture of an inference engine, module breakdown, roadmap for this part | ✅ |
 | 2. **Inside SGLang: The Path of a Request** | The full lifecycle of a request from arrival to response | 🚧 |
 | 3. Your First 200 Lines: Forward Pass and Generation | Hand-writing the forward pass and the autoregressive generation loop | 🚧 |
 | 4. KV Cache: From O(n²) to O(n) | Implementing the cache and optimizing attention computation | 🚧 |

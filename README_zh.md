@@ -73,7 +73,7 @@
 | [4. KV Cache: The Core Data Structure of Inference](course-material/ch/part1/第4章_推理的核心数据结构入门.md) | 从 Attention 推导 KV Cache、cache 生命周期、显存占用定量分析 | ✅ |
 | [5. Introduction to Benchmark](course-material/ch/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | 🔄 |
 | <strong>Part II — 从零手搓 Mini SGL</strong> | | |
-| 1. mini-sglang：推理引擎长什么样 | 推理引擎的总体架构、模块划分、本部分的 roadmap | 📝 |
+| [1. mini-sglang：推理引擎长什么样](course-material/ch/part2/第1章_mini-sglang：推理引擎长什么样.md) | 推理引擎的总体架构、模块划分、本部分的 roadmap | ✅ |
 | 2. **Inside SGLang: The Path of a Request** | 一个请求从进入到返回的完整生命周期 | 🚧 |
 | 3. Your First 200 Lines: Forward Pass and Generation | 手写前向传播与自回归生成循环 | 🚧 |
 | 4. KV Cache: From O(n²) to O(n) | 缓存实现与注意力计算优化 | 🚧 |
