@@ -55,7 +55,8 @@ CI 会检查章节的引言位置、段首缩进、标题层级、结尾结构�
 
 ## 文件与图片
 
-- 一章一个 markdown 文件，放在 `course-material/ch/partN/` 下，文件名 `第N章_中文标题.md`。
+- 章节文档放在 `course-material/ch/partN/` 下，文件名 `第N章_中文标题.md`。标题使用中文，可保留 mini-sglang 等技术名称。
+- 配套代码文档在标题后加 `_代码` 后缀，命名为 `第N章_中文标题_代码.md`，同样遵循本模板。
 - 图片放在同一 part 的 `course-material/ch/partN/images/` 下，文件名 `章号-序号-图片说明.png`，例如 `6-4-SM的架构.png`。
 - 图片用 HTML 标签引用，宽度统一 800。
 

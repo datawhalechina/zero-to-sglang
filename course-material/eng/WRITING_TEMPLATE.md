@@ -55,7 +55,8 @@ Summarize the chapter's key ideas.
 
 ## Files and images
 
-- One chapter per markdown file, under `course-material/eng/partN/`, named `ChapterN_English-Title.md`, e.g. `Chapter2_Introduction-to-Inference.md`.
+- Place chapter documents under `course-material/eng/partN/`, named `ChapterN_English-Title.md`, e.g. `Chapter2_Introduction-to-Inference.md`. Use English titles; technical names such as mini-sglang may be retained.
+- Name companion coding documents `ChapterN_English-Title_code.md`, with the `_code` suffix after the title. They follow this template too.
 - Images go in the same part's `course-material/eng/partN/images/`, named `chapter-index-description.png`, e.g. `6-4-SM-architecture.png`. If a figure has no text that needs translating, reference the Chinese edition's copy by relative path instead of duplicating it.
 - Reference images with an HTML tag, width 800.
 

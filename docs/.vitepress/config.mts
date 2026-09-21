@@ -41,7 +41,8 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
     text: 'Part II — Build Your Own Mini SGL',
     items: [
       { text: '第 1 章 mini-sglang 概览', link: '/ch/part2/第1章_mini-sglang：推理引擎长什么样' },
-      { text: '第 2 章 Inside SGLang', link: '/ch/part2/第2章_InsideSGLang' },
+      { text: '第 2 章 一个请求的旅程（概念）', link: '/ch/part2/第2章_一个请求的旅程' },
+      { text: '第 2 章 一个请求的旅程（代码走读）', link: '/ch/part2/第2章_一个请求的旅程_代码' },
       { text: '第 3 章 前向与生成', link: '/ch/part2/第3章_前向与生成' },
       { text: '第 4 章 KV Cache 优化', link: '/ch/part2/第4章_KVCache优化' },
       { text: '第 5 章 HTTP 服务与并发', link: '/ch/part2/第5章_HTTP服务与并发' },
@@ -116,7 +117,8 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
     text: 'Part II — Build Your Own Mini SGL',
     items: [
       { text: 'Chapter 1 mini-sglang Overview', link: '/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like' },
-      { text: 'Chapter 2 Inside SGLang', link: '/eng/part2/Chapter2_Inside-SGLang' },
+      { text: 'Chapter 2 Inside SGLang (Concepts)', link: '/eng/part2/Chapter2_Inside-SGLang' },
+      { text: 'Chapter 2 Inside SGLang (Code Walkthrough)', link: '/eng/part2/Chapter2_Inside-SGLang_code' },
       { text: 'Chapter 3 Forward Pass and Generation', link: '/eng/part2/Chapter3_Forward-Pass-and-Generation' },
       { text: 'Chapter 4 KV Cache Optimization', link: '/eng/part2/Chapter4_KV-Cache-Optimization' },
       { text: 'Chapter 5 HTTP and Concurrent Requests', link: '/eng/part2/Chapter5_HTTP-and-Concurrent-Requests' },

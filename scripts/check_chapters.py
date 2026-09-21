@@ -8,6 +8,7 @@ Rules are taken from course-material/ch/WRITING_TEMPLATE.md (Chinese chapters) a
 course-material/eng/WRITING_TEMPLATE.md (English chapters):
 
   * file name        第N章_中文标题.md            /  ChapterN_English-Title.md
+  * coding files     第N章_中文标题_代码.md       /  ChapterN_English-Title_code.md
   * one H1           # 第 N 章 中文标题            /  # Chapter N Title
   * opening          title, prose introduction, then ## 1 本章学习目标 / Learning Objectives
   * paragraphs       no leading whitespace or whitespace entities in prose
@@ -260,6 +261,31 @@ def check_images(path: Path, lang: Lang, part: int, chapter: int,
                 rep.error(path, i, f"image file not found: {src}")
 
 
+def check_filename_title(path: Path, lang: Lang, heading: str, rep: Report) -> None:
+    """Check title language and the placement of coding-document markers."""
+    title = path.stem.split("_", 1)[1]
+    suffix = "_代码" if lang.key == "ch" else "_code"
+    is_coding = title.endswith(suffix)
+    if is_coding:
+        title = title[:-len(suffix)]
+
+    has_han = bool(re.search(r"[\u3400-\u9fff]", title))
+    if lang.key == "ch" and not has_han:
+        rep.error(path, 1, "Chinese file names must contain a Chinese title, excluding the chapter prefix and _代码 suffix")
+    if lang.key == "eng" and (has_han or not re.search(r"[A-Za-z]", title)):
+        rep.error(path, 1, "English file names must contain an English title without Chinese characters")
+
+    markers = {"code", "coding", "code部分", "代码", "代码部分", "代码走读"}
+    if any(token.casefold() in markers for token in title.split("_")):
+        rep.error(path, 1, f"put the coding marker after the title as {suffix}.md")
+    coding_heading = re.search(
+        r"[（(](?:代码(?:部分|走读)?|code(?: walkthrough)?|coding)[）)]$",
+        heading, re.IGNORECASE,
+    )
+    if coding_heading and not is_coding:
+        rep.error(path, 1, f"coding documents must end in {suffix}.md")
+
+
 def check_chapter(path: Path, lang: Lang, rep: Report) -> None:
     lines = read_lines(path)
     part = part_of(path)
@@ -282,6 +308,7 @@ def check_chapter(path: Path, lang: Lang, rep: Report) -> None:
             headings.append((i, len(hm.group(1)), hm.group(2).strip()))
 
     h1s = [h for h in headings if h[1] == 1]
+    check_filename_title(path, lang, h1s[0][2] if h1s else "", rep)
     if len(h1s) != 1:
         rep.error(path, h1s[1][0] if len(h1s) > 1 else 1,
                   f"exactly one level-1 heading (the chapter title) is allowed, found {len(h1s)}")
