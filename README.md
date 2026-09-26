@@ -78,7 +78,7 @@
 | 2. **Inside SGLang: The Path of a Request** | The full lifecycle of a request from arrival to response | 🚧 |
 | 3. Your First 200 Lines: Forward Pass and Generation | Hand-writing the forward pass and the autoregressive generation loop | 🚧 |
 | 4. KV Cache: From O(n²) to O(n) | Implementing the cache and optimizing attention computation | 🚧 |
-| 5. Serving It: HTTP and Concurrent Requests | HTTP serving and handling concurrent requests | 🚧 |
+| [5. Serving It: HTTP and Concurrent Requests](course-material/eng/part2/Chapter5_HTTP-and-Concurrent-Requests.md) | HTTP serving and handling concurrent requests | ✅ |
 | 6. Continuous Batching and the Scheduler | Continuous batching and scheduler design | 🚧 |
 | 7. Paged KV Cache and Memory Management | Paged KV Cache and GPU memory management | 🚧 |
 | 8. RadixAttention and Prefix Caching | RadixAttention and prefix caching | 🚧 |
