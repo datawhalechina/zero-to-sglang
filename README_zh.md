@@ -77,7 +77,7 @@
 | 2. **Inside SGLang: The Path of a Request** | 一个请求从进入到返回的完整生命周期 | 🚧 |
 | 3. Your First 200 Lines: Forward Pass and Generation | 手写前向传播与自回归生成循环 | 🚧 |
 | 4. KV Cache: From O(n²) to O(n) | 缓存实现与注意力计算优化 | 🚧 |
-| 5. Serving It: HTTP and Concurrent Requests | HTTP 服务化、并发请求处理 | 🚧 |
+| [5. HTTP 服务与并发](course-material/ch/part2/第5章_HTTP服务与并发.md) | HTTP 服务化、并发请求处理 | ✅ |
 | 6. Continuous Batching and the Scheduler | 连续批处理与调度器设计 | 🚧 |
 | 7. Paged KV Cache and Memory Management | 分页 KV Cache 与显存管理 | 🚧 |
 | 8. RadixAttention and Prefix Caching | RadixAttention 与前缀缓存 | 🚧 |
