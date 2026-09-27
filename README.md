@@ -24,7 +24,7 @@
 
 ---
 
-> **Course status**: Part 0 and Part I are available in English, with further writing and review in progress. Parts II–IV are under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: Part 0, Part I, and Chapters 1–2 of Part II are complete in both English and Chinese. The remaining chapters of Part II and Parts III–IV are under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -70,12 +70,12 @@
 | <strong>Part I — Foundations (concepts only, no code, no GPU)</strong> | | |
 | [1. Introduction to LLM](course-material/eng/part1/Chapter1_Introduction_to_LLM.md) | What an LLM is and how it evolved, the Transformer architecture, autoregressive generation, key concepts | ✅ |
 | [2. Introduction to Inference](<course-material/eng/part1/Chapter2_Introduction to Inference.md>) | Training vs. inference, prefill/decode, compute-bound vs. memory-bound, the Roofline model | ✅ |
-| [3. Introduction to GPU](course-material/eng/part1/Chapter3_Introduction_to_GPU.md) | GPU architecture basics, how LLM inference executes on a GPU, understanding inference bottlenecks from the hardware | 🔄 |
+| [3. Introduction to GPU](course-material/eng/part1/Chapter3_Introduction_to_GPU.md) | GPU architecture basics, how LLM inference executes on a GPU, understanding inference bottlenecks from the hardware | ✅ |
 | [4. KV Cache: The Core Data Structure of Inference](<course-material/eng/part1/Chapter4_KV Cache The Core Data Structure of Inference.md>) | Deriving KV Cache from attention, cache lifecycle, quantitative memory analysis | ✅ |
-| [5. Introduction to Benchmark](course-material/eng/part1/Chapter5_Introduction_to_Benchmark.md) | Core metrics such as TTFT / TPOT / ITL / Goodput, percentiles and tail latency, how to design, run and read a benchmark | 🔄 |
+| [5. Introduction to Benchmark](course-material/eng/part1/Chapter5_Introduction_to_Benchmark.md) | Core metrics such as TTFT / TPOT / ITL / Goodput, percentiles and tail latency, how to design, run and read a benchmark | ✅ |
 | <strong>Part II — Build Your Own Mini SGL</strong> | | |
 | [1. mini-sglang: What an Inference Engine Looks Like](course-material/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like.md) | Overall architecture of an inference engine, module breakdown, roadmap for this part | ✅ |
-| 2. **Inside SGLang: The Path of a Request** | The full lifecycle of a request from arrival to response | 🚧 |
+| [2. **Inside SGLang: The Path of a Request**](course-material/eng/part2/Chapter2_Inside-SGLang.md) | The full lifecycle of a request from arrival to response | ✅ |
 | 3. Your First 200 Lines: Forward Pass and Generation | Hand-writing the forward pass and the autoregressive generation loop | 🚧 |
 | 4. KV Cache: From O(n²) to O(n) | Implementing the cache and optimizing attention computation | 🚧 |
 | 5. Serving It: HTTP and Concurrent Requests | HTTP serving and handling concurrent requests | 🚧 |
@@ -102,8 +102,8 @@ Start date: Monday, August 24, 2026. About one week per chapter; chapters in bol
 | Part | Schedule | Status |
 |------|----------|------|
 | Part 0 — Before you learn | Done | ✅ |
-| Part I — Foundations | Writing 8.24 ~ 9.06, review 9.07 ~ 9.13 | 🔄 |
-| Part II — Build Your Own Mini SGL | Writing 9.14 ~ 10.04, review 10.05 ~ 10.10 | 🚧 |
+| Part I — Foundations | Writing 8.24 ~ 9.06, review 9.07 ~ 9.13 | ✅ |
+| Part II — Build Your Own Mini SGL | Writing 9.14 ~ 10.04, review 10.05 ~ 10.10 | 🔄 |
 | Part III — Advanced Inference Technique | 10.10 ~ 11.15 | 🚧 |
 | Part IV — How to Make Contribution to SGLang | 11.16 ~ 12.6 | 🚧 |
 
@@ -130,8 +130,8 @@ zero-to-sglang/
 ├── course-material/         # Course text
 │   ├── ch/                  # Chinese edition (read online at /ch/)
 │   │   ├── part0/           # Part 0: Before you learn
-│   │   ├── part1/           # Part I: Foundations (in progress)
-│   │   ├── part2/           # Part II: Build Your Own Mini SGL (planned)
+│   │   ├── part1/           # Part I: Foundations (complete)
+│   │   ├── part2/           # Part II: Build Your Own Mini SGL (in progress)
 │   │   ├── part3/           # Part III: Advanced Inference Technique (planned)
 │   │   ├── part4/           # Part IV: How to Make Contribution to SGLang (planned)
 │   │   └── WRITING_TEMPLATE.md
