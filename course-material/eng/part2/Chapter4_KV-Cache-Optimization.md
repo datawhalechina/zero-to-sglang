@@ -26,7 +26,7 @@ This means the model processes the full prompt to generate token 1, then the pro
 <p><em>Figure 1. Generation loop without KV Cache</em></p>
 </div>
 
-Suppose the prompt is $x_1,x_2,ldots,x_p$ and we want to generate $n$ new tokens. The generation loop without KV Cache works as follows:
+Suppose the prompt is $x_1,x_2,\ldots,x_p$ and we want to generate $n$ new tokens. The generation loop without KV Cache works as follows:
 
 **Step 1**: send the whole prompt to the model and obtain the first new token, $y_1$.
 
@@ -45,11 +45,11 @@ The input is the entire **history**, not just the newly generated token. The mod
 <p><em>Figure 2. Repeated projections of historical K/V</em></p>
 </div>
 
-To see **where the wasted computation occurs**, consider the calculations within a single step. Suppose the input sequence at step $t$ has length $T$ and shape $B 	imes T$, where $B$ is the batch size. After embedding lookup, it becomes $B 	imes T 	imes C$, where $C$ is the hidden dimension, and then enters each Transformer block.
+To see **where the wasted computation occurs**, consider the calculations within a single step. Suppose the input sequence at step $t$ has length $T$ and shape $B \times T$, where $B$ is the batch size. After embedding lookup, it becomes $B \times T \times C$, where $C$ is the hidden dimension, and then enters each Transformer block.
 
-In the attention layer, **the model first applies linear projections to all $T$ positions** to obtain Query, Key, and Value. Their shapes are all $B 	imes H 	imes T 	imes D$, where $H$ is the number of attention heads and $D$ is the dimension of each head. Because $T$ includes the complete history, every historical token undergoes Q, K, and V projection again.
+In the attention layer, **the model first applies linear projections to all $T$ positions** to obtain Query, Key, and Value. Their shapes are all $B \times H \times T \times D$, where $H$ is the number of attention heads and $D$ is the dimension of each head. Because $T$ includes the complete history, every historical token undergoes Q, K, and V projection again.
 
-The model then computes attention scores by **multiplying Query by the transpose of Key** and dividing by $sqrt{D}$, producing a $B 	imes H 	imes T 	imes T$ matrix. Every element of this matrix measures the relationship between a query position and a key position. A causal mask ensures that query position $i$ can see only keys with $j le i$, preventing it from looking at future tokens. After softmax, the scores are multiplied by Value to obtain the attention output. The output then goes through output projection, residual connection, LayerNorm, and MLP before proceeding to the next layer.
+The model then computes attention scores by **multiplying Query by the transpose of Key** and dividing by $\sqrt{D}$, producing a $B \times H \times T \times T$ matrix. Every element of this matrix measures the relationship between a query position and a key position. A causal mask ensures that query position $i$ can see only keys with $j \le i$, preventing it from looking at future tokens. After softmax, the scores are multiplied by Value to obtain the attention output. The output then goes through output projection, residual connection, LayerNorm, and MLP before proceeding to the next layer.
 
 Throughout this process, $T$ is the full history length. The $T$ at step $t$ is one larger than it was at step $t-1$, but the K/V of the first $T-1$ tokens were already computed at step $t-1$. Without a cache, those representations are projected again and participate in attention-score computation again at step $t$. **That is the repeated work.**
 
@@ -62,13 +62,13 @@ Throughout this process, $T$ is the full history length. The $T$ at step $t$ is 
 
 Suppose the prompt contains only two tokens, $x_1$ and $x_2$, and we want to generate three new tokens.
 
-**Step 1**: the input is $[x_1,x_2]$, with length 2. The model computes Q, K, and V for both positions, and the attention-score matrix is $2 	imes 2$. Sampling from the final logits gives $y_1$.
+**Step 1**: the input is $[x_1,x_2]$, with length 2. The model computes Q, K, and V for both positions, and the attention-score matrix is $2 \times 2$. Sampling from the final logits gives $y_1$.
 
-**Step 2**: the input becomes $[x_1,x_2,y_1]$, with length 3. The model recomputes K/V for $x_1$ and $x_2$, along with K/V for the newly added $y_1$. The attention-score matrix becomes $3 	imes 3$. The final logits produce $y_2$.
+**Step 2**: the input becomes $[x_1,x_2,y_1]$, with length 3. The model recomputes K/V for $x_1$ and $x_2$, along with K/V for the newly added $y_1$. The attention-score matrix becomes $3 \times 3$. The final logits produce $y_2$.
 
-**Step 3**: the input becomes $[x_1,x_2,y_1,y_2]$, with length 4. The model again computes K/V from scratch for $x_1$, $x_2$, $y_1$, and $y_2$. The attention-score matrix becomes $4 	imes 4$. The final logits produce $y_3$.
+**Step 3**: the input becomes $[x_1,x_2,y_1,y_2]$, with length 4. The model again computes K/V from scratch for $x_1$, $x_2$, $y_1$, and $y_2$. The attention-score matrix becomes $4 \times 4$. The final logits produce $y_3$.
 
-The K/V for $x_1$ and $x_2$ were already computed in step 1, yet they are computed again in steps 2 and 3. The K/V for $y_1$ was computed in step 2 and then recomputed in step 3. As the input grows, each attention matrix is recomputed from scratch as $T 	imes T$, and historical K/V is never reused.
+The K/V for $x_1$ and $x_2$ were already computed in step 1, yet they are computed again in steps 2 and 3. The K/V for $y_1$ was computed in step 2 and then recomputed in step 3. As the input grows, each attention matrix is recomputed from scratch as $T \times T$, and historical K/V is never reused.
 
 ### 2.4 How Much Is Repeated: O(n²) or O(n³)?
 
@@ -85,13 +85,13 @@ $$
 
 This is one source of the statement that generation without KV Cache is $O(n^2)$: **this $O(n^2)$ generally refers to time complexity**.
 
-If we instead count the total number of elements in the full $QK^\top$ matrices, step $t$ has a $t 	imes t$ matrix, giving
+If we instead count the total number of elements in the full $QK^\top$ matrices, step $t$ has a $t \times t$ matrix, giving
 
 $$
 1^2+2^2+\cdots+n^2=\sum_{t=1}^{n}t^2=O(n^3).
 $$
 
-This is why you may encounter either $O(n^2)$ or $O(n^3)$, depending on what is being counted. The common phrase "from $O(n^2)$ to $O(n)$" emphasizes that a decode step no longer recomputes the full history: the current query reads historical cache, so per-step attention changes from $T 	imes T$ to $1 	imes T$.
+This is why you may encounter either $O(n^2)$ or $O(n^3)$, depending on what is being counted. The common phrase "from $O(n^2)$ to $O(n)$" emphasizes that a decode step no longer recomputes the full history: the current query reads historical cache, so per-step attention changes from $T \times T$ to $1 \times T$.
 
 Regardless of the accounting method, the fundamental problem is the same: historical K/V can be reused but is recomputed at every step because it is not saved. A model forward pass is stateless; it recalculates whatever input it receives and does not remember the previous step.
 
@@ -248,7 +248,7 @@ With KV Cache, generation has two stages.
 5. Produces the current token's output and continues through higher layers.
 6. Produces logits for the next token, samples it, and starts the next iteration.
 
-In a decode step, attention no longer computes a full $T 	imes T$ matrix over the history. Instead, the current Query attends over historical Keys through a $1 	imes T$ attention operation. Historical K/V is genuinely reused.
+In a decode step, attention no longer computes a full $T \times T$ matrix over the history. Instead, the current Query attends over historical Keys through a $1 \times T$ attention operation. Historical K/V is genuinely reused.
 
 ### 3.5 Common Misconceptions
 
@@ -266,7 +266,7 @@ With RoPE, Key is usually cached after rotary positional encoding is applied. Qu
 
 KV Cache fundamentally preserves the Keys and Values of historical tokens at each layer, preventing the model from recomputing the full history at every step. The model's forward pass remains stateless, but the inference system uses an external cache to reuse historical computation.
 
-Without KV Cache, step $t$ recomputes K/V for every token from 1 through $t$. With KV Cache, step $t$ computes K/V only for the current token and appends it to the cache. Per-step attention changes from $T 	imes T$ to $1 	imes T$, which is the core idea behind KV Cache optimization.
+Without KV Cache, step $t$ recomputes K/V for every token from 1 through $t$. With KV Cache, step $t$ computes K/V only for the current token and appends it to the cache. Per-step attention changes from $T \times T$ to $1 \times T$, which is the core idea behind KV Cache optimization.
 
 ## 4 Complexity Derivation: From O(n²) to O(n)
 
@@ -304,7 +304,7 @@ $$
 
 This is one source of the statement that generation without KV Cache is $O(n^2)$: historical K/V could have been reused, but is projected again at every step.
 
-If we instead count the attention-score matrix, its size at step $t$ is $T_t 	imes T_t$, with
+If we instead count the attention-score matrix, its size at step $t$ is $T_t \times T_t$, with
 
 $$
 T_t^2
