@@ -512,10 +512,10 @@ When reading SGLang, you can still follow the same lifecycle:
 
 The files, storage media, and policies are more complex, but the main lifecycle is shared with mini-sglang. When reading real SGLang, first use mini-sglang to establish this line, then map each action to the more fine-grained modules.
 
-## 6 Summary and exercises
+## 6 Summary and Exercises
 
 
-### 6.1 Chapter summary
+### 6.1 Summary
 
 A Prefix Cache hit is not simply a matter of retrieving KV tensors from the Radix Tree. In mini-sglang:
 
