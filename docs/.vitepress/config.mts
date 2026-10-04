@@ -128,7 +128,7 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
       { text: 'Chapter 6 Continuous Batching and the Scheduler', link: '/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler' },
       { text: 'Chapter 7 Paged KV Cache and Memory Management', link: '/eng/part2/Chapter7_Paged-KV-Cache-and-Memory-Management' },
       { text: 'Chapter 8 RadixAttention and Prefix Caching (Concepts)', link: '/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching' },
-      { text: 'Chapter 8 RadixAttention and Prefix Caching (Code Walkthrough)', link: '/ch/part2/Chapter8_RadixAttention-and-Prefix-Caching_code' },
+      { text: 'Chapter 8 RadixAttention and Prefix Caching (Code Walkthrough)', link: '/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code' },
       { text: 'Chapter 9 Multi-process and Tensor Parallelism', link: '/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism' },
       { text: 'Chapter 10 Speculative Decoding', link: '/eng/part2/Chapter10_Speculative-Decoding' },
     ],
