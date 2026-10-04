@@ -4,7 +4,7 @@ The previous chapter introduced the Radix Tree, longest common prefixes, the KV 
 
 Keep the following idea as the guiding thread: “The Radix Tree records mappings, while the KV Cache Pool stores the data.” We recommend reading the [conceptual chapter](./Chapter 8_RadixAttention and Prefix Caching.md) first, then using this chapter as a code companion.
 
-## 1 Learning objectives
+## 1 Learning Objectives
 
 After completing this chapter, you should be able to answer the following questions clearly:
 
