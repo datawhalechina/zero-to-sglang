@@ -491,7 +491,7 @@ with self.cache_manager.lazy_free_region():
 
 This reduces repeated concatenation of small tensors and avoids repeatedly changing resource state while overlap scheduling is active. **finished_reqs** prevents the same request from being freed twice.
 
-### 5 Comparing with real SGLang
+## 5 Comparing with real SGLang
 
 The preceding flow showed how a request in mini-sglang completes matching, allocation, writing, and release. Real SGLang divides these responsibilities across more modules, but the same actions still correspond to one another:
 
