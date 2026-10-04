@@ -112,7 +112,7 @@ An ordinary Trie naturally supports prefix queries, but each edge generally corr
 A Radix Tree node contains a parent pointer, a dictionary of children, a `key_fn` used to extract a child index from a key tensor, and its own `_key`, `_value`, and length. The structure is illustrated below:
 
 <div align="center">
-  <img src="./images/8-1-RadixTreeNode Structure.png" alt="RadixTreeNode structure" width="800">
+  <img src="./images/8-1-RadixTreeNode.png" alt="RadixTreeNode" width="800">
   <p><em>Figure 1. RadixTreeNode structure</em></p>
 </div>
 
