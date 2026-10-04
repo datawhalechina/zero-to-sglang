@@ -1,4 +1,4 @@
-# Chapter 8 RadixAttention and Prefix Caching
+# Chapter 8: RadixAttention and Prefix Caching
 
 In the previous part, we introduced how paging can efficiently manage KV Cache memory allocation and reduce fragmentation. **This chapter focuses further on a practical problem in online LLM inference: can the KV Cache be shared and reused across different requests to reduce GPU memory usage even further?** The answer is yes. Prefix caching (Prefix Cache) makes this possible by directly reusing the computed KV states of requests that share a common prefix. RadixAttention goes one step further: it combines KV Cache physical-block mapping, efficient prefix matching, scheduler coordination, and LRU eviction through a Radix Tree, forming an automated, **token-level** sharing mechanism.
 
@@ -330,7 +330,7 @@ Assume that the KV Cache Pool has limited capacity available in its **free list*
 >
 > A handle acts like a “key”: it records which node was matched and how much of the prefix was locked, providing information for subsequent operations such as writing the page table.
 
-**Step 2: [Schedule decides which request runs first](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/managers/schedule_policy.py).** The scheduler compares the hit length, suffix length, and resource requirements of R1 and R2. SGLang's scheduling policies fall into two categories:
+**Step 2: Schedule decides which request runs first.** In mini-sglang, the scheduler tries to add requests in `pending_list` arrival order until the token budget or available resources are exhausted; it does not use complex prefix-aware policies. In full SGLang, the scheduler compares the hit length, suffix length, and resource requirements of R1 and R2. SGLang's scheduling policies fall into two categories; see [`schedule_policy.py`](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/managers/schedule_policy.py):
 
 - **Prefix-aware**: `lpm`, `dfs-weight`, `hrrn`, `shortest-prefill-first`, and others. Depending on the policy, requests with longer shared prefixes, higher DFS weights, or shorter uncached workloads are prioritized.
 - **Prefix-cache agnostic**: `fcfs` (first come, first served), `lof` (longest output first), `random`, `routing-key`, and others.
@@ -339,7 +339,7 @@ Assume that `shortest-prefill-first` is used. R1 has a shorter uncached portion;
 
 **Step 3: Lock converts a candidate into a protected reference.** Before R1 enters the computation batch, the matched node is passed to a lock operation, which increments `ref_count` along the path from that node toward the root. When a node's `ref_count` changes from 0 to 1, the corresponding token count moves from `evictable_size` to `protected_size`, and its state in the evictable-leaf collection is updated. The shared prefix [900, 10, 11, 12] is therefore protected. Its matched indices are written into the request's page table. *Locking only protects the cache; it does not allocate new pages.*
 
-**Step 4: Allocate only the missing portion.** R1 has an unmatched suffix of length 2, so [p6, p7] is allocated from the **free list**. The page table becomes [p0, p1, p2, p3, p6, p7]. If insufficient free space is available, the allocator first asks the CacheManager to perform `evict`. Only leaf nodes with a current reference count of 0 may be evicted. Once enough physical space is returned, allocation continues.
+**Step 4: Allocate only the missing portion.** R1 has an unmatched suffix of length 2, so [p6, p7] is allocated from the **free list**. The page table becomes [p0, p1, p2, p3, p6, p7]. If free space is insufficient, the allocator first asks the CacheManager to reclaim physical space and then continues allocating. In implementations that use Radix Cache eviction, this means calling `evict`; only leaf nodes whose current reference count is 0 may be evicted.
 
 *Note: this process does **not** allocate the already matched physical space [p0, p1, p2, p3] again.*
 
@@ -355,6 +355,8 @@ This operation writes a token-id-to-physical-address index and does not copy the
 
 - if a node's `ref_count` drops to 0, it becomes evictable and contributes to `evictable_size`;
 - if `ref_count > 0`, another request is still using the node, so it cannot be evicted.
+
+At this point, a prefix whose reference count has dropped to 0 is still not removed from the shared prefix tree, and its physical slots are not released immediately.
 
 *Note: [p6, p7], which were successfully inserted into the tree, are not freed immediately. They have merely lost the protection associated with this request. Whether they are removed from the tree depends on whether later memory pressure triggers eviction.*
 
@@ -443,7 +445,7 @@ function _tree_walk(input_ids) -> Tuple[RadixTreeNode, int]:
         match_len ← round down to a multiple of page_size
         prefix_len ← prefix_len + match_len
         if match_len < node.length:          # A divergence requires a split
-            node.split_at(match_len)
+            node ← node.split_at(match_len)
             node.timestamp ← tic
             return node, prefix_len
     node.timestamp ← tic
@@ -534,13 +536,13 @@ The detailed design and implementation are beyond the scope of this chapter. Int
 
 ---
 
-## 5 Summary and Exercises
+## 5 Summary and Review Questions
 
-### 5.1 Summary
+### 5.1 Chapter Summary
 
 This chapter first used requests A, B, and C to introduce Radix Tree construction and the basic principles of longest-prefix matching and node splitting. Then, assuming that the tree had already been built, it used R1 and R2 to analyze the complete Prefix Cache lifecycle—from request matching, scheduling, locking, and physical-space allocation to insertion, unlocking, and cache eviction. Finally, it connected these operations to the mini-sglang implementation, explaining details such as page alignment, reference counting, and duplicate-page reclamation, while briefly comparing the corresponding extensions in current SGLang.
 
-### 5.2 Exercises
+### 5.2 Review Questions
 
 **1. Why can eviction in a Radix Cache begin only with leaf nodes, rather than directly evicting an internal node or the root?**
 
@@ -565,3 +567,5 @@ This chapter first used requests A, B, and C to introduce Radix Tree constructio
 - [mini-sglang: cache.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/cache.py)
 - [SGLang: radix_cache.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/mem_cache/radix_cache.py)
 - [Unified Radix Cache](https://www.lmsys.org/blog/2026-08-11-unified-radix-cache)
+- [mini-sglang: decode.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/decode.py)
+- [mini-sglang: prefill.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/prefill.py)
