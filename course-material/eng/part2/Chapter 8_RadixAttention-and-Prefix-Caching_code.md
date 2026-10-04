@@ -530,15 +530,15 @@ A Prefix Cache hit is not simply a matter of retrieving KV tensors from the Radi
 ### 6.2 Exercises
 
 
-1. Why does **CacheManager.match_req** receive only **input_ids[:input_len - 1]**? If the entire prompt were allowed to hit, what problem would the model encounter during the forward pass?
+1.Why does **CacheManager.match_req** receive only **input_ids[:input_len - 1]**? If the entire prompt were allowed to hit, what problem would the model encounter during the forward pass?
 > Hint: Prefill must both write the KV Cache computed in this round and produce the **logits for the first output token**.
 
 
-2. Why does **PrefillAdder._try_allocate_one** check available_size both before and after lock(handle)?
+2.Why does **PrefillAdder._try_allocate_one** check available_size both before and after lock(handle)?
 > Hint: both checks compare estimated_len + reserved_size (including the Decode reservation and the space reserved for Decode) with available_size; lock changes the evictable size in between.
 
 
-3. Why does **RadixCacheHandle.get_matched_indices** walk through parent to the root and then reverse-concatenate the segments?
+3.Why does **RadixCacheHandle.get_matched_indices** walk through parent to the root and then reverse-concatenate the segments?
 
 > Hint: each tree node stores only the value for its own segment, so start at the matched node and walk upward through parent.
 
