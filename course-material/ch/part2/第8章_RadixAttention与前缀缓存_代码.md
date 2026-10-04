@@ -491,7 +491,7 @@ with self.cache_manager.lazy_free_region():
 
 这样既减少频繁拼接小 tensor，也避免 overlap scheduling 下资源状态在处理中途反复变化；**finished_reqs** 则用于防止同一请求被 free 两次。
 
-### 5 对照真实 SGLang
+## 5 对照真实 SGLang
 
 前面的流程说明了 mini-sglang 中一条请求如何完成匹配、分配、写入和释放。真实 SGLang 的模块划分更细，但这些部分仍然可以对应起来：
 
