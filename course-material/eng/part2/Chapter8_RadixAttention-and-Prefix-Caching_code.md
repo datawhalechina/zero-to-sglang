@@ -512,10 +512,10 @@ When reading SGLang, you can still follow the same lifecycle:
 
 The files, storage media, and policies are more complex, but the main lifecycle is shared with mini-sglang. When reading real SGLang, first use mini-sglang to establish this line, then map each action to the more fine-grained modules.
 
-## 6 Summary and Exercises
+## 5 Summary and Exercises
 
 
-### 6.1 Summary
+### 5.1 Summary
 
 A Prefix Cache hit is not simply a matter of retrieving KV tensors from the Radix Tree. In mini-sglang:
 
@@ -527,7 +527,7 @@ A Prefix Cache hit is not simply a matter of retrieving KV tensors from the Radi
 
 ---
 
-### 6.2 Exercises
+### 5.2 Exercises
 
 
 1.Why does **CacheManager.match_req** receive only **input_ids[:input_len - 1]**? If the entire prompt were allowed to hit, what problem would the model encounter during the forward pass?
