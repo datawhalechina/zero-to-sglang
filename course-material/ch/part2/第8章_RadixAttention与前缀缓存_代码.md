@@ -340,7 +340,9 @@ def _add_one_req(
     return CLS(...)
 ```
 
-为避免超长请求一次 Prefill 导致峰值显存过高（OOM），会对请求做 **chunk 分块**——每一轮只处理该请求的一个分块也可与其他较短请求组成同一 Batch，而不是一轮中把同一请求的多个分块全部算完。若本轮仍是 `ChunkedReq == True`，会在 **schedule_next_batch()** 里被放回 **pending_list** 队头，优先在下一轮继续处理，避免出现“饥饿”现象。此时我们只有请求的逻辑范围和资源预算，还没有把新页写入 page table。
+为避免超长请求一次 Prefill 导致峰值显存过高（OOM），会对请求做 **chunk 分块**——每一轮只处理该请求的一个分块也可与其他较短请求组成同一 Batch，而不是一轮中把同一请求的多个分块全部算完。
+
+若本轮仍是 `ChunkedReq == True`，会在 **schedule_next_batch()** 里被放回 **pending_list** 队头，优先在下一轮继续处理，避免出现“饥饿”现象。此时我们只有请求的逻辑范围和资源预算，还没有把新页写入 page table。
 
 ---
 
