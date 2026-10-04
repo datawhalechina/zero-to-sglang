@@ -178,7 +178,7 @@ $$A = [101, 11, 12, 21, 22]$$
 The KV states produced by the linear projections are written to physical slots `[p0, p1, p2, p3, p4]`. Because the tree is empty, only one compressed node is created:
 
 <div align="center">
-  <img src="./images/8-2-radix tree build.png" alt="Initial construction of the Radix Tree" width="800">
+  <img src="./images/8-2-radix tree.png" alt="Initial construction of the Radix Tree" width="800">
   <p><em>Figure 2. Initial construction of the Radix Tree</em></p>
 </div>
 
