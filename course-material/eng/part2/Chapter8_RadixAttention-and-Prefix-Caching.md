@@ -1,4 +1,4 @@
-# Chapter 8: RadixAttention and Prefix Caching
+# Chapter 8 RadixAttention and Prefix Caching
 
 In the previous part, we introduced how paging can efficiently manage KV Cache memory allocation and reduce fragmentation. **This chapter focuses further on a practical problem in online LLM inference: can the KV Cache be shared and reused across different requests to reduce GPU memory usage even further?** The answer is yes. Prefix caching (Prefix Cache) makes this possible by directly reusing the computed KV states of requests that share a common prefix. RadixAttention goes one step further: it combines KV Cache physical-block mapping, efficient prefix matching, scheduler coordination, and LRU eviction through a Radix Tree, forming an automated, **token-level** sharing mechanism.
 
