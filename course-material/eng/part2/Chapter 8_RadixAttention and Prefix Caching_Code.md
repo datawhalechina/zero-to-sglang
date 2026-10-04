@@ -1,4 +1,4 @@
-# Chapter 8: RadixAttention and Prefix Caching (Code)
+# Chapter 8 RadixAttention and Prefix Caching (Code)
 
 The previous chapter introduced the Radix Tree, longest common prefixes, the KV Cache Pool, and the cache lifecycle $match \to lock \to allocate \to insert \to unlock \to evict/free$. This chapter applies those abstractions to the mini-SGLang source. We follow a request that hits the cache from prefix matching onward, observing how indices are produced, physical pages are allocated, KV is written, and resources are reclaimed when the request ends.
 
