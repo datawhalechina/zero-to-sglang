@@ -536,23 +536,23 @@ The detailed design and implementation are beyond the scope of this chapter. Int
 
 ---
 
-## 5 Summary and Review Questions
+## 5 Summary and Exercises
 
-### 5.1 Chapter Summary
+### 5.1 Summary 
 
 This chapter first used requests A, B, and C to introduce Radix Tree construction and the basic principles of longest-prefix matching and node splitting. Then, assuming that the tree had already been built, it used R1 and R2 to analyze the complete Prefix Cache lifecycle—from request matching, scheduling, locking, and physical-space allocation to insertion, unlocking, and cache eviction. Finally, it connected these operations to the mini-sglang implementation, explaining details such as page alignment, reference counting, and duplicate-page reclamation, while briefly comparing the corresponding extensions in current SGLang.
 
-### 5.2 Review Questions
+### 5.2 Exercises
 
-**1. Why can eviction in a Radix Cache begin only with leaf nodes, rather than directly evicting an internal node or the root?**
+1.Why can eviction in a Radix Cache begin only with leaf nodes, rather than directly evicting an internal node or the root?
 
 > Hint: recall the central Prefix Cache optimization—prefix reuse. Directly evicting an internal node would break every descendant path that uses it as a prefix, preventing other requests from hitting already computed shared KV states.
 
-**2. During CacheManager processing, under what circumstances can a page leak occur, and what problems would it cause?**
+2.During CacheManager processing, under what circumstances can a page leak occur, and what problems would it cause?
 
 > Hint: pages allocated to a request during Prefill may correspond to a prefix that another request has already inserted into the Radix Tree before the current request performs its own insertion.
 
-**3. During cache scheduling, when are `evict` and `free` used, and what is the essential difference between them?**
+3.During cache scheduling, when are `evict` and `free` used, and what is the essential difference between them?
 
 > Hint: in the relevant SGLang implementations, both ultimately release physical pages, but at different layers and at different points in the lifecycle—one evicts tree nodes according to a policy, while the other directly returns pages.
 
