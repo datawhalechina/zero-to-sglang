@@ -112,7 +112,7 @@ RadixAttention 这个名字容易让人误以为其改动了模型内部的注�
 
 
 <div align="center">
-  <img src="./images/8-1-RadixTreeNode结构.png" alt="RadixTreeNode结构示意图" width="800">
+  <img src="./images/8-1-RadixTreeNode结构示意图.png" alt="RadixTreeNode结构示意图" width="800">
   <p><em>图 1. RadixTreeNode结构示意图</em></p>
 </div>
 
