@@ -112,7 +112,7 @@ The basic components of a Radix Tree node include a pointer to its parent, a dic
 
 
 <div align="center">
-  <img src="./images/8-1-RadixTreeNode结构.png" alt="RadixTreeNode structure diagram" width="800">
+  <img src="./images/8-1-RadixTreeNode.png" alt="RadixTreeNode structure diagram" width="800">
   <p><em>Figure 1. RadixTreeNode structure diagram</em></p>
 </div>
 
