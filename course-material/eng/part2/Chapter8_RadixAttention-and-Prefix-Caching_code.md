@@ -295,8 +295,7 @@ def _try_allocate_one(self, req: PendingReq) -> Tuple[BaseCacheHandle, int] | No
         return None
     self.cache_manager.lock(handle)
 
-    # Second check: avoid space being consumed by another request while lock is held
-    # If insufficient, unlock and return None
+    # Second check: After hitting the prefix lock, does it result in insufficient available preallocated space
     if estimated_len + self.reserved_size > self.cache_manager.available_size:
         return self.cache_manager.unlock(handle)  # unlock returns None
 
