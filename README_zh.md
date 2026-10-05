@@ -80,7 +80,7 @@
 | [5. HTTP 服务与并发（概念）](course-material/ch/part2/第5章_HTTP服务与并发.md) · [代码走读](course-material/ch/part2/第5章_HTTP服务与并发_代码.md) | HTTP 基础与请求流程、并发隔离、流式返回与取消的实现 | ✅ |
 | 6. Continuous Batching and the Scheduler | 连续批处理与调度器设计 | 🚧 |
 | 7. Paged KV Cache and Memory Management | 分页 KV Cache 与显存管理 | 🚧 |
-| 8. RadixAttention and Prefix Caching | RadixAttention 与前缀缓存 | 🚧 |
+| [8. RadixAttention and Prefix Caching](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md)  | RadixAttention 与前缀缓存 | ✅ |
 | 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
 | 10. Speculative Decoding | 投机解码 | 🚧 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
