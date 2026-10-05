@@ -208,7 +208,7 @@ At this point, all the key operations have appeared:
 
 Through this example, we have followed the **core workflow** for building a Radix Tree from start to finish. This is also the foundation for RadixAttention's KV Cache management.
 
-For a related implementation, see the [code analysis](./第8章_RadixAttention与前缀缓存_代码.md).
+For a related implementation, see the [code analysis](./Chapter8_RadixAttention-and-Prefix-Caching.md).
 
 
 
@@ -342,7 +342,7 @@ Looking at the complete process, a Prefix Cache “hit” is only the starting p
 *Note: Prefill and Decode use the same page table. By default, the prompt plus output at the time a request finishes is written to the Radix Tree, and a split at the prompt boundary makes it possible to evict the generated portion when needed. It is not the case that “only the prompt is cached and Decode is always private and returned directly.”*
 
 
-For the implementation approach to Prefix Cache management, see the [code analysis](./第8章_RadixAttention与前缀缓存_代码.md).
+For the implementation approach to Prefix Cache management, see the [code analysis](./Chapter8_RadixAttention-and-Prefix-Caching.md).
 
 In addition, SGLang's latest Unified Radix Cache further optimizes KV Cache management and supports hybrid-attention models. For its design, see this [article](https://www.lmsys.org/blog/2026-08-11-unified-radix-cache).
 
