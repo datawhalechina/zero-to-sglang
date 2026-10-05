@@ -1,43 +1,45 @@
 # Chapter 8 RadixAttention and Prefix Caching
 
-In the previous part, we introduced how paging can efficiently manage KV Cache memory allocation and reduce fragmentation. **This chapter focuses further on a practical problem in online LLM inference: can the KV Cache be shared and reused across different requests to reduce GPU memory usage even further?** The answer is yes. Prefix caching (Prefix Cache) makes this possible by directly reusing the computed KV states of requests that share a common prefix. RadixAttention goes one step further: it combines KV Cache physical-block mapping, efficient prefix matching, scheduler coordination, and LRU eviction through a Radix Tree, forming an automated, **token-level** sharing mechanism.
+In the previous part, we introduced paging as a way to manage KV Cache memory allocation efficiently and reduce fragmentation. **This chapter focuses on a practical problem in online LLM inference: can the KV Cache be shared and reused across different requests to further reduce GPU-memory usage?** The answer is yes. Prefix caching makes this possible by directly reusing the already-computed KV states of requests that have a common prefix. RadixAttention goes further: it uses a Radix Tree to integrate physical KV Cache block mapping, efficient prefix matching, coordination with the scheduler, and LRU eviction into an automated, **token-granularity** sharing mechanism.
+
 
 ## 1 Learning Objectives
 
-This chapter starts from the problems left by traditional KV Cache management, introduces Prefix Cache, and then explores how it supports efficient KV Cache management during LLM inference. After reading this chapter, you should be able to answer the following questions:
+This chapter starts with the problems left by traditional KV Cache management, introduces Prefix Cache, and then examines how it supports efficient KV Cache management during LLM inference. After reading this chapter, you should be able to answer the following questions clearly:
 
-- What problems does traditionally managed KV Cache leave behind after a request finishes?
+- What problems can remain after a request ends when KV Cache is managed traditionally?
 - Why can a prefix be reused directly, while an arbitrary segment cannot?
-- Why is a path-compressed Radix Tree more suitable for managing shared prefixes than a token-by-token Trie?
-- What are the complete procedures for longest-prefix matching, insertion, branching, and node splitting, and can they be derived from a simple example?
-- What information is stored in a Radix Tree node? How are a logical token-id sequence and physical cache slots in the KV Cache Pool associated with each other?
-- In the complete RadixAttention cache-management lifecycle, what roles do match, schedule, lock, evict, and free play, and how do these operations work together?
+- Why is a path-compressed Radix Tree more suitable for managing shared prefixes than a token-by-token ordinary Trie?
+- What is the complete process for longest-prefix matching, insertion, branching, and node splitting, and can it be derived from start to finish with a simple example?
+- What information is stored in a Radix Tree node? How do a logical token sequence and physical cache slots in the KV Cache Pool correspond to each other?
+- In the complete lifecycle of RadixAttention cache management, what roles do the key operations—match, schedule, lock, evict, and free—play, and how do they connect and change over time?
 
 ## 2 From KV Cache to Prefix Cache
 
-In Chapter 4 of Part I, we introduced the lifecycle and memory usage of the KV Cache during inference with an LLM that uses Full Attention, as well as the problems faced by traditional KV Cache management. We begin with a brief review.
+In Chapter 4 of Part I, we introduced the KV Cache lifecycle and GPU-memory usage of an LLM using Full Attention during inference, as well as the problems faced by traditional KV Cache management. We first briefly review those points.
 
 ---
 
 ### 2.1 Limitations of Traditional KV Cache
 
-The **core benefit of a traditional KV Cache** is that, during autoregressive generation, the Key/Value tensors computed for previously processed tokens at every layer are cached. During prefill, the complete request is processed and its KV states are written to the cache. During each subsequent decode step, only Q, K, and V for the new token need to be computed; the new K and V are appended to the cache, and the current Q attends to all previously cached KV states. Historical K and V therefore do not need to be recomputed.
+**The core benefit of the traditional KV Cache** is that it avoids recomputing the Key/Value of historical tokens during decoding, greatly reducing the computation required for autoregressive generation.
 
-In many earlier basic implementations, however, **the KV Cache lifecycle was strictly bound to an individual request: GPU memory was allocated when a request arrived and released in full when the request finished**.
+However, in many earlier basic implementations, **the KV Cache lifecycle was strictly tied to an individual request: GPU memory was allocated when a request arrived and released in full when the request ended**.
 
-This can lead to **redundant computation across requests**. In online LLM services, many requests often share the same system prompt, few-shot examples, tool descriptions, or conversation history from the same turn (for example, every request may begin with “You are an expert”). If every request independently performs a full prefill, a large amount of redundant computation is incurred, increasing TTFT.
+This creates an obvious problem: **the same computation may be repeated across requests**. In online LLM inference services, many requests often share the same system prompt or tool descriptions (for example, every request may begin with “You are an expert”). If every request independently performs a complete prefill, a large amount of redundant computation is incurred.
 
-Prefix Cache was introduced to solve this problem. Its central idea is to change the ownership of the KV Cache: instead of binding the cache to an individual request, associate it with a reusable prefix sequence. After a request finishes, its KV blocks can remain in a shared cache pool, and an eviction policy determines when they are released.
+Prefix caching was introduced to solve this problem. Its central idea is to change who owns the KV Cache: instead of binding the cache to one request, assign it to a reusable KV prefix sequence. After a request ends, the corresponding KV blocks can remain in a shared cache pool, and an eviction policy decides when they should be released.
 
-**This naturally raises a key question: why can only a prefix be reused, rather than an arbitrary segment at any position?**
+**This naturally raises a key question: why can only a prefix be reused, rather than a segment at an arbitrary position?**
 
 ---
 
-### 2.2 The Core Principle of Prefix Cache
+### 2.2 Core Principle of Prefix Cache
 
-For each token, the hidden state used to generate it can attend only to the information at that position and to its left. This constraint is enforced by causal attention.
+For each token, the hidden state used to generate it can access only the sequence information at that position and to its left. This constraint is guaranteed by causal attention.
 
-**During training**, a forward pass over a complete sequence must use a causal mask: position $i$ can see only positions $0 \ldots i$ and cannot see future tokens:
+
+**During training**, one forward pass is applied to the whole sequence. A causal mask must ensure that position $i$ can see only $0 \ldots i$ and cannot see future tokens:
 
 $$
 h_i = \mathrm{Attention}(q_i,K_{0:i},V_{0:i})
@@ -46,84 +48,83 @@ $$
 This is one-way self-attention with a causal mask.
 
 **During inference**:
+- **Prefill**&emsp;The entire input prompt is computed in parallel. Later prompt tokens already exist in the sequence, so a causal mask must be applied.
+- **Decode**&emsp;Only the current new token is computed each time. Future tokens have not yet been generated, so causality is ensured by the process itself: historical KV is written first, and the current token is then computed. An explicit triangular mask is usually unnecessary.
 
-- **Prefill**: the whole input prompt is processed in parallel. Because later prompt tokens are already present in the sequence, a causal mask is required.
-- **Decode**: only the current new token is processed at each step. Future tokens have not been generated, so causality is enforced by the process itself: historical KV is available before the current token is computed. An explicit triangular mask is therefore usually unnecessary.
+Starting from the first attention layer, $h_i$ has already incorporated information from the start of the sequence through the current position. The subsequent-layer $K_i$ and $V_i$, obtained through linear projections, therefore also carry information about this prefix. Consequently, whenever any preceding token changes, the KV at every subsequent position changes as well.
 
-Starting with the first attention layer, $h_i$ has already integrated information from the beginning of the sequence up to the current position. The K and V tensors produced by later layers therefore carry information about this prefix. As a result, when any preceding token changes, the KV states at subsequent positions will also change.
-
-> **Note**: *When explaining why Prefix Cache is feasible, we consider both the Prefill and Decode stages. In practice, Prefix Cache is used mainly during Prefill: the system matches a cached prefix, skips its repeated computation, and processes only the remaining suffix. During Decode, the system does not perform a new prefix match; it reuses the existing KV states and appends newly generated KV states.*
+***Note**: When considering why Prefix Cache is feasible, we discussed the Prefill and Decode phases separately. Cross-request prefix matching normally takes place when a request enters the Prefill phase, so that repeated computation can be skipped. During Decode, no further matching is performed; existing KV is reused and new KV is appended.*
 
 For example:
 
-- Request A: `["weather", "is", "good"]`
-- Request B: `["mood", "is", "good"]`
+- Request A&emsp;`["weather", "is", "fine"]`
+- Request B&emsp;`["mood", "is", "fine"]`
 
-Although the two requests share the same suffix `["is", "good"]`, and “is” and “good” occur at the same sequence positions, the left context of “is” is “weather” in A and “mood” in B. **Because Transformer hidden states progressively integrate left-context information across layers**, the hidden state at this position will gradually diverge, causing the K and V states at subsequent layers to differ as well. Directly reusing the KV Cache for this suffix across requests therefore cannot guarantee the same computation under the original context and may produce incorrect inference results.
+Although the two requests have the same suffix `[“is”, “fine”]`, and “is” and “fine” occur at the same positions in the sequences, the context to the left of “is” is “weather” in A and “mood” in B. **Because a Transformer's hidden states progressively incorporate information from the left-side context**, the K and V at corresponding positions in later layers will differ. The KV Cache for this suffix therefore cannot be reused directly across requests.
 
-*Note: After Q and K are obtained through linear projections, positional encoding (such as RoPE, which acts on Q and K) is usually applied. Positions are counted from the beginning of the sequence. When **the prefix lengths differ**, the absolute positions of subsequent tokens change, and their K states change as well.*
+Even without considering positional encoding, the hidden states in later layers differ because the left-side contexts differ, so only a completely identical prefix can be reused directly. With positional mechanisms such as RoPE, Q/K also depend explicitly on token positions, which means that the same token at different absolute positions cannot be reused directly either.
 
-Even without considering positional encoding, hidden states in later layers differ because their left contexts differ, so the safely reusable part is still a completely identical prefix. With positional mechanisms such as RoPE, Q/K also explicitly depend on token positions, which means that the same token at different absolute positions cannot be reused directly.
-
-Now that we have explained why only prefixes can be reused, we can introduce RadixAttention. The implementation of cross-request KV Cache reuse through Prefix Cache will be explained later together with the relevant RadixAttention mechanisms.
+Having analyzed why only prefixes can be reused, we now introduce RadixAttention. How cross-request KV Cache reuse is implemented will be explained later together with the relevant parts of RadixAttention.
 
 ---
 
 ### 2.3 RadixAttention and Attention
 
-The name RadixAttention can easily give the impression that it modifies the attention computation inside the model. In fact, the attention formula and computation flow remain unchanged; RadixAttention is an efficient KV Cache management and scheduling mechanism. Attention still uses the original formula, while RadixAttention focuses on organizing and scheduling the KV Cache:
+The name RadixAttention can easily give the impression that it changes the model's internal attention computation. In fact, its formulas and computational flow are unchanged. It is an efficient KV Cache management and scheduling mechanism. Attention is still computed with the original formulas; RadixAttention focuses on organizing and scheduling the KV Cache:
 
 - **KV Cache Pool**: stores the actual K and V tensors on the GPU;
-- **Radix Tree**: maps token-id sequences to physical indices in the pool and supports efficient prefix matching, insertion, node splitting, and eviction;
-- **Cache-aware scheduler**: orders requests according to their match results, helping recently used shared prefixes remain in the cache and improving the hit rate.
+- **Radix Tree**: maps token sequences to physical indices in the Pool and supports efficient prefix matching, insertion, node splitting, and eviction;
+- **Cache-aware scheduler**: orders requests according to matching results, keeping recently used shared prefixes in the cache as much as possible and thereby improving the hit rate.
 
-**RadixAttention is therefore best understood as the caching and scheduling layer that prepares and manages reusable KV states for attention computation.**
+**Therefore, RadixAttention is best understood as the caching and scheduling layer that prepares and manages reusable KV for attention computation.**
 
 ## 3 Core Data Structure: Radix Tree
 
-**The core data structure of RadixAttention is the Radix Tree.** It organizes the token-id sequences of requests as a compressed prefix tree, so that **the same prefix corresponds to only one copy of KV Cache**. At the same time, it supports policy-driven scheduling while efficiently managing the cache, significantly improving the cache hit rate and reducing GPU memory usage.
+**The core data structure of RadixAttention is the Radix Tree**. It is itself only a storage structure. It organizes the token-id sequences of requests as a compressed prefix tree, so that an identical prefix corresponds to only one copy of the KV Cache. In the Scheduler, this structure supports efficient prefix matching and policy-based scheduling, substantially improving the cache hit rate and reducing GPU-memory usage.
 
 ---
 
-### 3.1 Data-Structure Requirements for Prefix Cache
+### 3.1 Data-Structure Requirements of Prefix Cache
 
 What kind of data structure is needed for an efficient prefix cache? We can consider the following requirements:
 
-- **Fast longest-prefix matching**: given a new request's token-id sequence, quickly find the longest common prefix shared with the existing cache and locate the reusable KV states;
-- **Efficient dynamic insertion and splitting**: add a new sequence while changing as little of the existing structure as possible; when a new sequence matches only part of a compressed edge, split the node in place so that the common prefix and suffix are separated;
-- **Prefix sharing with independent suffixes**: a common prefix should correspond to one shared KV Cache, while different suffixes after a branch should be stored and computed independently;
-- **Compactness**: minimize metadata overhead and avoid creating a large number of nodes along long paths without branches;
-- **Safe eviction**: when GPU memory is insufficient, release only the physical space occupied by KV blocks that are no longer referenced by any request.
+- **Fast longest-prefix matching**: given a new request's token-id sequence, quickly find the longest common prefix shared with an existing cache, so the KV that can be reused directly can be located;
+- **Efficient dynamic insertion and splitting**: when a new sequence arrives, add its path while changing the existing structure as little as possible. If the new sequence matches only part of a compressed edge, the structure must support splitting a node in place, separating the common prefix from the suffix;
+- **Shared prefixes and independent suffixes**: a common prefix maps to the same KV, while different suffixes after a branch are stored and computed independently without interfering with one another;
+- **Compactness**: minimize metadata overhead and avoid creating many nodes for a long path without branches.
 
-Given these requirements, a **tree structure** is a natural way to manage KV Cache and implement Prefix Cache. A tree organized by token-id sequences naturally expresses prefix sharing, but different tree shapes have different costs:
+Given these requirements, a **tree structure** is a natural choice for managing the KV Cache and implementing Prefix Cache. A tree organized by token-id sequences naturally expresses prefix sharing, but the concrete forms can differ greatly:
 
-| Structure | Edge label | Long single-branch path | Cost in prefix-cache scenarios |
-|---|---|---|---|
-| Ordinary tree / custom tree | No uniform constraint | Depends on the implementation | Difficult to guarantee efficient longest-prefix queries directly |
+| Structure | Edge label | Long single-branch path | Cost in prefix scenarios |
+|------------------|-----------------|-----------------------|-------------------------------|
+| Ordinary / custom tree | No uniform constraint | Depends on the implementation | Difficult to guarantee efficient longest-prefix queries directly |
 | Token-by-token Trie | One token | One node per token | Simple logically, but high node and pointer overhead |
-| Radix Tree | A sequence of tokens | Compressed into one edge / node | Few nodes; splitting occurs only when a real branch is needed |
+| Radix Tree | A sequence of tokens | Compressed into one edge / one node | Few nodes; splitting is needed only when an actual branch appears |
 
-An ordinary Trie naturally supports prefix queries, but each edge generally corresponds to only one token. An LLM prompt may contain hundreds or even tens of thousands of tokens. If every token along a long path is represented by a separate node, the implementation incurs substantial object, pointer, and traversal overhead. A **Radix Tree compresses consecutive token-id segments without a branch into a single edge and creates extra structure only where a real split is needed, making it more suitable for Prefix Cache.**
+Although an ordinary Trie naturally supports prefix queries, each edge generally corresponds to only one token. An LLM prompt may contain hundreds or tens of thousands of tokens. Creating one node per token would introduce a large number of objects, pointers, and traversal steps. **A Radix Tree compresses a continuous, branch-free token sequence into a single edge and creates structural nodes only where a real split is needed, making it more suitable for Prefix Cache scenarios.**
 
 ---
 
 ### 3.2 Basic Components
 
-A Radix Tree node contains a parent pointer, a dictionary of children, a `key_fn` used to extract a child index from a key tensor, and its own `_key`, `_value`, and length. The structure is illustrated below:
+The basic components of a Radix Tree node include a pointer to its parent, a dictionary of child nodes, a `key_fn` used to extract a child-node index from a key Tensor, and the node's own `_key`, `_value`, and length. They can be represented as follows:
+
+
 
 <div align="center">
-  <img src="./images/8-1-RadixTreeNode.png" alt="RadixTreeNode" width="800">
-  <p><em>Figure 1. RadixTreeNode structure</em></p>
+  <img src="./images/8-1-RadixTreeNode结构.png" alt="RadixTreeNode structure diagram" width="800">
+  <p><em>Figure 1. RadixTreeNode structure diagram</em></p>
 </div>
 
-The definition can be represented as:
+
+Definition:
 
 ```python
 class RadixTreeNode:
     def __init__(self, key_fn: KEY_FN) -> None:
         self._parent = None
         self.children = {}       # Dictionary of child nodes
-        self.key_fn = key_fn     # Extract a child-sequence index from a key tensor
+        self.key_fn = key_fn     # Extracts the "child sequence index" from a key tensor
         self.ref_count = 0       # Reference count
         self.uuid = counter
         self.timestamp = tic or time.monotonic()  # Node access timestamp
@@ -131,430 +132,239 @@ class RadixTreeNode:
         self._key: torch.Tensor
         self._value: torch.Tensor
         self._length: int
+        
 ```
 
-Important points:
+Note the following:
 
-- `len(node.key) == len(node.value)`: every logical token has a corresponding physical cache position; the K/V entries are aligned one-to-one;
-- in `__init__`, `_key`, `_value`, and `_length` are type annotations only and are not assigned actual values. They are assigned later through dedicated methods, which makes node insertion and splitting more flexible;
-- the root node is empty and stores no cache data; each other node is distinguished by a monotonically increasing integer UUID.
+- `len(node.key) == len(node.value)`: each logical token id has a corresponding physical cache location; K and V correspond one-to-one;
+- in the node's `__init__`, `_key`, `_value`, and `_length` are type annotations only and are not assigned actual values. They are assigned later through dedicated methods, which makes it flexible to set their contents when a new node is added or when a node is split during matching;
+- the root node is empty and stores no information. Each other node is distinguished by a unique `uuid` generated with a simple monotonically increasing integer.
 
-The complete token-id sequence represented by a node is obtained by concatenating all `_key` segments along the path from the root to that node. The corresponding physical cache positions are obtained by concatenating the `_value` segments along the same path.
+The complete token-id sequence represented by a node is the concatenation of all `_key` values along the path from the root to that node. The corresponding physical cache locations are the concatenation of all `_value` values along the same path.
 
-In addition to the node fields, several methods manage the tree structure:
+In addition to the node's basic fields, **several methods manage the tree structure** (see mini-sglang):
 
-| Method | Purpose |
-|---|---|
-| `set_key_value` | Set the node's key and value |
-| `set_parent` | Set the node's parent |
-| `length` / `parent` / `value` | Access the node length, parent, and value |
-| `is_root` / `is_leaf` | Determine whether the node is the root or a leaf |
-| `get_match_len` | Obtain the longest common prefix length with an input |
-| `split_at` | Split the node at a specified position |
+| Method | Function |
+|--------------------------|--------------------------|
+| set_key_value | Set the node's key and value |
+| set_parent | Set the node's parent |
+| length / parent / value | Obtain the node length, parent, or value |
+| is_root / is_leaf | Determine whether the node is the root or a leaf |
+| get_match_len | Obtain the longest common-prefix length with the input |
+| split_at | Split at a specified position |
 
-How do these components work together to optimize KV Cache management through Prefix Cache?
+How do these components work together to optimize KV Cache management for Prefix Cache?
 
 ---
 
-### 3.3 Inserting New Nodes, Longest-Prefix Matching, and Splitting
+### 3.3 Adding a New Node, Longest-Prefix Matching, and Splitting
 
-Core Prefix Cache management usually takes place during Prefill. When a new request arrives, the system performs a **longest common prefix match** between the request's token-id sequence and the token-id sequences corresponding to historical KV Cache entries, then determines the next operation from the result:
+When a new request arrives, the system performs a **longest common-prefix match** between the request's token-id sequence and the token-id sequences corresponding to existing historical KV Cache, then chooses the next operation based on the result:
 
-- **Continue matching**: if a segment of the new request's token-id sequence exactly matches the sequence in the current node, follow the common-prefix path downward and reuse as much existing KV Cache as possible.
-- **Split**: if token ids diverge during matching and `0 < match_len < node.length`, split the current node at the first differing position. After the split, **the common prefix remains shared, while the divergent suffixes are stored independently**.
+- **Continue matching downward**: if the new request's token-id sequence and the current node's token-id sequence are **identical over a segment**, follow this common-prefix path downward and reuse as much existing KV Cache as possible.
+- **Split**: if token ids differ during matching and the match length satisfies $0 < \mathrm{match\_len} < \mathrm{node.length}$, split the current node at the first differing position. After the split, **the common-prefix part remains shared, while the diverging parts are stored independently**.
 
-As long as the cache remains resident and the execution contexts are compatible, the token-id sequence represented by each node needs to be computed only once. *If the corresponding cache node is evicted, a later request that needs the same prefix must compute it again.*
+As long as the cache remains resident and the context configuration is compatible, the token-id sequence corresponding to each node needs to be computed only once. *If the corresponding cache node is evicted, a later request that hits this prefix must compute it again.*
 
-A prompt is first converted into a token-id sequence by the tokenizer. For clarity, the example below works directly with token ids. Assume that three requests are inserted into the Radix Tree in the order A → B → C:
+To understand Radix Tree construction more intuitively, first convert prompts into token-id sequences with a tokenizer. Suppose three requests are added in the order A → B → C:
 
-- **Request A token-id sequence**: [101, 11, 12, 21, 22]
-- **Request B token-id sequence**: [101, 11, 12, 31, 32]
-- **Request C token-id sequence**: [101, 11, 99]
+- **Request A**: “Hello, world!” --tokenizer-->`[101, 11, 12, 21, 22]`
+- **Request B**: “Hello, western Sichuan~” --tokenizer-->`[101, 11, 12, 31, 32]`
+- **Request C**: “How are you?”&emsp;--tokenizer-->`[101, 11, 99]`
 
-We use these token ids directly in the example. Request A is processed first, and each token id corresponds to one physical slot:
+Suppose request A is processed first, and in this example each token id corresponds to one physical slot:
 
 $$A = [101, 11, 12, 21, 22]$$
 
-The KV states produced by the linear projections are written to physical slots `[p0, p1, p2, p3, p4]`. Because the tree is empty, only one compressed node is created:
+The KV produced by the linear projections is written to physical slots `[p0, p1, p2, p3, p4]` and the corresponding values. The tree is empty, so there is one compressed node:
 
 <div align="center">
   <img src="./images/8-2-radix tree.png" alt="Initial construction of the Radix Tree" width="800">
   <p><em>Figure 2. Initial construction of the Radix Tree</em></p>
 </div>
 
-The second request, B, is $[101, 11, 12, 31, 32]$. Comparing it token by token with the existing node gives a longest common prefix of length 3, namely $[101,11,12]$. The divergence occurs inside the node, so the original node must be split at position 3:
+The second request, B, is $[101, 11, 12, 31, 32]$. Compare it with the existing node token by token. The longest common-prefix length is 3 ($[101,11,12]$). The divergence occurs inside the node and does not cover the original node, so the original node must be split at position 3:
 
 <div align="center">
   <img src="./images/8-3-Radix Tree branching.png" alt="Radix Tree node split" width="800">
   <p><em>Figure 3. Radix Tree node split</em></p>
 </div>
 
-*Note: splitting reorganizes only the tree metadata. The shared prefix still points to the original physical slots `[p0, p1, p2]`; the shared portion does not need to be copied.*
+*Note: splitting only reorganizes the tree metadata. The shared prefix still points to the original physical slots `[p0, p1, p2]`; it does not need to be copied again.*
 
-The third request, C, is $[101, 11, 99]$. After entering the current first node, it matches only the first two token ids, $[101,11]$, so the node must be split again at position 2:
+The third request, C, is $[101, 11, 99]$. After entering the current first node, it matches only the first two token ids ($[101,11]$), so the node must be split again at position 2:
 
 <div align="center">
-  <img src="./images/8-4-Radix Tree multilevel.png" alt="Multi-level branching in a Radix Tree" width="800">
-  <p><em>Figure 4. Multi-level branching in a Radix Tree</em></p>
+  <img src="./images/8-4-Radix Tree multilevel.png" alt="Radix Tree with multiple levels of branches" width="800">
+  <p><em>Figure 4. Radix Tree with multiple levels of branches</em></p>
 </div>
 
 At this point, all the key operations have appeared:
 
-- **New-node insertion**: every request may require new nodes and physical slots. The first request is attached directly below the root, while later requests first undergo longest-prefix matching against token-id sequences already in the tree.
-- **Longest-prefix matching**: requests A, B, and C share the longest common prefix `[101,11]`, so the corresponding KV Cache can be reused without recomputation.
-- **Node splitting**: from the perspective of request A, the original `[101, 11, 12, 21, 22]` is eventually divided into `[101,11]`, `[12]`, and `[21,22]`.
+- **Adding a new node**: every request may add a new node and physical slots. The first request is added directly below the root; later requests first perform longest-prefix matching against the token-id sequences already present.
+- **Longest-prefix matching**: requests A, B, and C share the longest prefix `[101,11]`, so the KV Cache for this part can be reused directly without recomputation.
+- **Node splitting**: for request A, the original `[101, 11, 12, 21, 22]` is ultimately split into `[101,11]`, `[12]`, and `[21,22]`.
 
-This example covers the **core workflow** for constructing a Radix Tree, which forms the basis of Prefix Cache management. Next, we examine how these operations are implemented.
+Through this example, we have followed the **core workflow** for building a Radix Tree from start to finish. This is also the foundation for RadixAttention's KV Cache management.
 
----
+For a related implementation, see the [code analysis](./第8章_RadixAttention与前缀缓存_代码.md).
 
-### 3.4 Implementing get_match_len() and split_at()
 
-Before implementing **longest-prefix matching** (`get_match_len`) and **node splitting** (`split_at`), a node needs two basic capabilities:
-
-- bind a token-id sequence (key) to its physical indices (value) and record its length through `set_key_value()`;
-- attach its key correctly to the parent's `children` dictionary through `set_parent()`, establishing links in both directions.
-
-**These helper methods are prerequisites for the subsequent operations.** Their concrete implementations are covered in the coding section associated with this chapter. Here, without considering cache eviction (and therefore without counters or timestamps), we analyze how longest-prefix matching and node splitting can be implemented using the node data and parent-child relationships already established.
-
----
-
-The core idea of **longest-prefix matching** is as follows. Let `x` and `y` be two token-id sequences: `x` is the sequence already stored in a node, and `y` is the sequence from a new request. Starting from the beginning, compare the token ids one by one until either:
-
-- the end of the shorter sequence is reached; or
-- the token ids at the current position differ.
-
-When traversal stops, `i` is the **length of the longest common prefix**. If traversal stops because the token ids differ, `i` is also the index of the first difference and can be used as the split position.
-
-The corresponding pseudocode is:
-
-```text
-function get_match_len(x, y) -> int:
-    i ← 0
-    n ← min(length(x), length(y))
-    while i < n and x[i] = y[i]:
-        i ← i + 1
-    return i
-```
-
-*Note: the project implementation uses a C++ routine for longest-prefix matching.*
-
----
-
-The core idea of **node splitting** is to divide a partially matched node into two segments. Suppose `get_match_len()` returns a match length `pos`, meaning that the first `pos` tokens match completely. The system calls `split_at(pos)`:
-
-- create a new node that takes over the first half (`[:pos]`) of the original key/value, which represents the reusable common prefix;
-- replace the original node with the new node under the original parent;
-- trim the original node to its second half (`[pos:]`), attach it beneath the new node as a child, and return the new node so that matching can continue from it.
-
-The corresponding pseudocode is:
-
-```text
-function split_at(node, pos) -> RadixTreeNode:
-    assert 0 < pos < node.length          # Bounds check
-
-    old_parent ← node.parent
-    new_node ← create RadixTreeNode()     # Store the reusable common prefix
-
-    # The new node takes the first half and is attached to the original parent
-    new_node.key   ← node.key[:pos]
-    new_node.value ← node.value[:pos]
-    new_node.parent ← old_parent          # Also updates old_parent.children
-
-    # The original node becomes the second half and is attached below the new node
-    node.key   ← node.key[pos:]
-    node.value ← node.value[pos:]
-    node.parent ← new_node                # Also updates new_node.children
-
-    return new_node                       # Continue matching from this new node
-```
-
-Together with ordinary tree construction and the remaining basic methods, `get_match_len` and `split_at` form a complete `RadixTreeNode` implementation.
 
 ## 4 How the Radix Tree Supports Prefix Cache
 
-Section 3 focused on constructing the Radix Tree and answered “How is the tree built?” Section 4 assumes that the tree structure has already been established and analyzes how it works with the KV Cache Pool, scheduler, and physical-memory manager to implement cache matching, reuse, protection, and eviction. This answers the question raised at the end of Section 3.2.
+Section 3 focused on building the Radix Tree. This section further analyzes how it works together with the KV Cache Pool, scheduler, and physical-memory management to implement cache matching, reuse, protection, and eviction.
 
-### 4.1 Connecting the Radix Tree to the KV Cache Pool
+---
 
-Three key types of objects connect the Radix Tree to the KV Cache:
+### 4.1 Relationship Between the Radix Tree and KV Cache Pool
 
-| Object | Stored content | Location and role |
-|---|---|---|
+Three kinds of data objects play important roles in connecting the Radix Tree and the KV Cache Pool:
+
+| Object | Content | Location and role |
+|------------------------|-------------------------------|---------------------------------------------|
 | Radix Tree key | Token-id sequence | Logical index used to determine whether two requests share a prefix |
-| Radix Tree value | Token-slot / page indices | Address indices pointing to the corresponding storage positions in the KV Cache Pool |
-| KV Cache Pool | K and V tensors for every layer | The actual data in GPU memory used by attention computation |
+| Radix Tree value | Token slots / page indices | Address index pointing to the corresponding storage locations in the KV Cache Pool |
+| KV Cache Pool | K and V tensors for every layer | The actual data on the GPU used in Attention computation |
 
-*Note: K/V storage is generally paged to simplify KV Cache management. SGLang uses this approach.*
+***Note**: To manage KV Cache storage conveniently, K/V is usually stored in pages. SGLang's implementation uses this approach.*
 
-The Radix Tree does not store the large K and V tensors themselves. It maintains only the mapping between token-id sequences and physical addresses. **The actual KV Cache data resides in GPU memory**, where it can directly participate in computation. In simple terms, **the key represents “sequence content,” while the value represents “storage address.”**
+The Radix Tree itself does not store the huge K and V tensors. It maintains only the mapping between token-id sequences and physical addresses.
 
-How does the Radix Tree use this mapping to reuse the KV Cache and avoid redundant computation across requests? When cache space is insufficient, how does it select entries for eviction and free space for new requests? We start with a simple example to understand these two processes.
+The following example shows how the Scheduler uses this mapping to manage the KV Cache efficiently.
 
 ---
 
 ### 4.2 Cache Lifecycle from Arrival to Request Completion
 
-**Preliminary terminology and implementation conventions**
+**Prerequisite concepts:**
 
-- **page**: the basic unit for KV Cache allocation and reclamation; one page generally contains `page_size` token slots;
-- **token slot**: the physical storage position or index corresponding to one token in the KV Cache Pool;
-- **page table**: records the mapping from logical token positions in a request to physical pages. The exact mapping granularity depends on the implementation;
-- **free list**: stores physical pages that are currently unallocated and available for new KV states. Depending on the implementation, it may be called `free_pages`, `release_pages`, or something similar;
-- **ref_count**: records the number of active requests or cache handles referencing a Radix Tree node. Lock and unlock operations generally update reference counts along the path from the current node toward the root;
-- **handle**: a cache handle that records information about the matched Radix Tree node. It is subsequently used to retrieve physical indices and perform lock/unlock operations.
+- **page**: the basic unit for allocating and reclaiming KV Cache; one page usually contains `page_size` token slots;
+- **token slot**: the physical storage location or index corresponding to one token in the KV Cache Pool;
+- **page table**: records the mapping from logical token positions to physical pages. The exact mapping granularity depends on the implementation;
+- **free list**: stores physical pages that have not yet been allocated and can be used to store new KV. Different implementations may call it `free_pages`, `release_pages`, or something else;
+- **ref_count**: records the number of references to a Radix Tree node held by active requests or cache handles. When locking and unlocking, the reference count is usually updated from the current node up to the root;
+- **handle**: a cache handle that records information about the matched Radix Tree node and is later used to obtain the corresponding physical indices and perform lock/unlock operations.
 
-Assume that the Radix Tree structure has stabilized. This section focuses on matching, locking, borrowing, and returning cache resources along the tree, connecting the responsibilities involved throughout a request's lifecycle.
+In this example, suppose the Radix Tree is stable, previous requests have created a shared prefix $S$ in the Radix Tree, and each token id corresponds to one physical slot. The following process mainly follows the mini-SGLang implementation, with parts of SGLang's code as supplementary reference:
 
-In the following example, assume that a historical request has left a shared prefix $S$ in the Radix Tree, and that each token id corresponds to one physical slot:
 
 - $S = [900, 10, 11, 12]$
-- KV for $S$: [p0, p1, p2, p3]
-- Tree node corresponding to $S$: `ref_count = 0`, with an old `last_access_time`
+- KV for $S$: `[p0, p1, p2, p3]`
+- Tree node corresponding to $S$: `ref_count = 0`, `last_access_time` is relatively early
 
-The two requests waiting to be processed are:
+Two requests still need to be processed:
 
-| Request | Prompt | Match result | Remaining computation |
-|---|---|---|---|
+| Request | Prompt | Match result | Still needs computation |
+| --- | ----------------------------- | ------------------------------------------ | ------------ |
 | R1 | [900, 10, 11, 12, 31, 32] | cache_hit_len = 4, value = [p0, p1, p2, p3] | [31, 32] |
 | R2 | [900, 10, 11, 12, 41, 42, 43] | cache_hit_len = 4, value = [p0, p1, p2, p3] | [41, 42, 43] |
 
-Assume that the KV Cache Pool has limited capacity available in its **free list**. We first admit one request into a running batch; the other follows the same process.
 
-**Step 1: Match produces candidate information.** The match result for R1/R2 includes `cache_hit_len = 4`, a node handle, and the physical indices [p0, p1, p2, p3]. At this point, R1/R2 have not locked these pages. In theory, these paths may still be evicted, so “matched” does not mean “safely held.”
+Suppose the number of available slots in the KV Cache Pool's **free list** is limited. We first let one request enter a running batch and process one request; the other request follows the same process:
 
-> A **handle** mainly stores two pieces of information:
+**Step 1: Match produces candidate information.** The match result for R1/R2 contains `cache_hit_len = 4`, the node handle, and the physical indices `[p0, p1, p2, p3]`.
+
+At this point, R1/R2 have not locked these pages. The paths could therefore still be evicted in principle, so “matched” does not mean “already safely held.”
+
+>The **handle** mainly stores two things:
+>- **The referenced tree node** (the node that was matched);
+>- **The length of the shared prefix currently held by the request**.
 >
-> - the tree node it points to (the matched node);
-> - the length of the shared prefix currently held by the request.
->
-> A handle acts like a “key”: it records which node was matched and how much of the prefix was locked, providing information for subsequent operations such as writing the page table.
+>A handle is like a “key”: it records “which node I matched and how long a prefix I locked,” providing the information needed later to write the page table and perform lock/unlock operations.
 
-**Step 2: Schedule decides which request runs first.** In mini-sglang, the scheduler tries to add requests in `pending_list` arrival order until the token budget or available resources are exhausted; it does not use complex prefix-aware policies. In full SGLang, the scheduler compares the hit length, suffix length, and resource requirements of R1 and R2. SGLang's scheduling policies fall into two categories; see [`schedule_policy.py`](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/managers/schedule_policy.py):
 
-- **Prefix-aware**: `lpm`, `dfs-weight`, `hrrn`, `shortest-prefill-first`, and others. Depending on the policy, requests with longer shared prefixes, higher DFS weights, or shorter uncached workloads are prioritized.
-- **Prefix-cache agnostic**: `fcfs` (first come, first served), `lof` (longest output first), `random`, `routing-key`, and others.
+**Step 2: Schedule decides which request runs first.**
 
-Assume that `shortest-prefill-first` is used. R1 has a shorter uncached portion; both requests share the same prefix, but R1 needs only two new slots. R1 is therefore selected first, while R2 remains in the waiting queue. Scheduling may also perform an in-batch prefix check to prevent similar prefixes from being computed repeatedly within the same batch.
+In mini-sglang, scheduling attempts to add requests in their arrival order in `pending_list` until the token budget or resources are exhausted. It has no complex prefix-aware policy.
 
-**Step 3: Lock converts a candidate into a protected reference.** Before R1 enters the computation batch, the matched node is passed to a lock operation, which increments `ref_count` along the path from that node toward the root. When a node's `ref_count` changes from 0 to 1, the corresponding token count moves from `evictable_size` to `protected_size`, and its state in the evictable-leaf collection is updated. The shared prefix [900, 10, 11, 12] is therefore protected. Its matched indices are written into the request's page table. *Locking only protects the cache; it does not allocate new pages.*
+In full SGLang, the scheduler compares the hit length, suffix length, and resource requirements. SGLang's scheduling policies fall into two categories:
 
-**Step 4: Allocate only the missing portion.** R1 has an unmatched suffix of length 2, so [p6, p7] is allocated from the **free list**. The page table becomes [p0, p1, p2, p3, p6, p7]. If free space is insufficient, the allocator first asks the CacheManager to reclaim physical space and then continues allocating. In implementations that use Radix Cache eviction, this means calling `evict`; only leaf nodes whose current reference count is 0 may be evicted.
+- **Prefix-aware**: `lpm`, `dfs-weight`, `hrrn`, `shortest-prefill-first`, and others. These prioritize long shared prefixes, use tree DFS weights, or run shorter uncached work first;
+- **Prefix-cache-unaware**: `fcfs` (first come, first served), `lof` (longest output first), `random`, `routing-key`, and others.
 
-*Note: this process does **not** allocate the already matched physical space [p0, p1, p2, p3] again.*
+Assume that `shortest-prefill-first` is used. The shared prefixes are the same, but R1 has a shorter uncached suffix (only two new slots), so R1 is selected first and R2 remains in the waiting queue. During scheduling, an in-batch prefix check may also be performed to avoid recomputing similar prefixes within the same batch.
 
-**Step 5: Insert turns newly computed results into shared cache.** After Prefill finishes, the tree is updated using R1's token-id sequence and page table. The existing $S$ node remains shared, and only the following child is added:
+
+**Step 3: Lock turns candidates into protected references.** Before R1 enters the batch for computation, the matching node is passed to the lock-related function:
+- **Increment `ref_count` by 1 level by level from that node up to the root**;
+- Move the corresponding token-id sequence from `evictable_size` to `protected_size`, and update its status in the set of candidate eviction leaves.
+
+The shared prefix `[900, 10, 11, 12]` is therefore protected. The indices for the hit prefix are written to the request's page table, *but locking itself only protects existing pages; it does not allocate a new page*.
+
+**Step 4: Allocate only the missing portion.** R1's uncached suffix has length 2, so `[p6, p7]` is allocated from the **free list**, and the page table becomes `[p0, p1, p2, p3, p6, p7]`. If there is not enough free space, the allocator first asks the CacheManager for a certain amount of released physical space and then continues allocation.
+
+***Note**: During this process, the already-hit physical space `[p0, p1, p2, p3]` is **not** requested again.*
+
+
+**Step 5: Insert turns the newly computed result into shared cache.** After Prefill finishes, the tree is updated with R1's token-id sequence and page table. The existing $S$ node continues to be reused; only the following child is added:
 
 $$
 [31, 32] \to [p6, p7]
 $$
 
-This operation writes a token-id-to-physical-address index and does not copy the KV states of $S$. **If `insert` discovers that part of the prefix has already been added to the tree by another request—a race condition—the indices redundantly occupied by the current request are immediately freed, preventing duplicate data from remaining in the pool and causing a memory leak.**
+This step writes the index from token ids to physical addresses; it does not copy the KV for $S$. **If `insert` finds that part of the prefix already exists in the tree (a race), it immediately frees the indices redundantly occupied by the request, preventing duplicate copies from remaining in the pool and causing a memory leak.**
 
-**Step 6: Unlock and request-completion handling.** After R1 finishes its computation, the matching path is passed to the corresponding unlock operation, which decrements `ref_count`:
+**Step 6: Unlock and request completion.** After R1's computation is complete, the relevant matching path is passed to the unlock-related function (`ref_count -= 1`):
 
-- if a node's `ref_count` drops to 0, it becomes evictable and contributes to `evictable_size`;
-- if `ref_count > 0`, another request is still using the node, so it cannot be evicted.
+- If a node's `ref_count` drops to 0, it immediately becomes evictable and enters `evictable_size`;
+- If `ref_count > 0`, another request is still using it, so it cannot be evicted.
 
-At this point, a prefix whose reference count has dropped to 0 is still not removed from the shared prefix tree, and its physical slots are not released immediately.
+At this point, the reference count for the corresponding prefix becomes 0, but the prefix is not immediately removed from the shared prefix tree and its physical slots are not immediately released.
 
-*Note: [p6, p7], which were successfully inserted into the tree, are not freed immediately. They have merely lost the protection associated with this request. Whether they are removed from the tree depends on whether later memory pressure triggers eviction.*
+**Step 7: Evict when space is insufficient, and free when a request ends**
 
-**Step 7: Eviction under memory pressure and freeing at request completion**
+- **evict** (when space is insufficient): when a later request such as R2 finds that there is not enough free space during allocation, it calls `prefix_cache.evict`. This selects only leaf nodes whose current reference count is 0, **removes them from the tree according to the policy**, and returns their physical page indices. For example, if the `[31,32]` node has no references at this point, it may be selected and `[p6, p7]` may be released.
 
-- **evict** (when memory is insufficient): if a later request such as R2 cannot allocate enough space, it calls `prefix_cache.evict`. The method selects only leaf nodes whose reference counts are 0, removes them from the tree according to the eviction policy, and returns their physical page indices. For example, if the [31,32] node is no longer referenced, it may be selected and [p6, p7] released.
-- **free** (direct return without a policy decision):
-  - free duplicate pages immediately when a race is detected during insertion;
-  - when a request truly finishes, free only the non-shared token-id tail that cannot be inserted into the tree, making space available for other requests.
+- **free** (unconditional return):
+  - Free duplicate pages immediately when `insert` detects a race;
+  - When a request actually ends, free only the non-shared token sequence that could not be inserted into the tree, making the space available to other requests.
 
-**A successfully shared prefix page is not freed when the request finishes. It is only unlocked and remains available until later memory pressure triggers eviction.**
+**A successfully shared prefix page is not freed when a request ends. It is only unlocked and waits for later memory pressure or an eviction policy to trigger `evict` and release it.**
 
-> **Note**: SGLang's `evict` removes leaf nodes with `ref_count == 0` according to their priority and directly releases their physical space. In mini-sglang, `evict` removes leaf nodes with `ref_count == 0` according to the policy and returns a tensor of their physical indices; the scheduling layer performs the actual release.
+***Note**: In **SGLang**, `evict` removes zero-reference leaf nodes according to priority and directly releases their physical space. In **mini-SGLang**, `evict` only removes leaf nodes with `ref_count == 0` according to the policy and returns the corresponding physical-index tensor; the scheduling layer actually releases the space.*
 
-The overall process can be summarized as follows:
+The entire process can be summarized as follows:
 
 <div align="center">
-  <img src="./images/8-5-RadixAttention Lifecycle.png" alt="Radix Cache management lifecycle" width="800">
-  <p><em>Figure 5. Radix Cache management lifecycle</em></p>
+  <img src="./images/8-5-RadixAttention Lifecycle.png" alt="RadixAttention lifecycle" width="800">
+  <p><em>Figure 5. RadixAttention lifecycle</em></p>
 </div>
 
-Prefix Cache “hit” is therefore only the beginning of the lifecycle:
+Looking at the complete process, a Prefix Cache “hit” is only the starting point of the lifecycle. The following steps are also required:
 
-- **Match** finds the addresses;
-- **Lock** keeps the addresses valid while they are in use;
-- **Insert** adds new results to the shared index and reclaims pages allocated redundantly;
-- **evict** and **free** determine whether the physical space occupied by a page is released.
+- **Match** finds the address;
+- **Lock** ensures that the address remains valid while it is being used;
+- **Insert** adds the new result to the shared index and reclaims duplicate pages;
+- **evict and free** determine whether the physical space occupied by a page is released.
 
-*Note: Prefill and Decode use the same page table. By default, the prompt and output of a finished request are inserted into the Radix Tree, with a split at the prompt boundary so that the generated portion can be evicted independently when needed. It is therefore inaccurate to say that “only the prompt is cached while Decode is always private and immediately returned.”*
+*Note: Prefill and Decode use the same page table. By default, the prompt plus output at the time a request finishes is written to the Radix Tree, and a split at the prompt boundary makes it possible to evict the generated portion when needed. It is not the case that “only the prompt is cached and Decode is always private and returned directly.”*
 
----
 
-### 4.3 Prefix Cache Management Implementation
+For the implementation approach to Prefix Cache management, see the [code analysis](./第8章_RadixAttention与前缀缓存_代码.md).
 
-Section 4.2 traced the full $Match \to Lock \to Allocate \to Insert \to Unlock \to evict/free$ lifecycle from the perspective of a request. These steps are implemented through the key state and helper methods inside the Radix Cache. This section examines the implementation details, using **mini-sglang** as the reference. We begin with the core management configuration:
+In addition, SGLang's latest Unified Radix Cache further optimizes KV Cache management and supports hybrid-attention models. For its design, see this [article](https://www.lmsys.org/blog/2026-08-11-unified-radix-cache).
 
-```python
-class RadixPrefixCache:
-    def __init__(self, device: torch.device):
-        super().__init__()
-        self.device = device
-        self.page_size = get_global_ctx().page_size          # Paging granularity; aligns KV Cache units
-        self.key_fn = _get_key_fn(self.page_size)            # Extract page-granularity keys for node indexing
-        self.evictable_size = 0
-        self.protected_size = 0
-        self.root_node = RadixTreeNode(self.key_fn)          # Root of the Radix Tree
-        self.root_node.ref_count = 1                         # Protect the root from deletion
-```
-
-These fields clarify the core methods required for lifecycle management:
-
-| Method | Purpose |
-|---|---|
-| `_tree_walk` | Walk downward from the root through `children` and return the node and length corresponding to the longest matched prefix |
-| `insert_prefix` | Align to page boundaries and insert the unmatched remainder into the tree, splitting nodes when necessary |
-| `lock_handle` | Increment or decrement reference counts along the matched path and control whether nodes may be evicted |
-| `_collect_leave_nodes_for_evict`, `evict` | Collect leaf nodes with **`ref_count == 0`** as eviction candidates, then evict them using LRU to make space for later requests |
-
-After `match_prefix` completes, the system has a node in the tree. To obtain the complete physical-index sequence corresponding to the **matched prefix**, the implementation provides `RadixCacheHandle`. Starting at the current node, it follows `parent` pointers toward the root, collects the `value` of each node, reverses the collection, and concatenates it into a one-dimensional tensor. The detailed implementation is omitted here.
-
----
-
-Let us examine the ideas behind some of the more difficult methods.
-
-The core idea of **node-by-node matching** is to start at the root and follow matching children downward until either no matching child exists or the full input sequence has been matched:
-
-- each matching operation compares one compressed edge. Because **physical storage is managed in pages**, the match length is rounded down to a multiple of `page_size`, and that aligned result determines whether the current node must be split;
-- to avoid comparing an already traversed prefix again, each iteration compares only the unmatched suffix of `input_ids`;
-- to support later LRU eviction, the access timestamp of the relevant node is updated so that its latest access time is recorded.
-
-The method finally returns the node at which matching stopped and the cumulative match length. This provides the correct starting point for `insert_prefix` and `lock_handle`.
-
-The corresponding pseudocode is:
-
-```text
-function _tree_walk(input_ids) -> Tuple[RadixTreeNode, int]:
-    prefix_len ← 0
-    node ← root node
-    tic ← current timestamp
-    while prefix_len < input_ids.length:
-        child ← node.children[key(input_ids[prefix_len:])]
-        if child does not exist:
-            return node, prefix_len
-        node ← child
-        match_len ← computed match length
-        match_len ← round down to a multiple of page_size
-        prefix_len ← prefix_len + match_len
-        if match_len < node.length:          # A divergence requires a split
-            node ← node.split_at(match_len)
-            node.timestamp ← tic
-            return node, prefix_len
-    node.timestamp ← tic
-    return node, prefix_len
-```
-
----
-
-The core idea of **inserting a new sequence into the prefix tree** is to reuse as much existing prefix as possible and add only the **unmatched suffix as a new node**:
-
-- first round the input length down to a multiple of `page_size` so that only complete pages are handled and cache management does not become unnecessarily fragmented;
-- call `_tree_walk` to find the longest common prefix in the Radix Tree, obtaining the node where matching ended and the match length `prefix_len`;
-- if `prefix_len < insert_len`, an unmatched suffix remains:
-  - create a new node containing the unmatched token ids and their physical indices;
-  - attach the new node below the node where matching ended;
-  - add the new node's length to `evictable_size`, making it eligible for future eviction.
-
-Finally, return the matched-prefix length and a cache handle pointing to the final node.
-
-The corresponding pseudocode is:
-
-```text
-function insert_prefix(input_ids, indices) -> InsertResult:
-    # Align to complete pages
-    insert_len ← round the input length down to a multiple of page_size
-    keep the first insert_len tokens and their corresponding indices
-
-    # Find the longest common prefix
-    node, prefix_len ← tree_walk(input_ids)
-
-    # If an unmatched suffix remains, add it as a new node
-    if prefix_len < insert_len:
-        new_node ← create a new RadixTreeNode
-        new_node stores Key input_ids[prefix_len:] and Value indices[prefix_len:]
-        attach new_node as a child of node
-        evictable_size ← new_node.length + evictable_size
-        node ← new_node
-
-    return InsertResult(prefix_len, RadixCacheHandle(insert_len, node))
-```
-
----
-
-The core idea of **selecting eviction candidates** is to first use `_collect_leave_nodes_for_evict` to collect all leaf nodes whose `ref_count == 0`, then build a heap ordered by node access timestamps so that the least recently used node is evicted first:
-
-- `ref_count == 0` is a necessary condition for eviction and prevents the removal of a shared prefix that is still in use;
-- eviction proceeds until the requested `size` has been reclaimed, and `size` must not exceed the current `evictable_size`;
-- the root does not participate in eviction. It represents the whole Radix Tree and does not correspond to actual cache data.
-
-During `evict`, removing a leaf may turn its parent into a leaf. If that parent also has `ref_count == 0`, it is added to the candidate heap so that eviction can continue upward.
-
-The corresponding pseudocode is:
-
-```text
-function evict(size) -> torch.Tensor:
-
-    candidates ← all leaf nodes with ref_count = 0
-    candidates ← construct a min-heap ordered by last access time
-
-    evicted_indices ← []
-    evicted_size ← 0
-
-    while evicted_size < size:
-
-        node ← pop the least recently used leaf
-
-        evicted_indices.append(node.value)
-        evicted_size ← evicted_size + node.length
-
-        remove node from its parent's children
-
-        if parent becomes a leaf and parent.ref_count = 0:
-            add parent to the candidate heap
-
-    return a tensor containing the physical KV Cache indices of evicted nodes
-```
-
----
-
-These methods complete the core management layer of Prefix Cache. Consider a typical situation under mini-sglang's KV Cache management, particularly its LRU-based eviction policy. After one request finishes, a later request may arrive when physical space is already insufficient, forcing the system to evict nodes from the Radix Tree. This can create the following problems:
-
-- node A may be evicted immediately before a request that could have reused it arrives. The avoidable cache miss then increases TTFT;
-- a cached prefix does not inherently contain information about a conversation topic or session identity, making it difficult to identify and retain prefixes related to an active session. This can trigger otherwise avoidable recomputation and increase the cost of individual requests.
-
-To address these problems, SGLang's latest Unified Radix Cache uses a unified token-keyed Radix Tree with pluggable components for FULL Attention, SWA, and Mamba. It also natively supports HiCache multi-tier storage and session-aware eviction. The session-aware policy provides soft protection based on session activity and the “session identity” of a prefix: it first evicts nodes that are not referenced by any active session and considers referenced nodes only when necessary. This helps reduce TTFT, improve the cache hit rate, and avoid unnecessary recomputation.
-
-The detailed design and implementation are beyond the scope of this chapter. Interested readers can refer directly to this [article](https://www.lmsys.org/blog/2026-08-11-unified-radix-cache).
-
----
 
 ## 5 Summary and Exercises
 
-### 5.1 Summary 
+### 5.1 Summary
 
-This chapter first used requests A, B, and C to introduce Radix Tree construction and the basic principles of longest-prefix matching and node splitting. Then, assuming that the tree had already been built, it used R1 and R2 to analyze the complete Prefix Cache lifecycle—from request matching, scheduling, locking, and physical-space allocation to insertion, unlocking, and cache eviction. Finally, it connected these operations to the mini-sglang implementation, explaining details such as page alignment, reference counting, and duplicate-page reclamation, while briefly comparing the corresponding extensions in current SGLang.
+This chapter used requests A, B, and C to introduce the construction of a Radix Tree. With the tree already established, it then used R1 and R2 to analyze the complete lifecycle: request matching, scheduling, locking, physical-space allocation, result insertion, unlocking, and cache eviction.
+
 
 ### 5.2 Exercises
 
-1.Why can eviction in a Radix Cache begin only with leaf nodes, rather than directly evicting an internal node or the root?
+1. Why does Prefix Cache use a **Radix Tree (path compression)** instead of an ordinary Trie?
+> Hint: Compare the two structures in terms of node count and number of lookup steps. Consider that **long common prefixes** are common in LLM requests because of system prompts, multi-turn conversations, and similar patterns.
 
-> Hint: recall the central Prefix Cache optimization—prefix reuse. Directly evicting an internal node would break every descendant path that uses it as a prefix, preventing other requests from hitting already computed shared KV states.
+2. Why can **evict** in a Radix Cache start only from leaf nodes, rather than directly evicting an internal node or the root?
+> Hint: Recall the core optimization of Prefix Cache—prefix reuse. Evicting an internal node directly would break every subsequent path that uses that node as a prefix, so other requests could no longer hit the shared KV that has already been computed.
 
-2.During CacheManager processing, under what circumstances can a page leak occur, and what problems would it cause?
+3. During scheduling, in what situations are **evict** and **free** used, and what is the fundamental difference between them?
+> Hint: In SGLang-related implementations, both ultimately release physical pages, but they operate at different layers: one evicts a tree node, while the other directly returns pages, and their timing differs as well.
 
-> Hint: pages allocated to a request during Prefill may correspond to a prefix that another request has already inserted into the Radix Tree before the current request performs its own insertion.
-
-3.During cache scheduling, when are `evict` and `free` used, and what is the essential difference between them?
-
-> Hint: in the relevant SGLang implementations, both ultimately release physical pages, but at different layers and at different points in the lifecycle—one evicts tree nodes according to a policy, while the other directly returns pages.
 
 ## References
 
@@ -562,10 +372,10 @@ This chapter first used requests A, B, and C to introduce Radix Tree constructio
 - [mini-sglang: radix_cache.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/kvcache/radix_cache.py)
 - [mini-sglang: CacheManager](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/cache.py)
 - [From Tensor Buffer to Distributed Memory Hierarchy: A Survey of KV Cache Management for LLM Serving](https://arxiv.org/pdf/2607.02574)
-- [SGLang: radix_cache.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/mem_cache/radix_cache.py)
-- [SGLang: schedule_policy.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/managers/schedule_policy.py)
+- [sglang: radix_cache.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/mem_cache/radix_cache.py)
+- [sglang: schedule_policy.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/managers/schedule_policy.py)
 - [mini-sglang: cache.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/cache.py)
-- [SGLang: radix_cache.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/mem_cache/radix_cache.py)
-- [Unified Radix Cache](https://www.lmsys.org/blog/2026-08-11-unified-radix-cache)
+- [sglang: radix_cache.py](https://github.com/sgl-project/sglang/blob/main/python/sglang/srt/mem_cache/radix_cache.py)
+- [unified radix cache](https://www.lmsys.org/blog/2026-08-11-unified-radix-cache)
 - [mini-sglang: decode.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/decode.py)
 - [mini-sglang: prefill.py](https://github.com/sgl-project/mini-sglang/blob/main/python/minisgl/scheduler/prefill.py)
