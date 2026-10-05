@@ -106,7 +106,7 @@ class RadixCacheHandle:
 
 ## 4 沿一次缓存命中走读源码
 
-按照调用顺序展开：创建缓存对象，再用 match_prefix 找到并锁定命中路径；随后为未命中部分预留和分配页，在 forward 中由 store_kv 写入物理 KV，最后用 insert_prefix 把可复用的 indices 以及相关的 token id 序列登记回 Radix Tree。
+按照调用顺序展开：创建缓存对象，再用 match_prefix 找到并锁定命中路径，为未命中部分预留和分配页，在 forward 中由 store_kv 写入物理 KV，最后用 insert_prefix 把可复用的 indices 以及相关的 token id 序列登记回 Radix Tree。
 
 ---
 
@@ -295,8 +295,7 @@ def _try_allocate_one(self, req: PendingReq) -> Tuple[BaseCacheHandle, int] | No
         return None
     self.cache_manager.lock(handle)
 
-    # 第二次检测：避免 lock 期间被其他请求占用空间
-    # 不足则 unlock 并返回 None
+    # 第二次检测：命中前缀加锁后，有没有让可使用的预分配空间不足
     if estimated_len + self.reserved_size > self.cache_manager.available_size:
         return self.cache_manager.unlock(handle)  # unlock 返回 None
 
