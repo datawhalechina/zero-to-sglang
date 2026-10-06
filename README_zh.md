@@ -75,14 +75,14 @@
 | <strong>Part II — 从零手搓 Mini SGL</strong> | | |
 | [1. mini-sglang：推理引擎长什么样](course-material/ch/part2/第1章_mini-sglang：推理引擎长什么样.md) | 推理引擎的总体架构、模块划分、本部分的 roadmap | ✅ |
 | [2. **Inside SGLang: The Path of a Request**](course-material/ch/part2/第2章_一个请求的旅程.md) | 一个请求从进入到返回的完整生命周期 | ✅ |
-| 3. Your First 200 Lines: Forward Pass and Generation | 手写前向传播与自回归生成循环 | 🚧 |
+| [3. Your First 200 Lines: Forward Pass and Generation（概念）](course-material/ch/part2/第3章_前向与生成.md) · [代码实现](course-material/ch/part2/第3章_前向与生成_代码.md) | 手写 Qwen3 前向、自回归生成与正确性对齐 | 概念 🚧 / 代码 📝 |
 | 4. KV Cache: From O(n²) to O(n) | 缓存实现与注意力计算优化 | 🚧 |
 | [5. HTTP 服务与并发（概念）](course-material/ch/part2/第5章_HTTP服务与并发.md) · [代码走读](course-material/ch/part2/第5章_HTTP服务与并发_代码.md) | HTTP 基础与请求流程、并发隔离、流式返回与取消的实现 | ✅ |
-| 6. Continuous Batching and the Scheduler | 连续批处理与调度器设计 | 🚧 |
+| [6. Continuous Batching and the Scheduler（概念）](course-material/ch/part2/第6章_ContinuousBatching与调度.md) · [代码实现](course-material/ch/part2/第6章_ContinuousBatching与调度_代码.md) | 动态组批、变长 KV、预算与请求回收 | 概念 🚧 / 代码 📝 |
 | 7. Paged KV Cache and Memory Management | 分页 KV Cache 与显存管理 | 🚧 |
 | [8. RadixAttention and Prefix Caching](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md)  | RadixAttention 与前缀缓存 | ✅ |
 | 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
-| 10. Speculative Decoding | 投机解码 | 🚧 |
+| [10. Speculative Decoding（概念）](course-material/ch/part2/第10章_投机解码.md) · [代码实现](course-material/ch/part2/第10章_投机解码_代码.md) | 线性草稿、贪心验证与随机拒绝校正 | 概念 🚧 / 代码 📝 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
 | 1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）and CUDA Graph** | 主流 Attention 后端对比与 CUDA Graph | 🚧 |
 | 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
