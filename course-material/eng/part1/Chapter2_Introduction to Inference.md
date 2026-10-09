@@ -146,6 +146,8 @@ The Prefill stage performs **one complete forward pass** over the prompt current
 - Two user requests, with a total of **N = 3000** tokens.
 - Model config: $L = 32$ layers, hidden dimension $d = 4096$ , FFN intermediate dimension approximately $\frac{8}{3}d=10923$ , and $\text{heads} = 32$ attention heads.
 
+We approximate the SwiGLU FFN intermediate dimension as $m \approx \frac{8}{3}d$. The actual LLaMA-7B implementation rounds this dimension up to a multiple of 256, giving $m = 11008$; the FLOPs and weight-movement estimates below both use the same approximation. See [LLaMA's FeedForward implementation](https://github.com/meta-llama/llama/blob/689c7f261b9c5514636ecc3c5fefefcbb3e6eed7/llama/model.py#L307-L349).
+
 **1. FLOPs estimate for one complete forward pass over one batch**
 
 The main computations in one forward pass are:
@@ -361,8 +363,11 @@ $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 
 - Total weight per layer: $(4 + 8)d^2 = 12d^2$.
 - QKV and output projections: each has shape $d \times d$; three reads for QKV plus one output projection read, for $4d^2$ parameters in total.
-- FFN layers: two linear layers of shapes $d \times 4d$ and $4d \times d$, for $8d^2$ parameters in total.
+- FFN layers: the same SwiGLU structure as in Section 4.2, with two up-projections (gate and up), each containing $d \times m$ parameters, and one down-projection containing $m \times d$ parameters. With $m \approx \frac{8}{3}d$, the total is $3dm \approx 8d^2$ parameters.
+
 - Input + output: $N \times d$ (input) + $N \times d$ (output) = $2Nd$.
+
+Both estimates count the same FFN weights: the three matrix multiplications require approximately $2 \times 3dm$ FLOPs per token, while reading their weights transfers $3dm$ elements. A conventional two-layer Transformer FFN with intermediate dimension $4d$ also happens to contain $8d^2$ parameters, but its weight shapes differ from SwiGLU's and the two architectures should not be mixed. Correcting the architecture description therefore leaves the approximate $12d^2$ total weight count and the subsequent AI formulas unchanged.
 
 **Decode stage** (generating one token):
 
