@@ -24,7 +24,7 @@
 
 ---
 
-> **Course status**: Part 0, Part I, and Chapters 1–2 of Part II are complete in both English and Chinese. The remaining chapters of Part II and Parts III–IV are under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: Part 0, Part I, Chapters 1–2 of Part II, and Chapter 1 of Part III (Attention Backends) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -85,7 +85,7 @@
 | 9. Multi-process & Tensor Parallelism | Multi-process execution and tensor parallelism | 🚧 |
 | 10. Speculative Decoding | Speculative decoding | 🚧 |
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
-| 1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA) and CUDA Graph** | Comparing mainstream attention backends, and CUDA Graph | 🚧 |
+| [1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA)**](course-material/eng/part3/Chapter1_Attention-Backends.md) | Backend responsibilities, tiled Attention, implementation tradeoffs, and selection | ✅ |
 | 2. **Quantization and Low-Precision Inference** | Quantization and low-precision inference | 🚧 |
 | 3. **Hierarchical Caching** | Hierarchical caching | 🚧 |
 | 4. **Scaling Out: DP Attention, EP, PP** | Scaling out: DP Attention / EP / PP | 🚧 |

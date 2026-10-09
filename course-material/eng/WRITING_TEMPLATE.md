@@ -150,7 +150,7 @@ Chapter division, numbering, and order follow the outline below. Do not add, rem
 
 **Part III — Advanced Inference Technique** (deep into the real SGLang)
 
-1. Attention Backends (FlashInfer / Triton / FA3 / FlashMLA) and CUDA Graph
+1. Attention Backends (FlashInfer / Triton / FA3 / FlashMLA)
 2. Quantization and Low-Precision Inference
 3. Hierarchical Caching
 4. Scaling Out: DP Attention, EP, PP
