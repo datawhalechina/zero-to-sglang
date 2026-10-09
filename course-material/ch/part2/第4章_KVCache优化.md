@@ -100,6 +100,8 @@ $$
 
 ## 3 核心思想：KV Cache 到底缓存了什么
 
+本章节的具体内容可以在part 1 第四章 找到详细介绍。
+
 **KV Cache 缓存的是在自回归生成过程中每一层 self-attention 里所有历史 token 经过 Key/Value 线性投影后得到的 $K$ 和 $V$ 张量**。它不缓存 Query，不缓存原始 token，也不缓存 logits。它的作用是让当前 token 只计算自己的 Query，然后直接查询历史 token 已经算好的 Key/Value。
 
 ### 3.1 从单步公式看KV Cache 到底缓存了什么
@@ -108,16 +110,6 @@ $$
     <img src="./images/4-5-KVCache工作原理.png" alt="4-5-KVCache工作原理.png" width="800">
 <p><em>图 5. KV Cache 的工作原理</em></p>
 </div>
-
-设当前处理的是第 $l$ 层、第 $t$ 步。当前 token 在这一层的输入隐藏状态记作 $h_t^{(l-1)}$。进入注意力层后，模型会用三组线性投影把它分别变成 Query、Key 和 Value：
-
-$$
-q_t^{(l)} = h_t^{(l-1)} W_Q^{(l)},\quad
-k_t^{(l)} = h_t^{(l-1)} W_K^{(l)},\quad
-v_t^{(l)} = h_t^{(l-1)} W_V^{(l)}.
-$$
-
-可以这样理解：Query 是当前 token 想查什么，Key 是每个位置能提供什么索引，Value 是每个位置实际携带的信息。
 
 在生成当前 token 之前，缓存中已经保存了此前所有历史 token 在同一层的 Key 和 Value：
 
@@ -136,30 +128,6 @@ $$
 \quad
 \mathcal{V}_t^{(l)} = [\mathcal{V}_{t-1}^{(l)}; v_t^{(l)}].
 $$
-
-缓存中已有的历史部分保持不变，于是缓存从前 $t-1$ 个 token 的 K/V扩展成前 $t$ 个 token 的 K/V。
-
-接下来，**当前 token 用自己的 Query 去查询更新后的整个 Key 缓存**，得到它对各个历史位置的注意力权重；再用这些权重对 Value 缓存做加权求和，得到当前 token 在本层的注意力输出：
-
-$$
-o_t^{(l)}
-=
-\operatorname{softmax}
-\left(
-\frac{
-q_t^{(l)} \left(\mathcal{K}_t^{(l)}\right)^\top
-}{
-\sqrt{D}
-}
-\right)
-\mathcal{V}_t^{(l)}.
-$$
-
-之后继续经过输出投影、残差连接、LayerNorm 和 MLP，进入下一层。
-
-如果是多头注意力，每个头都会独立做一遍同样的事：各自计算 Query、Key、Value，各自维护自己的 K/V 缓存，各自计算注意力。最后把所有头的输出拼接起来，再做一次输出投影。
-
-所以最关键的区别是Query 只服务于当前这一步，算完就不需要了，因此不缓存；Key 和 Value 会被后续每一步反复查询，因此必须缓存。KV Cache 缓存的是每一层、每个 KV 头在历史位置上已经算好的 K 和 V，而不是 attention 矩阵，也不是 logits，更不是完整的 hidden state。
 
 ### 3.2 缓存的是每层、每个 KV 头的 K/V
 
@@ -187,34 +155,6 @@ $$
 $$
 
 **不同层的 K/V 不能共享**，因为每一层的注意力参数 $W_Q^{(l)},W_K^{(l)},W_V^{(l)}$ 不同，得到的表示空间也不同。
-
-对于第 $l$ 层，假设有 $H_{kv}$ 个 KV 头，每个头维度为 $D$，batch size 为 $B$，当前序列长度为 $T$，则 Key 和 Value 的形状通常为：
-
-$$
-K^{(l)},V^{(l)} \in \mathbb{R}^{B \times H_{kv} \times T \times D}.
-$$
-
-因此，所有层的 KV Cache 元素总数约为：
-
-$$
-2 \times L \times B \times H_{kv} \times T \times D.
-$$
-
-如果使用标准多头注意力 MHA，并且 $H_{kv}=H$、$D=C/H$，则 $H_{kv}D=C$，于是总元素数可以简化为：
-
-$$
-2 \times L \times B \times T \times C.
-$$
-
-如果使用 GQA 或 MQA，$H_{kv}$ 小于 Query 头数 $H$，所以 KV Cache 会显著变小。这也是后续优化 KV Cache 显存占用的重要方向之一。
-
-若每个元素占 $\text{dtype\_bytes}$ 字节，则 KV Cache 的显存占用为：
-
-$$
-2 \times L \times B \times H_{kv} \times T \times D \times \text{dtype\_bytes}.
-$$
-
-例如 FP16 下，$\text{dtype\_bytes}=2$。
 
 ### 3.3 KV Cache只缓存 K/V，不缓存Q
 

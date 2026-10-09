@@ -97,6 +97,8 @@ Regardless of the accounting method, the fundamental problem is the same: histor
 
 ## 3 Core Idea: What Does KV Cache Store?
 
+For a detailed introduction to KV Cache, see Chapter 4 of Part I.
+
 **KV Cache stores the K and V tensors produced when every historical token passes through Key and Value linear projections in every self-attention layer during autoregressive generation.** It does not store Query, raw tokens, or logits. It lets the current token compute only its own Query and directly look up the Keys and Values that historical tokens have already produced.
 
 ### 3.1 What KV Cache Stores from the Single-Step Formula
@@ -105,16 +107,6 @@ Regardless of the accounting method, the fundamental problem is the same: histor
     <img src="./images/4-5-kv-cache-mechanism.png" alt="4-5-kv-cache-mechanism.png" width="800">
 <p><em>Figure 5. How KV Cache works</em></p>
 </div>
-
-Suppose we are processing layer $l$ at step $t$. Let the input hidden state of the current token at this layer be $h_t^{(l-1)}$. The attention layer applies three linear projections to obtain Query, Key, and Value:
-
-$$
-q_t^{(l)} = h_t^{(l-1)} W_Q^{(l)},\quad
-k_t^{(l)} = h_t^{(l-1)} W_K^{(l)},\quad
-v_t^{(l)} = h_t^{(l-1)} W_V^{(l)}.
-$$
-
-Conceptually, Query represents what the current token wants to find, Key provides an index for what each position offers, and Value carries the actual information from each position.
 
 Before the current token is generated, the cache already contains the Keys and Values of every preceding token at the same layer:
 
@@ -133,30 +125,6 @@ $$
 \quad
 \mathcal{V}_t^{(l)} = [\mathcal{V}_{t-1}^{(l)}; v_t^{(l)}].
 $$
-
-The historical part of the cache remains unchanged, expanding it from K/V for the first $t-1$ tokens to K/V for the first $t$ tokens.
-
-The current token then **uses its Query to search the updated Key cache**, obtaining attention weights over all historical positions. It uses those weights to aggregate the Value cache and produce its attention output at this layer:
-
-$$
-o_t^{(l)}
-=
-\operatorname{softmax}
-\left(
-\frac{
-q_t^{(l)} \left(\mathcal{K}_t^{(l)}\right)^\top
-}{
-\sqrt{D}
-}
-\right)
-\mathcal{V}_t^{(l)}.
-$$
-
-The output then goes through output projection, residual connection, LayerNorm, and MLP before entering the next layer.
-
-For multi-head attention, every head follows the same process independently: it computes its own Query, Key, and Value; maintains its own K/V cache; and performs its own attention computation. The outputs of all heads are then concatenated and passed through an output projection.
-
-The most important distinction is that Query serves only the current step and is unnecessary once that step is complete, so it is not cached. Key and Value are queried repeatedly by later steps, so they must be cached. KV Cache stores precomputed K and V for every historical position in every layer and KV head, not the attention matrix, logits, or complete hidden states.
 
 ### 3.2 K/V Is Cached for Every Layer and Every KV Head
 
@@ -182,36 +150,6 @@ $$
 $$
 \text{Layer }L:\quad K^{(L)},V^{(L)}.
 $$
-
-**K/V cannot be shared across layers** because each layer has different attention parameters $W_Q^{(l)}, W_K^{(l)}, W_V^{(l)}$, resulting in representations in different spaces.
-
-For layer $l$, suppose there are $H_{kv}$ KV heads, each with dimension $D$, batch size $B$, and current sequence length $T$. Key and Value typically have the shape
-
-$$
-K^{(l)},V^{(l)} \in \mathbb{R}^{B \times H_{kv} \times T \times D}.
-$$
-
-The total number of KV Cache elements across all layers is therefore approximately
-
-$$
-2 \times L \times B \times H_{kv} \times T \times D.
-$$
-
-With standard multi-head attention, $H_{kv}=H$ and $D=C/H$, so $H_{kv}D=C$. The total number of elements simplifies to
-
-$$
-2 \times L \times B \times T \times C.
-$$
-
-With GQA or MQA, $H_{kv}$ is smaller than the number of query heads $H$, so the KV Cache becomes substantially smaller. This is an important direction for reducing KV Cache memory consumption.
-
-If each element occupies $\text{dtype\_bytes}$ bytes, KV Cache memory consumption is
-
-$$
-2 \times L \times B \times H_{kv} \times T \times D \times \text{dtype\_bytes}.
-$$
-
-For example, with FP16, $\text{dtype\_bytes}=2$.
 
 ### 3.3 Why Cache Only K/V, Not Q?
 
