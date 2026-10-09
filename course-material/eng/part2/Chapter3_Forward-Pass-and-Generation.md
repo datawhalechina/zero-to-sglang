@@ -66,7 +66,7 @@ The input vector first goes through **Q/K/V projections**, which map the same in
 <p><em>Figure 2. Q/K/V projections</em></p>
 </div>
 
-Next comes the **multi-head split**: `d_model` is divided into H heads, each of which performs attention independently before the results are concatenated. Different heads can attend to different patterns.
+Next comes the **multi-head split**: `d_model` is divided into H heads, each of which performs attention independently before the results are concatenated. 
 
 <div align="center">
     <img src="./images/3-3-multi-head-split.png" alt="3-3-multi-head-split.png" width="800">
