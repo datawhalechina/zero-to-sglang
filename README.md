@@ -24,7 +24,7 @@
 
 ---
 
-> **Course status**: Part 0, Part I, and Chapters 1–2 of Part II are complete in both English and Chinese. The remaining chapters of Part II and Parts III–IV are under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: Part 0, Part I, Chapters 1–2 of Part II, and Chapter 3 of Part III (Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -87,7 +87,7 @@
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
 | 1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA) and CUDA Graph** | Comparing mainstream attention backends, and CUDA Graph | 🚧 |
 | 2. **Quantization and Low-Precision Inference** | Quantization and low-precision inference | 🚧 |
-| 3. **Hierarchical Caching** | Hierarchical caching | 🚧 |
+| [3. **Hierarchical Caching**](course-material/eng/part3/Chapter3_Hierarchical-Caching.md) | L1/L2/L3 cache tiers, prefix matching, backup and restoration, prefetching and performance tradeoffs | ✅ |
 | 4. **Scaling Out: DP Attention, EP, PP** | Scaling out: DP Attention / EP / PP | 🚧 |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode disaggregation | 🚧 |
 | <strong>Part IV — How to Make Contribution to SGLang (optional)</strong> | | |
