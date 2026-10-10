@@ -14,7 +14,7 @@ const chNav: DefaultTheme.NavItem[] = [
   { text: 'Part 0', link: '/ch/part0/Part0-编码伦理与开源精神' },
   { text: 'Part I', link: '/ch/part1/第1章_LLM入门' },
   { text: 'Part II', link: '/ch/part2/第1章_mini-sglang：推理引擎长什么样' },
-  { text: 'Part III', link: '/ch/part3/第1章_AttentionBackends与CUDAGraph' },
+  { text: 'Part III', link: '/ch/part3/第1章_注意力后端' },
   { text: 'Part IV', link: '/ch/part4/第1章_用Cookbook部署SGLang' },
   { text: '社区贡献', link: '/ch/community/' },
 ]
@@ -58,7 +58,7 @@ const chSidebar: DefaultTheme.SidebarItem[] = [
   {
     text: 'Part III — Advanced Inference Technique',
     items: [
-      { text: '第 1 章 Attention Backends 与 CUDA Graph', link: '/ch/part3/第1章_AttentionBackends与CUDAGraph' },
+      { text: '第 1 章 注意力后端', link: '/ch/part3/第1章_注意力后端' },
       { text: '第 2 章 量化与低精度推理', link: '/ch/part3/第2章_量化与低精度推理' },
       { text: '第 3 章 分层缓存', link: '/ch/part3/第3章_分层缓存' },
       { text: '第 4 章 横向扩展', link: '/ch/part3/第4章_横向扩展' },
@@ -91,7 +91,7 @@ const engNav: DefaultTheme.NavItem[] = [
   { text: 'Part 0', link: '/eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit' },
   { text: 'Part I', link: '/eng/part1/Chapter1_Introduction_to_LLM' },
   { text: 'Part II', link: '/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like' },
-  { text: 'Part III', link: '/eng/part3/Chapter1_Attention-Backends-and-CUDA-Graph' },
+  { text: 'Part III', link: '/eng/part3/Chapter1_Attention-Backends' },
   { text: 'Part IV', link: '/eng/part4/Chapter1_Deploying-SGLang-with-the-Cookbook' },
   { text: 'Community', link: '/eng/community/' },
 ]
@@ -136,7 +136,7 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
   {
     text: 'Part III — Advanced Inference Technique',
     items: [
-      { text: 'Chapter 1 Attention Backends and CUDA Graph', link: '/eng/part3/Chapter1_Attention-Backends-and-CUDA-Graph' },
+      { text: 'Chapter 1 Attention Backends', link: '/eng/part3/Chapter1_Attention-Backends' },
       { text: 'Chapter 2 Quantization and Low-Precision Inference', link: '/eng/part3/Chapter2_Quantization-and-Low-Precision-Inference' },
       { text: 'Chapter 3 Hierarchical Caching', link: '/eng/part3/Chapter3_Hierarchical-Caching' },
       { text: 'Chapter 4 Scaling Out', link: '/eng/part3/Chapter4_Scaling-Out' },

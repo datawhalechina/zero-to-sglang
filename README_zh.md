@@ -84,7 +84,7 @@
 | 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
 | 10. Speculative Decoding | 投机解码 | 🚧 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
-| 1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）and CUDA Graph** | 主流 Attention 后端对比与 CUDA Graph | 🚧 |
+| [1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）**](course-material/ch/part3/第1章_注意力后端.md) | Attention 后端职责、分块计算、实现取舍与选择 | ✅ |
 | 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
 | 3. **Hierarchical Caching** | 分层缓存 | 🚧 |
 | 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
