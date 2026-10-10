@@ -137,7 +137,7 @@ The Ampere architecture topology is as follows:
 
 The NVIDIA Ampere architecture is a GPU architecture released by NVIDIA in 2020, its eighth-generation GPU architecture. It uses a 7-nanometer process and integrates up to 54.2 billion transistors, making it the largest 7-nanometer chip in the world at the time. This architecture is mainly aimed at data centers, artificial intelligence, high-performance computing, and professional graphics.
 
-The A100 has a four-level architecture topology. First is the **GPC (Graphics Processing Cluster)**; a complete PCIe 80GB version core has 7 GPCs; each GPC has 8 **TPCs (Texture Processing Clusters)**, for a total of 54 TPCs; each TPC has 2 **SMs (Streaming Multiprocessors)**, for a total of 108; each SM has 64 **CUDA cores**, for a total of 108 × 64 = **6,912 FP32 CUDA cores**.
+The A100 has a four-level architecture topology. First is the **GPC (Graphics Processing Cluster)**; a complete PCIe 80GB version core has 7 GPCs; each GPC has 7 or 8 **TPCs (Texture Processing Clusters)**, for a total of 54 TPCs; each TPC has 2 **SMs (Streaming Multiprocessors)**, for a total of 108; each SM has 64 **CUDA cores**, for a total of 108 × 64 = **6,912 FP32 CUDA cores**.
 
 Then there are the **Tensor Cores**, 4 per SM, for an actual total of 108 × 4 = 432. In addition, there are 5 HBM2 memory stacks.
 
@@ -164,22 +164,22 @@ The SM is the fundamental unit that maps a Thread Block onto physical hardware a
 
 The NVIDIA A100 Tensor Core is its **third-generation Tensor Core** technology, the core computing unit specially designed for the A100 GPU to **accelerate AI training, high-performance computing (HPC), and data analytics**. Through dedicated hardware and brand-new precision formats, it achieves an order-of-magnitude performance leap in core operations such as matrix multiplication.
 
-The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (FMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. TF32 uses an 8-bit exponent and a 10-bit mantissa, providing the numerical range of FP32 and the mantissa precision of FP16. Tensor Cores perform multiplication in TF32 and accumulate the results in FP32. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further increase** throughput.
+The Tensor Core is a hardware unit specially designed to perform **matrix multiply-accumulate (MMA)** operations, and it is far more efficient than general-purpose CUDA cores when handling the core operations of deep learning and scientific computing. The A100 supports multiple data precisions, and in particular introduces the innovative **TensorFloat-32 (TF32)** format. TF32 uses an 8-bit exponent and a 10-bit mantissa, providing the numerical range of FP32 and the mantissa precision of FP16. Tensor Cores perform multiplication in TF32 and accumulate the results in FP32. The A100's Tensor Core supports **structured sparsity** technology. It can exploit the sparsity in AI models (i.e., a large number of parameters being zero) to **further increase** throughput.
 
 The A100 Tensor Core provides astonishing computational throughput, with specific performance as follows:
 
 | Precision | Dense Tensor Core Performance | Description |
 |------|----------------------|----------------------|
-| FP16/BF16 | 312 TFLOPS | Half precision, the workhorse precision of deep learning. |
 | INT8      | 624 TOPS   | 8-bit integer, mainly used for AI inference, extremely fast. |
-| FP64      | 19.5 TFLOPS | Double precision, meeting the high-precision needs of scientific computing, etc. |
+| **FP16/BF16** | 312 TFLOPS | Half precision, the workhorse precision of deep learning. |
 | TF32      | 156 TFLOPS | FP32 numerical range, FP16 mantissa precision, and FP32 accumulation. |
+| FP64      | 19.5 TFLOPS | Double precision, meeting the high-precision needs of scientific computing, etc. |
 
 | Precision | Sparse Tensor Core Performance (2:4) | Description |
 |------|----------------------------|----------------------------|
-| FP16/BF16 | 624 TFLOPS | Half precision, the workhorse precision of deep learning. |
-| TF32      | 312 TFLOPS | FP32 numerical range, FP16 mantissa precision, and FP32 accumulation. |
 | INT8      | 1248 TOPS  | 8-bit integer, mainly used for AI inference, extremely fast. |
+| **FP16/BF16** | 624 TFLOPS | Half precision, the workhorse precision of deep learning. |
+| TF32      | 312 TFLOPS | FP32 numerical range, FP16 mantissa precision, and FP32 accumulation. |
 | FP64      | Sparsity not supported, still 19.5 TFLOPS |
 
 Data source: [NVIDIA A100 Tensor Core GPU](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf#1#1)
