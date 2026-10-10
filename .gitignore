@@ -3,6 +3,9 @@ SGLang编写.md
 
 # dependencies
 node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
 
 # VitePress cache + build output
 docs/.vitepress/cache/

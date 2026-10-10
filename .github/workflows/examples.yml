@@ -1,0 +1,28 @@
+name: Part II examples
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - '.github/workflows/examples.yml'
+  workflow_dispatch:
+
+jobs:
+  correctness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: examples/part2/requirements.txt
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r examples/part2/requirements.txt
+      - name: Offline correctness checks
+        env:
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+        run: python -m pytest examples/part2/tests -q
