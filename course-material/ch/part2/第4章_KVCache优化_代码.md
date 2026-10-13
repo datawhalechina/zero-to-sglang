@@ -2,7 +2,7 @@
 
 概念章节说明了 KV Cache 为什么能避免在 Decode 阶段反复计算历史 token。本章把这个结论落到 mini-sglang 的源码：一次请求如何获得物理 KV 位置，Attention 如何把新计算出的 K/V 写入缓存，以及下一轮 Decode 如何读取同一份缓存。
 
-阅读时请始终区分三件事：**实际的 K/V 浮点张量存在哪里**、**一个 token 对应哪个物理位置**、**哪些历史位置可以被后续请求复用**。本章重点讲基础 KV Cache 的读写链路；分页分配和显存管理会在[第 7 章](./第7章_PagedKVCache与显存管理.md)展开，Radix 前缀匹配、加锁与淘汰会在[第 8 章](./第8章_RadixAttention与前缀缓存_代码.md)展开。
+阅读时请始终区分三件事：**实际的 K/V 浮点张量存在哪里**、**一个 token 对应哪个物理位置**、**哪些历史位置可以被后续请求复用**。本章重点讲基础 KV Cache 的读写链路。
 
 ## 1 本章学习目标
 
@@ -11,7 +11,6 @@
 1. 定位 mini-sglang 中物理 KV Cache、逻辑位置映射和前缀缓存策略的实现，并说明它们各自负责什么。
 2. 解释 `MHAKVCache` 的 K/V 张量布局，以及 `layer_id`、`out_loc` 和 `page_table` 如何共同确定一次写入的位置。
 3. 沿着一次 Prefill 和一次 Decode，追踪 `cached_len`、`device_len`、物理页分配、KV 写入与历史 KV 读取之间的关系。
-4. 区分本章的基础读写链路、[第 7 章](./第7章_PagedKVCache与显存管理.md)的分页显存管理，以及[第 8 章](./第8章_RadixAttention与前缀缓存_代码.md)的跨请求前缀复用。
 
 ## 2 定位源码
 
@@ -29,11 +28,15 @@
 | `scheduler/scheduler.py` | 为 batch 分配物理页、计算 `out_loc`，并在请求结束后释放资源 |
 | `attention/fa.py` | 在 Attention 中先调用 `store_kv` 写入新 K/V，再读取缓存做注意力计算 |
 
-可以把整条链路概括为：**Scheduler 为本次计算的 token 准备物理位置 → Attention 把 K/V 写到这些位置 → Attention 从同一池中读取历史 K/V → 请求状态推进，必要时将位置保留为可复用缓存或归还空闲页。**
+可以把整条链路概括为：
+1. Scheduler 为本次计算的 token 准备物理位置 
+2. Attention 把 K/V 写到这些位置
+3. Attention 从同一池中读取历史 K/V 
+4. 请求状态推进，必要时将位置保留为可复用缓存或归还空闲页。
 
 ## 3 正确区分：物理 KV、逻辑位置与前缀缓存
 
-KV Cache 相关代码最容易混淆的地方，是把“存 K/V 的张量”“token 到物理位置的映射”和“跨请求复用策略”当成同一个组件。它们实际上职责不同：
+KV Cache 相关代码最容易混淆的地方，是把存 K/V 的张量、token 到物理位置的映射和跨请求复用策略当成同一个组件。它们实际上职责不同：
 
 | 组件 | 负责什么 | 核心数据 |
 |---|---|---|
@@ -42,7 +45,7 @@ KV Cache 相关代码最容易混淆的地方，是把“存 K/V 的张量”“
 | `BasePrefixCache` | 决定历史前缀能否跨请求复用 | `BaseCacheHandle`、`cached_len`、匹配的 indices |
 | `CacheManager` | 在空闲页、前缀缓存和全局 `page_table` 之间协调 | `free_slots`、页分配和回收 |
 
-`MHAKVCache` 不知道某个物理位置属于哪个请求，也不比较 token id；它只根据 `out_loc` 把数据写到指定位置。前缀缓存也不保存 FP16 或 BF16 的 K/V 向量，而是保存“某段 token 已经对应哪些物理位置”。这样，真正的 K/V 仍只有一份，多个请求可以通过不同的 `page_table` 行引用同一批位置。
+`MHAKVCache` 不知道某个物理位置属于哪个请求，也不比较 token id；它只根据 `out_loc` 把数据写到指定位置。前缀缓存也不保存 FP16 或 BF16 的 K/V 向量，而是保存某段 token 已经对应哪些物理位置。这样，真正的 K/V 仍只有一份，多个请求可以通过不同的 `page_table` 行引用同一批位置。
 
 ### 3.1 两套抽象接口
 
@@ -86,11 +89,11 @@ class BasePrefixCache(ABC):
 - `BaseCacheHandle` 代表一次前缀匹配结果：`cached_len` 表示已有多少 token 的位置可以复用，`get_matched_indices()` 返回这些 token 的物理位置。
 - `BasePrefixCache` 负责匹配、插入、加锁、淘汰和容量统计。句柄在返回物理位置后必须先被锁定，否则对应前缀可能被淘汰。
 
-这层接口划分使 Attention 后端不需要知道当前使用的是“完全不复用前缀”的 `naive` 策略，还是能复用跨请求前缀的 `radix` 策略。
+这层接口划分使 Attention 后端不需要知道当前使用的是完全不复用前缀的 `naive` 策略，还是能复用跨请求前缀的 `radix` 策略。
 
 ### 3.2 `naive` 与 `radix`：决定是否复用，不决定 K/V 布局
 
-`kvcache/__init__.py` 总是创建 `MHAKVCache` 作为物理 KV 池，同时通过注册表选择前缀策略：
+`kvcache/__init__.py` 是创建 `MHAKVCache` 作为物理 KV 池，同时通过注册表选择前缀策略：
 
 ```python
 # python/minisgl/kvcache/__init__.py（节选）
@@ -118,7 +121,7 @@ def create_radix_cache(device: torch.device):
     return RadixPrefixCache(device=device)
 ```
 
-`NaivePrefixCache` 是“不做前缀复用”的基线：它每次返回 `cached_len=0` 和空的物理位置列表，`insert_prefix` 也不会保存任何前缀。因此它并不是另一种 K/V 张量布局，物理 K/V 仍由同一个 `MHAKVCache` 保存。
+`NaivePrefixCache` 是不做前缀复用的基线：它每次返回 `cached_len=0` 和空的物理位置列表，`insert_prefix` 也不会保存任何前缀。因此它并不是另一种 K/V 张量布局，物理 K/V 仍由同一个 `MHAKVCache` 保存。
 
 `RadixPrefixCache` 会把 token 前缀与物理位置登记起来，后续请求命中时就能得到已有位置。它的树节点、部分匹配拆分、锁引用计数和 LRU 叶子淘汰属于第 8 章的主题，本章只使用其统一接口。
 
@@ -293,7 +296,7 @@ def match_req(self, req: PendingReq) -> MatchResult:
     return self.prefix_cache.match_prefix(req.input_ids[: input_len - 1])
 ```
 
-它故意只匹配 `input_ids[: input_len - 1]`，不把 prompt 的最后一个 token 当作“完全无需计算”的历史前缀。原因是 Prefill 不仅要建立 K/V，还需要通过最后一个位置产生 logits，进而采样第一个输出 token。
+它故意只匹配 `input_ids[: input_len - 1]`，不把 prompt 的最后一个 token 当作完全无需计算的历史前缀。原因是 Prefill 不仅要建立 K/V，还需要通过最后一个位置产生 logits，进而采样第一个输出 token。
 
 匹配后，`PrefillAdder` 使用 `cached_len` 计算本轮仍需扩展的长度，并在真正使用命中的物理位置前锁定句柄：
 
@@ -391,7 +394,7 @@ def forward(
     )
 ```
 
-顺序很重要：当前 batch 的 K/V 先写进对应层的物理池，再把该层的完整 K/V 缓存传给 Attention kernel。这样当前 token 的 Query 既能访问已有历史，也能访问本轮新写入、在因果掩码允许范围内的 K/V。
+这样的顺序很重要：当前 batch 的 K/V 先写进对应层的物理池，再把该层的完整 K/V 缓存传给 Attention kernel。这样当前 token 的 Query 既能访问已有历史，也能访问本轮新写入、在因果掩码允许范围内的 K/V。
 
 `MHAKVCache.store_kv` 将某层的 `[num_pages, page_size, ...]` 存储视图压平成连续 token 维度，再调用 kernel 做按索引写入：
 
@@ -431,11 +434,11 @@ if self.page_size > 1:
     new_page_table.div_(self.page_size, rounding_mode="floor")
 ```
 
-因此，逻辑 token → 物理 token slot 的映射是系统内部统一表示；不同 Attention 后端可以在最后一步转换成各自 kernel 所需的 page table 格式。
+因此，逻辑 token 到 物理 token slot 的映射是系统内部统一表示；不同 Attention 后端可以在最后一步转换成各自 kernel 所需的 page table 格式。
 
 ### 5.4 Prefill 与 Decode 写入同一份池
 
-Prefill 和 Decode 并不使用两套 KV Cache。二者都遵循相同的“本轮新增 token 生成 `out_loc` → `store_kv` 写入 → Attention 读取缓存”路径，差别主要在 `extend_len`：
+Prefill 和 Decode 并不使用两套 KV Cache。二者都遵循相同的本轮新增 token 生成 `out_loc` → `store_kv` 写入 → Attention 读取缓存路径，差别主要在 `extend_len`：
 
 | 阶段 | `cached_len` 与 `device_len` 的关系 | 本轮写入数量 |
 |---|---|---|
