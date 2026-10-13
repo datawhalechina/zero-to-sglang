@@ -86,7 +86,7 @@
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
 | 1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）and CUDA Graph** | 主流 Attention 后端对比与 CUDA Graph | 🚧 |
 | 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
-| 3. **Hierarchical Caching** | 分层缓存 | 🚧 |
+| [3. **Hierarchical Caching**](course-material/ch/part3/第3章_分层缓存.md) | L1/L2/L3 缓存层级、前缀匹配、备份恢复、预取与性能取舍 | ✅ |
 | 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode 分离 | 🚧 |
 | <strong>Part IV — 如何为 SGLang 做贡献（可选）</strong> | | |
@@ -103,7 +103,7 @@
 | Part 0 — 开课之前 | 已完成 | ✅ |
 | Part I — 基础概念 | 8.24 ~ 9.06 编写，9.07 ~ 9.13 review | ✅ |
 | Part II — 从零手搓 Mini SGL | 9.14 ~ 10.04 编写，10.05 ~ 10.10 review | 🔄 |
-| Part III — 高级推理技术 | 10.10 ~ 11.15 | 🚧 |
+| Part III — 高级推理技术 | 10.10 ~ 11.15 | 🔄 |
 | Part IV — 如何为 SGLang 做贡献 | 11.16 ~ 12.6 | 🚧 |
 
 ## 🚀 快速开始
