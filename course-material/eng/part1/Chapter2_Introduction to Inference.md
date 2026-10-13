@@ -361,7 +361,7 @@ $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 
 - Total weight per layer: $(4 + 8)d^2 = 12d^2$.
 - QKV and output projections: each has shape $d \times d$; three reads for QKV plus one output projection read, for $4d^2$ parameters in total.
-- FFN layers: two linear layers of shapes $d \times 4d$ and $4d \times d$, for $8d^2$ parameters in total.
+- FFN layer: The three linear layers have weight matrices of shapes $d\times\frac{8}{3}d$ ,  $d\times\frac{8}{3}d$ , and $\frac{8}{3}d\times d$ , respectively, totaling $3\times d\times\frac{8}{3}d=8d^2$ parameters.
 - Input + output: $N \times d$ (input) + $N \times d$ (output) = $2Nd$.
 
 **Decode stage** (generating one token):
