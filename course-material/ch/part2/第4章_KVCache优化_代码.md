@@ -1,709 +1,511 @@
 # 第 4 章 KV Cache 优化（代码走读）
 
-上一章已经完成了一个最小语言模型的前向计算与逐 token 生成。本章把注意力层中最关键的一项推理优化KV Cache实现成一个小型、完整的 Transformer，并用数值测试验证缓存路径与从头计算的路径一致。
+概念章节说明了 KV Cache 为什么能避免在 Decode 阶段反复计算历史 token。本章把这个结论落到 mini-sglang 的源码：一次请求如何获得物理 KV 位置，Attention 如何把新计算出的 K/V 写入缓存，以及下一轮 Decode 如何读取同一份缓存。
 
-本文按 Notebook 形式编写：每个 `python` 都是一个可执行单元。把它们依次复制到同一个 Jupyter Notebook、就可以从上到下运行，即可在 CPU/GPU 上完成本章所有实验。后续第 7、8 章会进一步讨论生产环境中的分页缓存、显存管理与前缀复用。
+阅读时请始终区分三件事：**实际的 K/V 浮点张量存在哪里**、**一个 token 对应哪个物理位置**、**哪些历史位置可以被后续请求复用**。本章重点讲基础 KV Cache 的读写链路；分页分配和显存管理会在[第 7 章](./第7章_PagedKVCache与显存管理.md)展开，Radix 前缀匹配、加锁与淘汰会在[第 8 章](./第8章_RadixAttention与前缀缓存_代码.md)展开。
 
 ## 1 本章学习目标
 
-完成本章学习后，你将能够：
+完成本章学习后，你应该能够：
 
-1. 找出自回归生成中重复计算发生的位置，并解释 KV Cache 消除了什么计算。
-2. 实现多头因果自注意力与 RoPE。
-3. 在 prefill 和 decode 两个阶段正确维护每层 K、V 缓存。
-4. 用缓存路径与全量重算路径的形状、logits 和生成结果验证实现正确性。
-5. 根据模型配置和上下文长度估算 KV Cache 的显存占用。
+1. 定位 mini-sglang 中物理 KV Cache、逻辑位置映射和前缀缓存策略的实现，并说明它们各自负责什么。
+2. 解释 `MHAKVCache` 的 K/V 张量布局，以及 `layer_id`、`out_loc` 和 `page_table` 如何共同确定一次写入的位置。
+3. 沿着一次 Prefill 和一次 Decode，追踪 `cached_len`、`device_len`、物理页分配、KV 写入与历史 KV 读取之间的关系。
+4. 区分本章的基础读写链路、[第 7 章](./第7章_PagedKVCache与显存管理.md)的分页显存管理，以及[第 8 章](./第8章_RadixAttention与前缀缓存_代码.md)的跨请求前缀复用。
 
-先安装依赖。
+## 2 定位源码
 
-```ipython
-%pip install "torch>=2.2,<3"
-```
+本章参考的代码主要位于 mini-sglang 的 `python/minisgl/` 目录：
 
-下面的初始化单元固定使用 CPU 与 float32，因此不依赖 GPU。所有后续单元都依赖它定义的名称：
+| 文件 | 作用 |
+|---|---|
+| `kvcache/base.py` | 定义物理 KV 池、前缀缓存、缓存句柄和容量统计的抽象接口 |
+| `kvcache/__init__.py` | 创建 `MHAKVCache`，并注册 `naive`、`radix` 两种前缀缓存策略 |
+| `kvcache/mha_pool.py` | 分配各层 K/V 的 GPU 张量，提供按层读取和写入接口 |
+| `engine/engine.py` | 初始化 KV 池、全局 `page_table` 和供 CUDA Graph 使用的 dummy page |
+| `core.py` | 定义请求中的 `cached_len`、`device_len`、`extend_len` 和 batch 中的 `out_loc` |
+| `scheduler/cache.py` | 管理空闲页、填充 `page_table`、写回可复用前缀和回收尾部页 |
+| `scheduler/prefill.py` | 在 Prefill 入批时匹配可复用前缀、锁定句柄并准备请求状态 |
+| `scheduler/scheduler.py` | 为 batch 分配物理页、计算 `out_loc`，并在请求结束后释放资源 |
+| `attention/fa.py` | 在 Attention 中先调用 `store_kv` 写入新 K/V，再读取缓存做注意力计算 |
 
-```python
-import math
-from typing import Optional
+可以把整条链路概括为：**Scheduler 为本次计算的 token 准备物理位置 → Attention 把 K/V 写到这些位置 → Attention 从同一池中读取历史 K/V → 请求状态推进，必要时将位置保留为可复用缓存或归还空闲页。**
 
-import torch
-from torch import nn
+## 3 正确区分：物理 KV、逻辑位置与前缀缓存
 
+KV Cache 相关代码最容易混淆的地方，是把“存 K/V 的张量”“token 到物理位置的映射”和“跨请求复用策略”当成同一个组件。它们实际上职责不同：
 
-torch.manual_seed(2026)
-DEVICE = torch.device("cpu")
-DTYPE = torch.float32
+| 组件 | 负责什么 | 核心数据 |
+|---|---|---|
+| `MHAKVCache` | 保存真正的 K/V 浮点张量 | `_kv_buffer`、每层 K/V view |
+| `page_table` 与 `Batch.out_loc` | 将本次计算的逻辑 token 映射到物理 token slot | `int32` 物理位置索引 |
+| `BasePrefixCache` | 决定历史前缀能否跨请求复用 | `BaseCacheHandle`、`cached_len`、匹配的 indices |
+| `CacheManager` | 在空闲页、前缀缓存和全局 `page_table` 之间协调 | `free_slots`、页分配和回收 |
 
-VOCAB_SIZE = 97
-HIDDEN_SIZE = 32
-NUM_HEADS = 4
-NUM_LAYERS = 2
-MAX_POSITION_EMBEDDINGS = 64
+`MHAKVCache` 不知道某个物理位置属于哪个请求，也不比较 token id；它只根据 `out_loc` 把数据写到指定位置。前缀缓存也不保存 FP16 或 BF16 的 K/V 向量，而是保存“某段 token 已经对应哪些物理位置”。这样，真正的 K/V 仍只有一份，多个请求可以通过不同的 `page_table` 行引用同一批位置。
 
-assert HIDDEN_SIZE % NUM_HEADS == 0
-assert (HIDDEN_SIZE // NUM_HEADS) % 2 == 0  # RoPE 按相邻维度两两旋转
+### 3.1 两套抽象接口
 
-print(f"PyTorch: {torch.__version__}")
-print(f"device: {DEVICE}, dtype: {DTYPE}")
-```
-
-## 2 先观察重复计算
-
-朴素的自回归生成会在每轮把完整序列重新送进模型。假设 prompt 长度为 `prompt_len`，再生成 `new_tokens` 个 token，那么模型输入的 token 数依次增长；KV Cache 之后，prefill 处理完整 prompt，后续每轮 decode 只输入一个新 token。
-
-下面的代码可以计算不使用KV Cache 和使用 KV Cache 计算的次数。
+`kvcache/base.py` 把物理池和前缀复用策略分开定义：
 
 ```python
-def count_model_input_tokens(prompt_len: int, new_tokens: int) -> tuple[int, int]:
-    """返回朴素全量重算与 KV Cache 路径实际送入模型的 token 总数。"""
-    if new_tokens < 0:
-        raise ValueError("new_tokens must be non-negative")
+# python/minisgl/kvcache/base.py（节选）
+class BaseKVCachePool(ABC):
+    @abstractmethod
+    def k_cache(self, index: int) -> torch.Tensor: ...
 
-    full_recompute = sum(prompt_len + step for step in range(new_tokens))
-    cached_decode = prompt_len + max(new_tokens - 1, 0)
-    return full_recompute, cached_decode
+    @abstractmethod
+    def v_cache(self, index: int) -> torch.Tensor: ...
+
+    @abstractmethod
+    def store_kv(
+        self, k: torch.Tensor, v: torch.Tensor, out_loc: torch.Tensor, layer_id: int
+    ) -> None: ...
 
 
-full_tokens, cached_tokens = count_model_input_tokens(prompt_len=8, new_tokens=6)
-print(f"不使用kv cache 计算需要计算的token数: {full_tokens} tokens")
-print(f"使用Kv Cache 需要计算的token数: {cached_tokens} tokens")
-assert full_tokens == 63
-assert cached_tokens == 13
+@dataclass(frozen=True)
+class BaseCacheHandle(ABC):
+    cached_len: int
+
+    @abstractmethod
+    def get_matched_indices(self) -> torch.Tensor: ...
+
+
+class BasePrefixCache(ABC):
+    @abstractmethod
+    def match_prefix(self, input_ids: torch.Tensor) -> MatchResult: ...
+
+    @abstractmethod
+    def insert_prefix(self, input_ids: torch.Tensor, indices: torch.Tensor) -> InsertResult: ...
+
+    @abstractmethod
+    def lock_handle(self, handle: BaseCacheHandle, unlock: bool = False) -> None: ...
 ```
 
-假设当前已经有 token $x_1, x_2, ..., x_t$，为了预测 $x_{t+1}$，最后一个位置需要计算：
+- `BaseKVCachePool` 只关心每层 K/V 的读取和写入。
+- `BaseCacheHandle` 代表一次前缀匹配结果：`cached_len` 表示已有多少 token 的位置可以复用，`get_matched_indices()` 返回这些 token 的物理位置。
+- `BasePrefixCache` 负责匹配、插入、加锁、淘汰和容量统计。句柄在返回物理位置后必须先被锁定，否则对应前缀可能被淘汰。
 
-$$
-\mathrm{Attention}(Q_t, K_{1:t}, V_{1:t})
-$$
+这层接口划分使 Attention 后端不需要知道当前使用的是“完全不复用前缀”的 `naive` 策略，还是能复用跨请求前缀的 `radix` 策略。
 
-朴素循环会再次计算历史 token 的 K、V。它们只由对应 hidden state 与固定投影矩阵决定：
+### 3.2 `naive` 与 `radix`：决定是否复用，不决定 K/V 布局
 
-$$
-K_i = h_i W_K, \qquad V_i = h_i W_V
-$$
-
-KV Cache 在第一次算出历史 K、V 后保留它们；下一轮只计算新 token 的 $K_t, V_t$，再把它们追加到缓存中。
-
-注意：KV Cache **没有消除**新 token 对历史 token 的 attention。新 query 仍需要和全部历史 K 计算分数，并读取历史 V；缓存避免的是历史 token 的重复前向、重复 Q/K/V 投影，以及历史位置之间重复计算的 attention。
-
-## 3 先写一个带缓存的注意力层
-
-为了保证后续单元可以直接复用，本节一次性定义完整的多头因果注意力。缓存中每层 K、V 的逻辑布局固定为 `[batch, num_heads, sequence_length, head_dim]`；RoPE 在 K 写入缓存前应用，因此缓存的 K 已带有其绝对位置信息。
+`kvcache/__init__.py` 总是创建 `MHAKVCache` 作为物理 KV 池，同时通过注册表选择前缀策略：
 
 ```python
-# 单层缓存：K 与 V 的布局均为 [B, H, L, D]。
-# B=batch，H=KV head 数，L=当前已缓存的 token 数，D=head_dim。
-# L 是唯一会随 Prefill/Decode 增长的维度；缓存属于某一层，不能跨层复用。
-KVCache = tuple[torch.Tensor, torch.Tensor]
+# python/minisgl/kvcache/__init__.py（节选）
+def create_kvcache_pool(model_config, num_pages, page_size, dtype, device):
+    from .mha_pool import MHAKVCache
+
+    return MHAKVCache(
+        num_kv_heads=model_config.num_kv_heads,
+        num_pages=num_pages,
+        page_size=page_size,
+        num_layers=model_config.num_layers,
+        head_dim=model_config.head_dim,
+        device=device,
+        dtype=dtype,
+    )
 
 
-def rotate_half(x: torch.Tensor) -> torch.Tensor:
-    """将最后一维的相邻元素两两旋转：[-x1, x0, -x3, x2, ...]。"""
-    x_even = x[..., 0::2]
-    x_odd = x[..., 1::2]
-    return torch.stack((-x_odd, x_even), dim=-1).flatten(-2)
+@SUPPORTED_CACHE_MANAGER.register("naive")
+def create_naive_cache(device: torch.device):
+    return NaivePrefixCache(device=device)
 
 
-def apply_rope(x: torch.Tensor, position_ids: torch.Tensor) -> torch.Tensor:
-    """对 [B, H, T, D] 的 Q 或 K 应用 RoPE。"""
-    if x.ndim != 4:
-        raise ValueError(f"expected [B, H, T, D], got {tuple(x.shape)}")
-    batch_size, _, seq_len, head_dim = x.shape
-    if head_dim % 2 != 0:
-        raise ValueError("head_dim must be even for RoPE")
-    if position_ids.shape != (batch_size, seq_len):
-        raise ValueError(
-            f"position_ids must have shape {(batch_size, seq_len)}, "
-            f"got {tuple(position_ids.shape)}"
-        )
-
-    # 每对相邻维度共享一个频率，分别对应二维平面的旋转角度。
-    inv_freq = 1.0 / (10000.0 ** (torch.arange(0, head_dim, 2, device=x.device, dtype=x.dtype) / head_dim))
-    angles = position_ids.to(dtype=x.dtype)[..., None] * inv_freq
-    # unsqueeze(1) 让每个 attention head 使用同一组位置角度。
-    cos = torch.repeat_interleave(angles.cos(), repeats=2, dim=-1).unsqueeze(1)
-    sin = torch.repeat_interleave(angles.sin(), repeats=2, dim=-1).unsqueeze(1)
-    return x * cos + rotate_half(x) * sin
-
-
-def make_causal_mask(
-    query_len: int,
-    key_len: int,
-    past_len: int,
-    device: torch.device,
-) -> torch.Tensor:
-    """返回 [query_len, key_len] 的布尔 mask；True 表示该位置不可见。"""
-    if query_len <= 0 or key_len <= 0 or past_len < 0:
-        raise ValueError("query_len/key_len must be positive and past_len must be non-negative")
-    if key_len != past_len + query_len:
-        raise ValueError("key_len must equal past_len + query_len")
-
-    # 第 i 个新 query 可见全部历史 key，以及当前 chunk 中不晚于 i 的 key。
-    query_positions = torch.arange(query_len, device=device)[:, None]
-    key_positions = torch.arange(key_len, device=device)[None, :]
-    return key_positions > (past_len + query_positions)
-
-
-class TinyCausalSelfAttention(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int):
-        super().__init__()
-        if hidden_size % num_heads != 0:
-            raise ValueError("hidden_size must be divisible by num_heads")
-
-        self.hidden_size = hidden_size
-        self.num_heads = num_heads
-        self.head_dim = hidden_size // num_heads
-        if self.head_dim % 2 != 0:
-            raise ValueError("head_dim must be even for RoPE")
-
-        self.q_proj = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.k_proj = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.v_proj = nn.Linear(hidden_size, hidden_size, bias=False)
-        self.o_proj = nn.Linear(hidden_size, hidden_size, bias=False)
-
-    def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
-        batch_size, seq_len, _ = x.shape
-        return x.view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-
-    def _merge_heads(self, x: torch.Tensor) -> torch.Tensor:
-        batch_size, _, seq_len, _ = x.shape
-        return x.transpose(1, 2).contiguous().view(batch_size, seq_len, self.hidden_size)
-
-    def _validate_cache(self, cache: KVCache, batch_size: int) -> int:
-        # 缓存来自上一次同一层的 forward；这里只校验结构，不重新计算历史 K/V。
-        past_key, past_value = cache
-        expected_prefix = (batch_size, self.num_heads)
-        # batch/head 不匹配意味着把另一批请求或另一种 attention 配置的 cache 混进来了。
-        if past_key.shape[:2] != expected_prefix or past_value.shape[:2] != expected_prefix:
-            raise ValueError("cache batch size or number of heads does not match attention")
-        # 最后一维不是 head_dim 时，即使能拼接，attention 点积的语义也已错误。
-        if past_key.shape[-1] != self.head_dim or past_value.shape[-1] != self.head_dim:
-            raise ValueError("cache head_dim does not match attention")
-        # K 与 V 必须逐 token 一一对应，长度不同会让 weights @ value 失去对应关系。
-        if past_key.shape != past_value.shape:
-            raise ValueError("past key and value must have identical shapes")
-        # 返回 L；它同时决定本轮 RoPE 的绝对位置与 attention mask 的历史偏移。
-        return past_key.size(-2)
-
-    def forward(
-        self,
-        hidden_states: torch.Tensor,
-        position_ids: torch.Tensor,
-        past_key_value: Optional[KVCache] = None,
-        use_cache: bool = False,
-    ) -> tuple[torch.Tensor, Optional[KVCache]]:
-        if hidden_states.ndim != 3:
-            raise ValueError("hidden_states must have shape [B, T, H]")
-        batch_size, query_len, hidden_size = hidden_states.shape
-        if hidden_size != self.hidden_size:
-            raise ValueError("hidden_states last dimension does not match hidden_size")
-
-        # cache 长度正是本轮新 token 在原序列中的起始绝对位置。
-        past_len = 0 if past_key_value is None else self._validate_cache(past_key_value, batch_size)
-        expected_positions = torch.arange(
-            past_len,
-            past_len + query_len,
-            device=hidden_states.device,
-        ).unsqueeze(0).expand(batch_size, -1)
-        if not torch.equal(position_ids, expected_positions):
-            raise ValueError("position_ids must start at the cache length and be consecutive")
-
-        # 只有本轮输入会经过 Q/K/V 投影。
-        # decode 时 query_len 通常为 1；new_key/new_value 只对应这个新 token。
-        query = apply_rope(self._split_heads(self.q_proj(hidden_states)), position_ids)
-        new_key = apply_rope(self._split_heads(self.k_proj(hidden_states)), position_ids)
-        new_value = self._split_heads(self.v_proj(hidden_states))
-
-        if past_key_value is None:
-            # Prefill：没有历史，当前 prompt 计算出的 K/V 直接成为第一份 cache。
-            key, value = new_key, new_value
-        else:
-            past_key, past_value = past_key_value
-            # Decode/chunk：past_* 保持原样，只将本轮新增 K/V 接在 L 维末尾。
-            # torch.cat 是教学实现；生产系统通常写入预分配 KV Pool，避免复制整个历史。
-            key = torch.cat([past_key, new_key], dim=-2)
-            value = torch.cat([past_value, new_value], dim=-2)
-
-        # query 只来自本轮输入，key/value 则覆盖“历史 cache + 本轮 token”。
-        # 因此新 token 能读取完整上下文，却不用重新投影历史 token。
-        scores = (query @ key.transpose(-1, -2)) * (self.head_dim ** -0.5)
-        # mask 的 key_len 已包含历史 L 和本轮 query_len；历史 token 永远可见。
-        causal_mask = make_causal_mask(query_len, key.size(-2), past_len, hidden_states.device)
-        scores = scores.masked_fill(causal_mask[None, None], torch.finfo(scores.dtype).min)
-        weights = torch.softmax(scores, dim=-1)
-        # 从完整 K/V 中加权读回上下文；返回的 key/value 是下一轮要继续持有的 cache。
-        output = self.o_proj(self._merge_heads(weights @ value))
-        return output, (key, value) if use_cache else None
+@SUPPORTED_CACHE_MANAGER.register("radix")
+def create_radix_cache(device: torch.device):
+    return RadixPrefixCache(device=device)
 ```
 
-先对注意力层做一次独立 smoke test。这里没有历史缓存，输入三个 token，因此返回的缓存长度也应为 3：
+`NaivePrefixCache` 是“不做前缀复用”的基线：它每次返回 `cached_len=0` 和空的物理位置列表，`insert_prefix` 也不会保存任何前缀。因此它并不是另一种 K/V 张量布局，物理 K/V 仍由同一个 `MHAKVCache` 保存。
+
+`RadixPrefixCache` 会把 token 前缀与物理位置登记起来，后续请求命中时就能得到已有位置。它的树节点、部分匹配拆分、锁引用计数和 LRU 叶子淘汰属于第 8 章的主题，本章只使用其统一接口。
+
+## 4 初始化：创建物理 KV 池和全局位置表
+
+### 4.1 `MHAKVCache` 的物理布局
+
+`MHAKVCache` 在 GPU 上一次性分配所有层的 K/V 存储：
 
 ```python
-torch.manual_seed(2026)
-attention = TinyCausalSelfAttention(HIDDEN_SIZE, NUM_HEADS).to(device=DEVICE, dtype=DTYPE).eval()
-hidden_states = torch.randn(2, 3, HIDDEN_SIZE, device=DEVICE, dtype=DTYPE)
-position_ids = torch.arange(3, device=DEVICE).unsqueeze(0).expand(2, -1)
-
-with torch.inference_mode():
-    attention_output, attention_cache = attention(hidden_states, position_ids, use_cache=True)
-
-assert attention_output.shape == (2, 3, HIDDEN_SIZE)
-assert attention_cache is not None
-assert attention_cache[0].shape == (2, NUM_HEADS, 3, HIDDEN_SIZE // NUM_HEADS)
-assert attention_cache[1].shape == attention_cache[0].shape
-print("attention smoke test: PASS")
-```
-
-## 4 给注意力层增加 KV Cache
-
-### 4.1 缓存里保存什么
-
-上一节返回的 `(key, value)` 就是一层 KV Cache。它们已经按 head 拆分，且 `key` 已应用 RoPE。下面直接检查形状，而不是重新定义另一个注意力类：
-
-```python
-cached_key, cached_value = attention_cache
-print(f"K cache: {tuple(cached_key.shape)}")
-print(f"V cache: {tuple(cached_value.shape)}")
-assert cached_key.size(-2) == 3
-assert cached_value.size(-2) == 3
-```
-
-在本章实现中，K/V 的布局是 `[B, H, L, D]`。其中 `L` 是序列长度，因此追加新 token 时必须沿 `dim=-2` 拼接；沿 batch、head 或 head_dim 拼接都会破坏张量含义。
-
-### 4.2 有历史缓存时的因果掩码
-
-decode 通常一次只输入一个 token，此时单个 query 不会看到未来 query token。但实现还应正确处理“已有历史缓存、一次又输入多个新 token”的 chunk。下面检查 `past_len=4`、`query_len=2` 的 mask：
-
-```python
-mask = make_causal_mask(query_len=2, key_len=6, past_len=4, device=DEVICE)
-print(mask.to(dtype=torch.int64))
-
-expected_mask = torch.tensor(
-    [[False, False, False, False, False, True],
-     [False, False, False, False, False, False]],
-    device=DEVICE,
-)
-assert torch.equal(mask, expected_mask)
-print("offset causal mask: PASS")
-```
-
-第一行对应第一个新 token：它可见四个历史 key 与自己，但不能看第二个新 token。第二行是最后一个新 token，可以看见所有六个 key。这个偏移量正是 `past_len`；如果错误地从 0 开始构造 mask，会把已经存在的历史位置当成未来位置。
-
-### 4.3 真正的多头缓存形状
-
-真实模型的布局可能不同，但要先确认序列维在哪。对本章的 `[B, H, L, D]` 布局，追加操作就是：
-
-```python
-new_key = torch.randn(2, NUM_HEADS, 1, HIDDEN_SIZE // NUM_HEADS, device=DEVICE)
-appended_key = torch.cat([cached_key, new_key], dim=-2)
-assert appended_key.shape == (2, NUM_HEADS, 4, HIDDEN_SIZE // NUM_HEADS)
-print("append along sequence dimension: PASS")
-```
-
-生产模型中，query head 数与 KV head 数可能不同；显存估算和缓存形状应使用 KV head 数，而不是 query head 数。本章小模型使用普通多头注意力，因此两者相等。
-
-## 5 模型级缓存：每层各存一份
-
-Transformer 的每一层都有独立 K/V 投影，不能共享同一份缓存。下面定义一个最小但完整的模型：embedding、预归一化、残差、attention、MLP 和 LM head 都包含在内；`TinyTransformer.forward` 会为每一层传回对应 cache，并从 cache 长度推导 RoPE 的绝对位置。
-
-```python
-class TinyTransformerBlock(nn.Module):
-    def __init__(self, hidden_size: int, num_heads: int, mlp_ratio: int = 2):
-        super().__init__()
-        self.attn_norm = nn.LayerNorm(hidden_size)
-        self.attn = TinyCausalSelfAttention(hidden_size, num_heads)
-        self.mlp_norm = nn.LayerNorm(hidden_size)
-        self.mlp = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size * mlp_ratio),
-            nn.GELU(),
-            nn.Linear(hidden_size * mlp_ratio, hidden_size),
-        )
-
-    def forward(
-        self,
-        hidden_states: torch.Tensor,
-        position_ids: torch.Tensor,
-        past_key_value: Optional[KVCache] = None,
-        use_cache: bool = False,
-    ) -> tuple[torch.Tensor, Optional[KVCache]]:
-        attention_output, present_key_value = self.attn(
-            self.attn_norm(hidden_states),
-            position_ids,
-            past_key_value=past_key_value,
-            use_cache=use_cache,
-        )
-        hidden_states = hidden_states + attention_output
-        hidden_states = hidden_states + self.mlp(self.mlp_norm(hidden_states))
-        return hidden_states, present_key_value
-
-
-class TinyTransformer(nn.Module):
+# python/minisgl/kvcache/mha_pool.py（节选）
+class MHAKVCache(BaseKVCachePool):
     def __init__(
         self,
-        vocab_size: int,
-        hidden_size: int,
-        num_heads: int,
+        num_kv_heads: int,
         num_layers: int,
-    ):
-        super().__init__()
-        self.num_layers = num_layers
-        self.embed_tokens = nn.Embedding(vocab_size, hidden_size)
-        self.layers = nn.ModuleList(
-            [TinyTransformerBlock(hidden_size, num_heads) for _ in range(num_layers)]
+        head_dim: int,
+        num_pages: int,
+        page_size: int,
+        dtype: torch.dtype,
+        device: torch.device,
+    ) -> None:
+        tp_info = get_tp_info()
+        local_kv_heads = div_even(num_kv_heads, tp_info.size, allow_replicate=True)
+        self._kv_buffer = torch.empty(
+            (2, num_layers, num_pages, page_size, local_kv_heads, head_dim),
+            device=device,
+            dtype=dtype,
         )
-        self.final_norm = nn.LayerNorm(hidden_size)
-        self.lm_head = nn.Linear(hidden_size, vocab_size, bias=False)
-
-    def _past_len(self, past_key_values: Optional[list[KVCache]], batch_size: int) -> int:
-        if past_key_values is None:
-            return 0
-        if len(past_key_values) != self.num_layers:
-            raise ValueError("past_key_values must contain one cache per layer")
-
-        lengths = []
-        for layer, cache in zip(self.layers, past_key_values):
-            # 第 layer_idx 层只校验/读取第 layer_idx 份 cache，避免层间 K/V 串用。
-            lengths.append(layer.attn._validate_cache(cache, batch_size))
-        # 所有层必须停在同一个 token 位置，才能共用同一组 position_ids。
-        if len(set(lengths)) != 1:
-            raise ValueError("all layer caches must have the same sequence length")
-        return lengths[0]
-
-    def forward(
-        self,
-        input_ids: torch.Tensor,
-        past_key_values: Optional[list[KVCache]] = None,
-        use_cache: bool = False,
-    ) -> tuple[torch.Tensor, Optional[list[KVCache]]]:
-        if input_ids.ndim != 2:
-            raise ValueError("input_ids must have shape [B, T]")
-        batch_size, query_len = input_ids.shape
-        if query_len == 0:
-            raise ValueError("input_ids must contain at least one token")
-
-        # 全部层共享同一批绝对位置，但各层只能读取自己的 K/V cache。
-        past_len = self._past_len(past_key_values, batch_size)
-        position_ids = torch.arange(
-            past_len,
-            past_len + query_len,
-            device=input_ids.device,
-        ).unsqueeze(0).expand(batch_size, -1)
-
-        hidden_states = self.embed_tokens(input_ids)
-        next_key_values = []
-        for layer_idx, layer in enumerate(self.layers):
-            # 取同一索引的 cache：第 0 层绝不能使用第 1 层产生的 K/V。
-            past = None if past_key_values is None else past_key_values[layer_idx]
-            hidden_states, present = layer(
-                hidden_states,
-                position_ids,
-                past_key_value=past,
-                use_cache=use_cache,
-            )
-            if use_cache:
-                assert present is not None
-                # 按层序保留 present，下一轮会原样传回对应 layer_idx。
-                next_key_values.append(present)
-
-        logits = self.lm_head(self.final_norm(hidden_states))
-        return logits, next_key_values if use_cache else None
+        self._num_layers = num_layers
+        self._k_buffer = self._kv_buffer[0]
+        self._v_buffer = self._kv_buffer[1]
+        self._storage_shape = (num_pages * page_size, local_kv_heads, head_dim)
 ```
 
-创建固定模型与固定 prompt。后面所有实验都复用这两个对象；模型处于 `eval()`，因此没有 dropout 带来的随机性：
+这 6 个维度的含义是：
+
+| 维度 | 含义 |
+|---|---|
+| `2` | 第 0 维区分 Key 和 Value |
+| `num_layers` | 每个 Transformer 层各有一份 K/V |
+| `num_pages` | 物理页数量 |
+| `page_size` | 每页可容纳的 token 数 |
+| `local_kv_heads` | 当前 tensor-parallel rank 持有的 KV 头数 |
+| `head_dim` | 单个注意力头的维度 |
+
+`local_kv_heads` 不是简单等于全局 `num_kv_heads`。代码通过 `get_tp_info()` 获取 tensor parallel 信息，再用 `div_even(..., allow_replicate=True)` 得到当前 rank 的本地 KV 头数。也就是说，缓存的头维度必须与实际运行该 rank 的 Attention 计算一致。
+
+按层读取时，`k_cache(layer_id)` 与 `v_cache(layer_id)` 返回的形状为 `[num_pages, page_size, local_kv_heads, head_dim]`：
 
 ```python
-torch.manual_seed(2026)
-model = TinyTransformer(
-    vocab_size=VOCAB_SIZE,
-    hidden_size=HIDDEN_SIZE,
-    num_heads=NUM_HEADS,
-    num_layers=NUM_LAYERS,
-).to(device=DEVICE, dtype=DTYPE).eval()
+# python/minisgl/kvcache/mha_pool.py（节选）
+def k_cache(self, index: int) -> torch.Tensor:
+    return self._k_buffer[index]
 
-prompt_ids = torch.tensor([[5, 11, 23, 47]], device=DEVICE, dtype=torch.long)
-print(f"prompt_ids: {prompt_ids.tolist()}")
+
+def v_cache(self, index: int) -> torch.Tensor:
+    return self._v_buffer[index]
 ```
 
-先验证模型级缓存：每层恰好一份 K/V，且 prefill 后所有层的缓存长度都等于 prompt 长度：
+因此，**不同层绝不能共享 K/V**。即便两个 token 的物理 slot 相同，`layer_id=0` 和 `layer_id=1` 也会落在不同的层维度上。
+
+### 4.2 物理页与 token slot
+
+`CacheManager` 的空闲列表只保存每页的起始 token slot：
 
 ```python
-with torch.inference_mode():
-    prompt_logits, prompt_cache = model(prompt_ids, use_cache=True)
-
-assert prompt_cache is not None
-assert len(prompt_cache) == NUM_LAYERS
-for layer_key, layer_value in prompt_cache:
-    assert layer_key.shape == (1, NUM_HEADS, prompt_ids.size(1), HIDDEN_SIZE // NUM_HEADS)
-    assert layer_value.shape == layer_key.shape
-print("model-level cache invariant: PASS")
+# python/minisgl/scheduler/cache.py（节选）
+self.free_slots = torch.arange(num_pages, dtype=torch.int32, device=device) * page_size
 ```
 
-## 6 Prefill 与 Decode：两种调用方式
+假设 `page_size=4`、共有 3 页，那么 `free_slots` 是：
 
-### 6.1 Prefill：处理整个 prompt
-
-Prefill 一次处理完整 prompt，既建立每层缓存，也产生 prompt 最后一个位置的 logits，用于选择第一个输出 token：
-
-```python
-with torch.inference_mode():
-    prefill_logits, prefill_cache = model(prompt_ids, use_cache=True)
-
-next_token = prefill_logits[:, -1].argmax(dim=-1, keepdim=True)
-assert prefill_cache is not None
-assert all(cache[0].size(-2) == prompt_ids.size(1) for cache in prefill_cache)
-print(f"first generated token: {next_token.tolist()}")
-print(f"prefill cache length: {prefill_cache[0][0].size(-2)}")
+```text
+[0, 4, 8]
 ```
 
-### 6.2 Decode：之后每次只处理一个 token
+它们分别代表三段连续的物理 token slot：
 
-现在只把刚选出的 `next_token` 送给模型，而不是把完整 `prompt_ids + next_token` 重送一遍。模型从 `prefill_cache` 长度推导其绝对位置，并把新的 K/V 追加到每层缓存：
+| page start | 展开后的 token slot |
+|---:|---|
+| 0 | `[0, 1, 2, 3]` |
+| 4 | `[4, 5, 6, 7]` |
+| 8 | `[8, 9, 10, 11]` |
+
+需要写入或读取某个具体 token 时，系统使用展开后的 token slot，而不是只使用页号。`_page_to_token` 正是完成这项转换：
 
 ```python
-with torch.inference_mode():
-    decode_logits, decode_cache = model(
-        next_token,
-        past_key_values=prefill_cache,
-        use_cache=True,
-    )
-
-assert decode_cache is not None
-assert all(cache[0].size(-2) == prompt_ids.size(1) + 1 for cache in decode_cache)
-assert decode_logits.shape == (1, 1, VOCAB_SIZE)
-print(f"decode cache length: {decode_cache[0][0].size(-2)}")
+# python/minisgl/scheduler/cache.py（节选）
+def _page_to_token(self, pages: torch.Tensor) -> torch.Tensor:
+    if self.page_size == 1:
+        return pages
+    offsets = torch.arange(self.page_size, device=self.device, dtype=torch.int32)
+    return (pages.unsqueeze(1) + offsets).flatten()
 ```
 
-下面给出完整生成函数。`generate_with_cache` 只在 prefill 时输入完整 prompt，之后每轮只输入上一个新 token；`generate_full_recompute` 是正确性基线，每轮都从头计算完整序列。二者使用相同的 greedy 采样，因此最终 token ids 应完全一致：
+后续章节会深入解释页分配、碎片和 PagedAttention；此处需要记住的关键不变量是：**`free_slots` 必须页对齐，而写入 K/V 的 `out_loc` 是 token 粒度的扁平位置。**
+
+### 4.3 Engine 同时创建 KV 池与 `page_table`
+
+`Engine` 初始化时先根据可用显存决定可用页数，再创建物理 KV 池和全局位置表：
 
 ```python
-@torch.inference_mode()
-def generate_with_cache(
-    model: TinyTransformer,
-    input_ids: torch.Tensor,
-    max_new_tokens: int,
-    eos_token_id: Optional[int] = None,
-) -> torch.Tensor:
-    if max_new_tokens < 0:
-        raise ValueError("max_new_tokens must be non-negative")
-    generated = input_ids.clone()
-    if max_new_tokens == 0:
-        return generated
-
-    logits, cache = model(generated, use_cache=True)  # Prefill：整段 prompt 只计算一次
-    next_token = logits[:, -1].argmax(dim=-1, keepdim=True)
-    generated = torch.cat([generated, next_token], dim=1)
-
-    for _ in range(max_new_tokens - 1):
-        if eos_token_id is not None and bool((next_token == eos_token_id).all()):
-            break
-        # Decode：cache 已包含历史，因此本轮只输入上一步生成的 token。
-        logits, cache = model(next_token, past_key_values=cache, use_cache=True)
-        next_token = logits[:, -1].argmax(dim=-1, keepdim=True)
-        generated = torch.cat([generated, next_token], dim=1)
-
-    return generated
-
-
-@torch.inference_mode()
-def generate_full_recompute(
-    model: TinyTransformer,
-    input_ids: torch.Tensor,
-    max_new_tokens: int,
-    eos_token_id: Optional[int] = None,
-) -> torch.Tensor:
-    if max_new_tokens < 0:
-        raise ValueError("max_new_tokens must be non-negative")
-    generated = input_ids.clone()
-
-    for _ in range(max_new_tokens):
-        logits, _ = model(generated, use_cache=False)
-        next_token = logits[:, -1].argmax(dim=-1, keepdim=True)
-        generated = torch.cat([generated, next_token], dim=1)
-        if eos_token_id is not None and bool((next_token == eos_token_id).all()):
-            break
-
-    return generated
-
-
-cached_generation = generate_with_cache(model, prompt_ids, max_new_tokens=5)
-full_generation = generate_full_recompute(model, prompt_ids, max_new_tokens=5)
-assert torch.equal(cached_generation, full_generation)
-print(f"generated ids: {cached_generation.tolist()}")
-print("cached and full greedy generation: PASS")
-```
-
-如果把完整 `generated` 传给已经带有 `cache` 的模型，历史 token 会既存在于 cache 中又再次作为新输入，导致 cache 长度、绝对位置和 attention 可见范围都错误。Decode 的输入应始终是**刚刚生成的一个 token**。
-
-## 7 Position ids 与 RoPE：缓存后不能从 0 重新编号
-
-RoPE 作用于 Q 与 K。历史 K 被缓存时已经按历史绝对位置旋转；因此 decode 时的新 Q/K 必须从 `past_len` 开始编号。本章模型在 `TinyTransformer.forward` 内部完成此事，下面用同样的公式观察位置：
-
-```python
-past_len = prompt_ids.size(1)
-query_len = 1
-positions = torch.arange(past_len, past_len + query_len, device=DEVICE).unsqueeze(0)
-assert torch.equal(positions, torch.tensor([[4]], device=DEVICE))
-print(f"decode position_ids: {positions.tolist()}")
-```
-
-用固定新 token 比较“缓存 decode”与“完整序列从头计算”的最后一个 logits。两条路径的矩阵运算分组可能略有不同，因此比较浮点 logits 时使用 `assert_close`，不使用逐元素相等：
-
-```python
-fixed_next_token = torch.tensor([[42]], device=DEVICE, dtype=torch.long)
-
-with torch.inference_mode():
-    _, cache_for_position_test = model(prompt_ids, use_cache=True)
-    cached_logits, _ = model(
-        fixed_next_token,
-        past_key_values=cache_for_position_test,
-        use_cache=True,
-    )
-    full_logits, _ = model(torch.cat([prompt_ids, fixed_next_token], dim=1), use_cache=False)
-
-torch.testing.assert_close(cached_logits[:, -1], full_logits[:, -1], rtol=1e-5, atol=1e-6)
-print("RoPE absolute-position check: PASS")
-```
-
-若每轮 decode 从位置 0 重新编号，新 token 的 Q/K 会被旋转到错误位置；即使张量形状仍然正确，也不能与完整计算路径对齐。
-
-## 8 验证：缓存结果应与全量重算一致
-
-### 8.1 单 token、一轮一轮与 chunk 三种测试
-
-先把三类验证封装成可执行函数。它们共同确认：缓存长度随输入增长；每层仍拥有同长度的 K/V；cache 路径产生的 logits 与完整序列从头计算的 logits 一致：
-
-```python
-@torch.inference_mode()
-def assert_cache_matches_full(
-    model: TinyTransformer,
-    prefix_ids: torch.Tensor,
-    suffix_ids: torch.Tensor,
-) -> None:
-    """逐 token 追加 suffix，并在每一步比较 cached 与 full logits。"""
-    _, cache = model(prefix_ids, use_cache=True)
-    full_ids = prefix_ids.clone()
-
-    for step in range(suffix_ids.size(1)):
-        token = suffix_ids[:, step : step + 1]
-        cached_logits, cache = model(token, past_key_values=cache, use_cache=True)
-        full_ids = torch.cat([full_ids, token], dim=1)
-        full_logits, _ = model(full_ids, use_cache=False)
-
-        torch.testing.assert_close(
-            cached_logits[:, -1],
-            full_logits[:, -1],
-            rtol=1e-5,
-            atol=1e-6,
-        )
-        assert cache is not None
-        expected_len = full_ids.size(1)
-        for key, value in cache:
-            assert key.size(-2) == expected_len
-            assert value.shape == key.shape
-
-
-@torch.inference_mode()
-def assert_chunked_cache_matches_full(
-    model: TinyTransformer,
-    prefix_ids: torch.Tensor,
-    chunk_ids: torch.Tensor,
-) -> None:
-    """已有 cache 时一次输入多个 token，验证 offset causal mask。"""
-    _, cache = model(prefix_ids, use_cache=True)
-    chunked_logits, chunked_cache = model(chunk_ids, past_key_values=cache, use_cache=True)
-    full_logits, _ = model(torch.cat([prefix_ids, chunk_ids], dim=1), use_cache=False)
-
-    torch.testing.assert_close(chunked_logits, full_logits[:, -chunk_ids.size(1) :], rtol=1e-5, atol=1e-6)
-    assert chunked_cache is not None
-    assert all(item[0].size(-2) == prefix_ids.size(1) + chunk_ids.size(1) for item in chunked_cache)
-
-
-single_suffix = torch.tensor([[42]], device=DEVICE, dtype=torch.long)
-multiple_suffix = torch.tensor([[7, 13, 29]], device=DEVICE, dtype=torch.long)
-chunk_suffix = torch.tensor([[31, 37]], device=DEVICE, dtype=torch.long)
-
-assert_cache_matches_full(model, prompt_ids, single_suffix)
-assert_cache_matches_full(model, prompt_ids, multiple_suffix)
-assert_chunked_cache_matches_full(model, prompt_ids, chunk_suffix)
-print("one-token, multi-step, and chunked cache tests: PASS")
-```
-
-### 8.2 失败时如何排查
-
-若上面的验证失败，按以下顺序检查：
-
-1. 新 K/V 是否沿**序列维**追加，而不是沿 batch、head 或 head_dim 追加；
-2. cache 中每层的 K/V 是否都交回了同一层；
-3. prefill 和带历史 cache 的 chunk 是否都使用了正确的 offset causal mask；
-4. RoPE 是否在新 K 写入 cache 前应用，且新 token 的位置是否从 `past_len` 开始；
-5. decode 是否只传入一个新 token；
-6. 模型是否处于 `eval()`，并关闭或避免了 dropout；
-7. 是否使用 `assert_close` 比较 logits，而不是对浮点值做逐位相等判断。
-
-## 9 显存估算：为什么上下文和并发受 KV Cache 限制
-
-对有 $N$ 层、batch size 为 $B$、缓存长度为 $L$、KV head 数为 $H_{kv}$、head dim 为 $D$ 的模型，K/V 缓存近似占用：
-
-$$
-\mathrm{KV\ bytes} = 2 \times N \times B \times L \times H_{kv} \times D \times s
-$$
-
-其中 $2$ 表示 K 和 V，$s$ 是每个元素的字节数。下面函数只做容量估算，不会真的在 CPU 分配这些张量：
-
-```python
-def estimate_kv_cache_gib(
-    num_layers: int,
-    num_kv_heads: int,
-    head_dim: int,
-    seq_len: int,
-    batch_size: int,
-    bytes_per_element: int = 2,
-) -> float:
-    if min(num_layers, num_kv_heads, head_dim, seq_len, batch_size, bytes_per_element) <= 0:
-        raise ValueError("all dimensions and bytes_per_element must be positive")
-    total_bytes = (
-        2
-        * num_layers
-        * batch_size
-        * seq_len
-        * num_kv_heads
-        * head_dim
-        * bytes_per_element
-    )
-    return total_bytes / 1024**3
-
-
-estimate = estimate_kv_cache_gib(
-    num_layers=32,
-    num_kv_heads=32,
-    head_dim=128,
-    seq_len=4096,
-    batch_size=16,
+# python/minisgl/engine/engine.py（节选）
+self.num_pages = self._determine_num_pages(init_free_memory, config)
+num_tokens = self.num_pages * config.page_size
+self.ctx.kv_cache = self.kv_cache = create_kvcache_pool(
+    model_config=config.model_config,
+    num_pages=self.num_pages + 1,  # +1 for dummy page
+    page_size=config.page_size,
+    device=self.device,
+    dtype=self.dtype,
 )
-assert estimate == 32.0
-print(f"estimated KV Cache: {estimate:.1f} GiB")
+
+self.max_seq_len = min(config.max_seq_len, num_tokens)
+aligned_max_seq_len = _align_up_32(self.max_seq_len)
+self.ctx.page_table = self.page_table = torch.zeros(
+    (config.max_running_req + 1, aligned_max_seq_len),
+    dtype=torch.int32,
+    device=self.device,
+)
 ```
 
-这里的 `num_kv_heads` 不一定等于 query head 数。使用较少 KV heads 的架构会减少缓存显存；估算时必须使用实际 KV head 数。上例只计算 KV Cache，不包括模型权重、激活、attention 临时工作区和运行时预留空间。
+这里有两个容易忽略的细节：
 
-## 10 总结与测试题
+1. 物理 KV 池使用 `num_pages + 1`，多出的 1 页专门供 CUDA Graph 的 dummy request 使用；调度器管理的可用页仍是普通的 `num_pages`。
+2. `page_table` 的一行对应一个运行中的请求，表项保存的是**原始 token slot**，不是 page id。Attention 后端会根据自己的接口要求把它转换成页号或保留为 token 粒度。
 
-### 10.1 课程总结
+因此，`page_table[request_row, position]` 的语义是：**这个请求逻辑序列中 position 位置的 token，它的 K/V 应写入或读取哪个物理 token slot。**
 
-KV Cache 对每一层 attention 保存历史 token 的 K、V。Prefill 一次计算完整 prompt 并建立缓存；之后的 Decode 每轮只计算新 token 的 Q/K/V，让新 Q 读取缓存中的历史 K/V 与本轮新 K/V。
+## 5 沿一次请求走读：从 Prefill 写入到 Decode 读取
 
-它避免了历史 token 的重复前向与投影，却不消除新 query 对整个历史上下文的 attention 读取。因此 KV Cache 用显存换计算：上下文越长、并发越高，缓存越大；也正因如此，后续还需要分页分配、调度与前缀复用等优化。
+现在沿真实调用顺序追踪一次请求。核心状态来自 `Req`：
 
-### 10.2 测试题
+```python
+# python/minisgl/core.py（节选）
+@dataclass(eq=False)
+class Req:
+    input_ids: torch.Tensor
+    table_idx: int
+    cached_len: int
+    output_len: int
+    cache_handle: BaseCacheHandle
 
-1. 为什么 Decode 阶段只传入一个新 token，仍能注意到完整 prompt 和历史输出？
-2. `past_key_values` 为什么必须按层保存，而不能让所有 Transformer 层共享同一份 K/V？
-3. 对 `[B, H, L, D]` 布局，新增 token 时应沿哪一维追加 K/V？为什么？
-4. 使用 RoPE 时，为什么 decode 新 token 的绝对位置必须从 `past_len` 开始？
+    def __post_init__(self) -> None:
+        self.device_len = len(self.input_ids)
+        self.max_device_len = len(self.input_ids) + self.output_len
+
+    @property
+    def extend_len(self) -> int:
+        return self.device_len - self.cached_len
+
+    def complete_one(self) -> None:
+        self.cached_len = self.device_len
+        self.device_len += 1
+```
+
+- `cached_len`：已经有有效 KV、可供当前 Attention 复用的前缀长度。
+- `device_len`：当前一轮 forward 结束前，需在设备上表示的序列长度。
+- `extend_len = device_len - cached_len`：这一轮真正要计算并写入 K/V 的 token 数。
+- `complete_one()`：本轮 token 已经完成计算后，把原 `device_len` 变成新的 `cached_len`，再为下一个待生成 token 预留一个逻辑位置。
+
+### 5.1 入批：匹配已有前缀，但不跳过最后一个 prompt token
+
+对新请求，`PrefillAdder._try_allocate_one` 首先向 `CacheManager` 查询可复用前缀：
+
+```python
+# python/minisgl/scheduler/cache.py（节选）
+def match_req(self, req: PendingReq) -> MatchResult:
+    input_len = req.input_len
+    assert input_len > 0
+    return self.prefix_cache.match_prefix(req.input_ids[: input_len - 1])
+```
+
+它故意只匹配 `input_ids[: input_len - 1]`，不把 prompt 的最后一个 token 当作“完全无需计算”的历史前缀。原因是 Prefill 不仅要建立 K/V，还需要通过最后一个位置产生 logits，进而采样第一个输出 token。
+
+匹配后，`PrefillAdder` 使用 `cached_len` 计算本轮仍需扩展的长度，并在真正使用命中的物理位置前锁定句柄：
+
+```python
+# python/minisgl/scheduler/prefill.py（节选）
+handle = self.cache_manager.match_req(req).cuda_handle
+cached_len = handle.cached_len
+extend_len = req.input_len - cached_len
+estimated_len = extend_len + req.output_len
+
+if estimated_len + self.reserved_size > self.cache_manager.available_size:
+    return None
+self.cache_manager.lock(handle)
+if estimated_len + self.reserved_size > self.cache_manager.available_size:
+    return self.cache_manager.unlock(handle)
+
+if cached_len > 0:
+    device_ids = self.table_manager.token_pool[table_idx][:cached_len]
+    page_entry = self.table_manager.page_table[table_idx][:cached_len]
+    device_ids.copy_(req.input_ids[:cached_len].pin_memory(), non_blocking=True)
+    page_entry.copy_(handle.get_matched_indices())
+```
+
+句柄必须在取到 `get_matched_indices()` 后保持锁定：否则另一个分配动作可能淘汰这段前缀，使当前请求的 `page_table` 指向已经被重新分配的物理位置。
+
+此时只复制了命中前缀的 token id 和物理位置。对于未命中的新 token，`_add_one_req` 先把 token id 放进 `token_pool`；新的物理页会在 batch 确定后由 Scheduler 统一分配：
+
+```python
+# python/minisgl/scheduler/prefill.py（节选）
+_slice = slice(cached_len, cached_len + chunk_size)
+device_ids = self.table_manager.token_pool[table_idx, _slice]
+device_ids.copy_(pending_req.input_ids[_slice].pin_memory(), non_blocking=True)
+```
+
+### 5.2 分配物理位置并生成 `out_loc`
+
+Batch 组装完成后，`Scheduler._prepare_batch` 先分配未命中部分所需的物理页，再构建这轮 forward 的位置和输入映射：
+
+```python
+# python/minisgl/scheduler/scheduler.py（节选）
+def _prepare_batch(self, batch: Batch) -> ForwardInput:
+    self.engine.graph_runner.pad_batch(batch)
+    self.cache_manager.allocate_paged(batch.reqs)
+    batch.positions = _make_positions(batch, self.device)
+    input_mapping = _make_input_tuple(batch, self.device)
+    write_mapping = _make_write_tuple(batch, self.device)
+    batch.out_loc = self.engine.page_table[input_mapping]
+    self.engine.attn_backend.prepare_metadata(batch)
+    ...
+```
+
+`allocate_paged` 只为 `[cached_len, device_len)` 覆盖到的页分配空间：
+
+```python
+# python/minisgl/scheduler/cache.py（节选）
+def allocate_paged(self, reqs: List[Req]) -> None:
+    for req in reqs:
+        first_page = div_ceil(req.cached_len, self.page_size)
+        last_page = div_ceil(req.device_len, self.page_size)
+        if last_page > first_page:
+            allocation_info.append((req.table_idx, first_page, last_page))
+    if needed_pages > 0:
+        allocated = self._page_to_token(self._allocate(needed_pages))
+        _write_page_table(self.page_table, allocated, allocation_info, self.page_size)
+```
+
+随后 `_make_positions` 为每个请求构造 `[cached_len, device_len)` 的逻辑位置，`_make_input_tuple` 将这些位置与该请求的 `table_idx` 配对。以这个二维索引访问 `page_table` 后，就得到本轮所有新增 token 的物理 token slot：
+
+```text
+batch.positions       = 逻辑位置
+input_mapping         = (请求行号, 逻辑位置)
+page_table[input_mapping] = batch.out_loc
+```
+
+因此，`batch.out_loc` 的长度等于 batch 中所有请求的 `extend_len` 之和，并按模型实际处理新增 token 的顺序排列。它是 K/V 写入的唯一位置依据。
+
+### 5.3 Attention：先写新 K/V，再读取完整上下文
+
+FlashAttention 后端中，K/V 写入和读取发生在同一个 `forward` 中：
+
+```python
+# python/minisgl/attention/fa.py（节选）
+def forward(
+    self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, layer_id: int, batch: Batch
+) -> torch.Tensor:
+    metadata = batch.attn_metadata
+    self.kvcache.store_kv(k, v, batch.out_loc, layer_id)
+    return _fa_sgl_impl(
+        q=q,
+        k_cache=self.kvcache.k_cache(layer_id),
+        v_cache=self.kvcache.v_cache(layer_id),
+        page_table=metadata.page_table,
+        cache_seqlens=metadata.cache_seqlens,
+        ...
+    )
+```
+
+顺序很重要：当前 batch 的 K/V 先写进对应层的物理池，再把该层的完整 K/V 缓存传给 Attention kernel。这样当前 token 的 Query 既能访问已有历史，也能访问本轮新写入、在因果掩码允许范围内的 K/V。
+
+`MHAKVCache.store_kv` 将某层的 `[num_pages, page_size, ...]` 存储视图压平成连续 token 维度，再调用 kernel 做按索引写入：
+
+```python
+# python/minisgl/kvcache/mha_pool.py（节选）
+def store_kv(
+    self, k: torch.Tensor, v: torch.Tensor, out_loc: torch.Tensor, layer_id: int
+) -> None:
+    from minisgl.kernel import store_cache
+
+    store_cache(
+        k_cache=self._k_buffer[layer_id].view(self._storage_shape),
+        v_cache=self._v_buffer[layer_id].view(self._storage_shape),
+        indices=out_loc,
+        k=k,
+        v=v,
+    )
+```
+
+这里的扁平视图形状为：
+
+```text
+[num_pages * page_size, local_kv_heads, head_dim]
+```
+
+假设 `out_loc=[4, 5]`，那么本轮两个新增 token 的 K/V 就分别写到第 4、5 个物理 token slot。由于 `layer_id` 已经固定，这两个 slot 只影响当前层；其他层会在各自的 Attention 调用中写入相同逻辑 token 对应的本层 K/V。
+
+`FlashAttentionBackend.prepare_metadata` 也说明全局 `page_table` 存的是 token slot，而后端会按自己的要求取每页的起始位置并转成 page id：
+
+```python
+# python/minisgl/attention/fa.py（节选）
+page_table = get_global_ctx().page_table
+new_page_table = torch.stack(
+    [page_table[req.table_idx, : max_seqlen_k : self.page_size] for req in reqs]
+)
+if self.page_size > 1:
+    new_page_table.div_(self.page_size, rounding_mode="floor")
+```
+
+因此，逻辑 token → 物理 token slot 的映射是系统内部统一表示；不同 Attention 后端可以在最后一步转换成各自 kernel 所需的 page table 格式。
+
+### 5.4 Prefill 与 Decode 写入同一份池
+
+Prefill 和 Decode 并不使用两套 KV Cache。二者都遵循相同的“本轮新增 token 生成 `out_loc` → `store_kv` 写入 → Attention 读取缓存”路径，差别主要在 `extend_len`：
+
+| 阶段 | `cached_len` 与 `device_len` 的关系 | 本轮写入数量 |
+|---|---|---|
+| Prefill | 通常有多个未缓存 prompt token | `extend_len` 可以大于 1 |
+| Decode | 上一步产生的 token 已成为历史 | 通常 `device_len - cached_len = 1` |
+
+一次 Decode forward 完成后，`Engine.forward_batch` 调用 `complete_one()` 推进每个请求的状态：
+
+```python
+# python/minisgl/engine/engine.py（节选）
+for req in batch.reqs:
+    req.complete_one()
+```
+
+其含义不是重新复制 K/V，而是更新请求的逻辑边界：刚刚参与 forward 的 token 现在已经有有效 K/V，下一次 Decode 只需为新 token 再追加一个位置。KV 张量本体一直留在 `MHAKVCache` 的相同物理池中。
+
+### 5.5 请求继续、结束与可复用前缀
+
+Prefill 完成且请求仍需 Decode 时，Scheduler 调用 `cache_req(req, finished=False)`；请求正常结束或取消时，经 `_free_req_resources` 调用 `cache_req(req, finished=True)`：
+
+```python
+# python/minisgl/scheduler/scheduler.py（节选）
+def _free_req_resources(self, req: Req) -> None:
+    self.table_manager.free(req.table_idx)
+    self.cache_manager.cache_req(req, finished=True)
+```
+
+`cache_req` 将已经有效的 `[0, cached_len)` 位置交给前缀缓存策略决定哪些部分可复用，并处理锁和尾部回收：
+
+```python
+# python/minisgl/scheduler/cache.py（节选）
+def cache_req(self, req: Req, *, finished: bool) -> None:
+    insert_ids = req.input_ids[: req.cached_len]
+    page_indices = self.page_table[req.table_idx, : req.cached_len]
+    old_handle = req.cache_handle
+    cached_len, new_handle = self.prefix_cache.insert_prefix(insert_ids, page_indices)
+    self.unlock(old_handle)
+    self._free(page_indices[old_handle.cached_len : cached_len])
+    if finished:
+        self._free(page_indices[new_handle.cached_len :])
+    else:
+        req.cache_handle = new_handle
+        self.lock(new_handle)
+```
+
+这一段的详细语义可以暂时按三类位置理解：
+
+1. **原本已命中的前缀**：由 `old_handle` 保护，当前请求使用完后需要解锁。
+2. **本请求新计算、成功登记为前缀缓存的整页部分**：保留在物理 KV 池中，后续相同前缀可以复用。
+3. **不能登记为可复用前缀的尾部或已被其他请求占用的重复部分**：需要归还给 `free_slots`，避免泄漏。
+
+## 6 总结与测试题
+
+### 6.1 课程总结
+
+mini-sglang 的 KV Cache 读写主线可以概括为：
+
+1. **物理存储**：`MHAKVCache` 用 `[K/V, layer, page, offset, kv_head, head_dim]` 的 GPU 张量保存所有层的 K/V。
+2. **逻辑映射**：`page_table` 将请求中的逻辑 token 位置映射到物理 token slot；Scheduler 从本轮 `[cached_len, device_len)` 的映射构造 `batch.out_loc`。
+3. **写入与读取**：每层 Attention 先通过 `store_kv(k, v, out_loc, layer_id)` 写入新增 K/V，再从同层 K/V 池读取完整上下文完成注意力计算。
+4. **阶段推进**：Prefill 可批量写入多个 token；Decode 通常每轮只追加一个 token，但两者都使用同一套物理池和写入接口。
+5. **复用与回收**：前缀缓存策略决定哪些完整前缀保留给未来请求；请求结束后，不能复用的尾部位置才会回到空闲页列表。
+
+### 6.2 测试题
+
+1. `MHAKVCache._kv_buffer` 的第 0、1、2、3 个维度分别表达什么？为什么 `layer_id` 不能省略？
+2. 若 `page_size=4`，`free_slots` 中一个值为 `8`，它代表什么物理范围？`_page_to_token` 会将它展开为什么？
+3. `Scheduler._prepare_batch` 为什么要先调用 `allocate_paged`，再通过 `page_table[input_mapping]` 得到 `batch.out_loc`？若两者不一致，`store_kv` 会产生什么问题？
 
 ## 参考资料
 
-- [Transformer 原始论文](https://arxiv.org/abs/1706.03762)
-- [RoPE 论文](https://arxiv.org/abs/2104.09864)
-- [mini-sglang 源码](https://github.com/sgl-project/mini-sglang)
+- [mini-sglang](https://github.com/sgl-project/mini-sglang)
+- [SGLang](https://github.com/sgl-project/sglang)

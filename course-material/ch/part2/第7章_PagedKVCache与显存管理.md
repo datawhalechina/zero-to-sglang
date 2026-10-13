@@ -284,4 +284,4 @@ PagedAttention 将在线 Softmax 与分块读取相结合。每个逻辑块被�
 
 - [《Efficient Memory Management for Large Language Model Serving with PagedAttention》](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2023/EECS-2023-19.pdf)
 - [Milakov 和 Gimelshein：《Online Normalizer Calculation for Softmax》](https://arxiv.org/abs/1805.02867)
-- [腾讯云社区：vLLM 推理框架内存分页术](https://cloud.tencent.cn/developer/article/2616536)
+- [https://cloud.tencent.cn/developer/article/2616536](https://cloud.tencent.cn/developer/article/2616536)
