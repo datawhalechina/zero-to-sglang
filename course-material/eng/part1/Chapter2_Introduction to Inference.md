@@ -143,8 +143,10 @@ Based on this flow, we can examine the underlying computation of Prefill and Dec
 
 The Prefill stage performs **one complete forward pass** over the prompt currently scheduled (either a single request or a batch of packed requests). The model **processes all input tokens in parallel**, **builds and writes the initial KV cache**, and produces the logits for the first generated token. Consider Prefill for LLaMA-7B:
 
-- Two user requests, with a total of **N = 3000** tokens.
+- One user request with **N = 3000** tokens.
 - Model config: $L = 32$ layers, hidden dimension $d = 4096$ , FFN intermediate dimension approximately $\frac{8}{3}d=10923$ , and $\text{heads} = 32$ attention heads.
+
+> Note: This example uses a single request. Linear layers and the FFN process each token independently, so for a batch of packed requests you can simply use the total token count. Attention, however, is computed only within each request; tokens from different requests do not attend to each other. With multiple requests, the attention term is therefore the sum of the squared request lengths, $4 \times (n_1^2 + n_2^2 + \cdots) \times d$, not the square of the total length. For example, two requests of 1500 tokens each have half the attention cost of a single 3000-token request.
 
 **1. FLOPs estimate for one complete forward pass over one batch**
 
@@ -388,7 +390,7 @@ The comparison shows that:
 
 **3. Bottleneck diagnosis for LLaMA-7B on an A100**
 
-Run LLaMA-7B on an A100  G40 with the same model configuration as above and bf16 computation. The ridge point is $\frac{312 \times 10^{12}}{1.6 \times 10^{12}} \approx 195 \text{ FLOPs/Byte}$.
+Run LLaMA-7B on an A100 40GB with the same model configuration as above and bf16 computation. The ridge point is $\frac{312 \times 10^{12}}{1.6 \times 10^{12}} \approx 195 \text{ FLOPs/Byte}$.
 
 **Prefill AI**, assuming an input sequence length of $N = 100$:
 
