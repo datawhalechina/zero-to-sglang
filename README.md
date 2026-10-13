@@ -24,7 +24,7 @@
 
 ---
 
-> **Course status**: Part 0, Part I, Chapters 1–2 of Part II, and Chapter 3 of Part III (Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: Part 0, Part I, Chapters 1–2, 5, and 8 of Part II, and Chapter 3 of Part III (Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -104,7 +104,7 @@ Start date: Monday, August 24, 2026. About one week per chapter; chapters in bol
 | Part 0 — Before you learn | Done | ✅ |
 | Part I — Foundations | Writing 8.24 ~ 9.06, review 9.07 ~ 9.13 | ✅ |
 | Part II — Build Your Own Mini SGL | Writing 9.14 ~ 10.04, review 10.05 ~ 10.10 | 🔄 |
-| Part III — Advanced Inference Technique | 10.10 ~ 11.15 | 🚧 |
+| Part III — Advanced Inference Technique | 10.10 ~ 11.15 | 🔄 |
 | Part IV — How to Make Contribution to SGLang | 11.16 ~ 12.6 | 🚧 |
 
 ## 🚀 Quick start
