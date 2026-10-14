@@ -14,25 +14,42 @@
 
 ## 2 定位源码
 
-本章参考的代码主要位于 mini-sglang 的 `python/minisgl/` 目录：
+本章参考的代码主要位于 mini-sglang 的 `python/minisgl/` 目录。按职责可分为四组：
+
+**1. 接口与入口**
 
 | 文件 | 作用 |
 |---|---|
-| `kvcache/base.py` | 定义物理 KV 池、前缀缓存、缓存句柄和容量统计的抽象接口 |
-| `kvcache/__init__.py` | 创建 `MHAKVCache`，并注册 `naive`、`radix` 两种前缀缓存策略 |
-| `kvcache/mha_pool.py` | 分配各层 K/V 的 GPU 张量，提供按层读取和写入接口 |
-| `engine/engine.py` | 初始化 KV 池、全局 `page_table` 和供 CUDA Graph 使用的 dummy page |
-| `core.py` | 定义请求中的 `cached_len`、`device_len`、`extend_len` 和 batch 中的 `out_loc` |
-| `scheduler/cache.py` | 管理空闲页、填充 `page_table`、写回可复用前缀和回收尾部页 |
-| `scheduler/prefill.py` | 在 Prefill 入批时匹配可复用前缀、锁定句柄并准备请求状态 |
-| `scheduler/scheduler.py` | 为 batch 分配物理页、计算 `out_loc`，并在请求结束后释放资源 |
-| `attention/fa.py` | 在 Attention 中先调用 `store_kv` 写入新 K/V，再读取缓存做注意力计算 |
+| `kvcache/base.py` | 定义物理 KV 池的读写抽象接口 |
+| `kvcache/__init__.py` | 创建 KV 池，并注册缓存策略 |
+
+**2. 存储与初始化**
+
+| 文件 | 作用 |
+|---|---|
+| `kvcache/mha_pool.py` | 在 GPU 上存放各层 K/V 张量，提供按层读取和写入接口 |
+| `engine/engine.py` | 启动时初始化 KV 池、全局 `page_table` 等运行时对象 |
+
+**3. 状态与调度**
+
+| 文件 | 作用 |
+|---|---|
+| `core.py` | 记录请求进度和本轮需要写入 KV 的逻辑范围 |
+| `scheduler/cache.py` | 分配与回收页，管理前缀缓存 |
+| `scheduler/prefill.py` | Prefill 时匹配并锁定可复用的前缀 |
+| `scheduler/scheduler.py` | 组织 batch，确定本轮 K/V 写入位置，清理结束的请求 |
+
+**4. 计算**
+
+| 文件 | 作用 |
+|---|---|
+| `attention/fa.py` | 在 Attention 前向过程中读写 K/V Cache 并完成注意力计算 |
 
 可以把整条链路概括为：
-1. Scheduler 为本次计算的 token 准备物理位置 
-2. Attention 把 K/V 写到这些位置
-3. Attention 从同一池中读取历史 K/V 
-4. 请求状态推进，必要时将位置保留为可复用缓存或归还空闲页。
+
+1. Scheduler 为本次计算的 token 准备物理位置。
+2. Attention 在前向过程中对 KV Cache 进行相应读写。
+3. 请求状态推进，必要时将位置保留为可复用缓存或归还空闲页。
 
 ## 3 正确区分：物理 KV、逻辑位置与前缀缓存
 
@@ -47,9 +64,9 @@ KV Cache 相关代码最容易混淆的地方，是把存 K/V 的张量、token 
 
 `MHAKVCache` 不知道某个物理位置属于哪个请求，也不比较 token id；它只根据 `out_loc` 把数据写到指定位置。前缀缓存也不保存 FP16 或 BF16 的 K/V 向量，而是保存某段 token 已经对应哪些物理位置。这样，真正的 K/V 仍只有一份，多个请求可以通过不同的 `page_table` 行引用同一批位置。
 
-### 3.1 两套抽象接口
+### 3.1 `BaseKVCachePool`：物理 KV 池的读写接口
 
-`kvcache/base.py` 把物理池和前缀复用策略分开定义：
+`kvcache/base.py` 中的 `BaseKVCachePool` 定义了物理 KV 池对 Attention 后端提供的最小接口：
 
 ```python
 # python/minisgl/kvcache/base.py（节选）
@@ -64,36 +81,19 @@ class BaseKVCachePool(ABC):
     def store_kv(
         self, k: torch.Tensor, v: torch.Tensor, out_loc: torch.Tensor, layer_id: int
     ) -> None: ...
-
-
-@dataclass(frozen=True)
-class BaseCacheHandle(ABC):
-    cached_len: int
-
-    @abstractmethod
-    def get_matched_indices(self) -> torch.Tensor: ...
-
-
-class BasePrefixCache(ABC):
-    @abstractmethod
-    def match_prefix(self, input_ids: torch.Tensor) -> MatchResult: ...
-
-    @abstractmethod
-    def insert_prefix(self, input_ids: torch.Tensor, indices: torch.Tensor) -> InsertResult: ...
-
-    @abstractmethod
-    def lock_handle(self, handle: BaseCacheHandle, unlock: bool = False) -> None: ...
 ```
 
-- `BaseKVCachePool` 只关心每层 K/V 的读取和写入。
-- `BaseCacheHandle` 代表一次前缀匹配结果：`cached_len` 表示已有多少 token 的位置可以复用，`get_matched_indices()` 返回这些 token 的物理位置。
-- `BasePrefixCache` 负责匹配、插入、加锁、淘汰和容量统计。句柄在返回物理位置后必须先被锁定，否则对应前缀可能被淘汰。
+这三个方法分别表示：
 
-这层接口划分使 Attention 后端不需要知道当前使用的是完全不复用前缀的 `naive` 策略，还是能复用跨请求前缀的 `radix` 策略。
+- `k_cache(layer_id)`：取得指定层的完整 K 缓存视图。
+- `v_cache(layer_id)`：取得指定层的完整 V 缓存视图。
+- `store_kv(k, v, out_loc, layer_id)`：把本轮新计算出的 K/V 写到 Scheduler 已确定的物理 token slot。
 
-### 3.2 `naive` 与 `radix`：决定是否复用，不决定 K/V 布局
+物理 KV 池不理解请求归属、不比较 token ID，也不决定哪些位置能够复用。它只按 `layer_id` 选择层，按 `out_loc` 选择写入位置；具体请求使用哪些位置由 `page_table` 决定。
 
-`kvcache/__init__.py` 是创建 `MHAKVCache` 作为物理 KV 池，同时通过注册表选择前缀策略：
+### 3.2 `naive` 与 `radix`：决定是否复用，不改变 KV 池
+
+`kvcache/__init__.py` 创建 `MHAKVCache` 作为物理 KV 池，同时注册不同的前缀复用策略：
 
 ```python
 # python/minisgl/kvcache/__init__.py（节选）
@@ -121,9 +121,7 @@ def create_radix_cache(device: torch.device):
     return RadixPrefixCache(device=device)
 ```
 
-`NaivePrefixCache` 是不做前缀复用的基线：它每次返回 `cached_len=0` 和空的物理位置列表，`insert_prefix` 也不会保存任何前缀。因此它并不是另一种 K/V 张量布局，物理 K/V 仍由同一个 `MHAKVCache` 保存。
-
-`RadixPrefixCache` 会把 token 前缀与物理位置登记起来，后续请求命中时就能得到已有位置。它的树节点、部分匹配拆分、锁引用计数和 LRU 叶子淘汰属于第 8 章的主题，本章只使用其统一接口。
+`naive` 和 `radix` 不是两种 KV 张量布局：它们只决定已经写入物理 KV 池的位置能否被后续请求复用。无论采用哪种策略，Attention 的读写对象都是同一个 `MHAKVCache`，调用接口也是 `k_cache`、`v_cache` 和 `store_kv`。Radix 前缀匹配、锁定与淘汰的具体实现属于[第 8 章](./第8章_RadixAttention与前缀缓存_代码.md)。
 
 ## 4 初始化：创建物理 KV 池和全局位置表
 
@@ -170,7 +168,7 @@ class MHAKVCache(BaseKVCachePool):
 
 `local_kv_heads` 不是简单等于全局 `num_kv_heads`。代码通过 `get_tp_info()` 获取 tensor parallel 信息，再用 `div_even(..., allow_replicate=True)` 得到当前 rank 的本地 KV 头数。也就是说，缓存的头维度必须与实际运行该 rank 的 Attention 计算一致。
 
-按层读取时，`k_cache(layer_id)` 与 `v_cache(layer_id)` 返回的形状为 `[num_pages, page_size, local_kv_heads, head_dim]`：
+代码通过 `k_cache(layer_id)` 和 `v_cache(layer_id)` 读取指定层的 K/V：
 
 ```python
 # python/minisgl/kvcache/mha_pool.py（节选）
@@ -182,7 +180,22 @@ def v_cache(self, index: int) -> torch.Tensor:
     return self._v_buffer[index]
 ```
 
-因此，**不同层绝不能共享 K/V**。即便两个 token 的物理 slot 相同，`layer_id=0` 和 `layer_id=1` 也会落在不同的层维度上。
+以读取 K 为例，数据沿着以下层次取出：
+
+```text
+全部 K/V：_kv_buffer
+形状：[2, num_layers, num_pages, page_size, local_kv_heads, head_dim]
+    ↓ 初始化时取第 0 项，得到 K 的视图
+所有层的 K：_k_buffer = _kv_buffer[0]
+形状：[num_layers, num_pages, page_size, local_kv_heads, head_dim]
+    ↓ 读取时按 layer_id 选择层
+指定层的 K：_k_buffer[layer_id]
+形状：[num_pages, page_size, local_kv_heads, head_dim]
+```
+
+读取 V 的过程相同，只是从 `_kv_buffer[1]` 得到 `_v_buffer`。`_k_buffer` 和 `_v_buffer` 都是对 `_kv_buffer` 的视图，并不会复制数据；`k_cache(layer_id)` 和 `v_cache(layer_id)` 最终拿到的是该层所有物理页的 K 或 V 张量。
+
+最终四个维度依次表示：页号、页内 token 位置、本地 KV 头、头内维度。具体请求应读取其中哪些位置，再由 `page_table` 和 Attention 的有效长度 metadata 确定。因此，**不同层绝不能共享 K/V**：即便两个 token 的物理 slot 相同，`layer_id=0` 和 `layer_id=1` 也会落在不同的层维度上。
 
 ### 4.2 物理页与 token slot
 
@@ -333,7 +346,9 @@ device_ids.copy_(pending_req.input_ids[_slice].pin_memory(), non_blocking=True)
 
 ### 5.2 分配物理位置并生成 `out_loc`
 
-Batch 组装完成后，`Scheduler._prepare_batch` 先分配未命中部分所需的物理页，再构建这轮 forward 的位置和输入映射：
+一批请求开始计算前，要先确定新算出的 K/V 存到哪里。Scheduler 会分配需要的新缓存页，再把本轮每个 token 对应的存放位置记在 `out_loc` 中；后面算出 K/V 后，Attention 就按这个列表对缓存进行写入。
+
+`Scheduler._prepare_batch` 在分配后构建这轮 forward 的位置和输入映射：
 
 ```python
 # python/minisgl/scheduler/scheduler.py（节选）
@@ -436,26 +451,7 @@ if self.page_size > 1:
 
 因此，逻辑 token 到 物理 token slot 的映射是系统内部统一表示；不同 Attention 后端可以在最后一步转换成各自 kernel 所需的 page table 格式。
 
-### 5.4 Prefill 与 Decode 写入同一份池
-
-Prefill 和 Decode 并不使用两套 KV Cache。二者都遵循相同的本轮新增 token 生成 `out_loc` → `store_kv` 写入 → Attention 读取缓存路径，差别主要在 `extend_len`：
-
-| 阶段 | `cached_len` 与 `device_len` 的关系 | 本轮写入数量 |
-|---|---|---|
-| Prefill | 通常有多个未缓存 prompt token | `extend_len` 可以大于 1 |
-| Decode | 上一步产生的 token 已成为历史 | 通常 `device_len - cached_len = 1` |
-
-一次 Decode forward 完成后，`Engine.forward_batch` 调用 `complete_one()` 推进每个请求的状态：
-
-```python
-# python/minisgl/engine/engine.py（节选）
-for req in batch.reqs:
-    req.complete_one()
-```
-
-其含义不是重新复制 K/V，而是更新请求的逻辑边界：刚刚参与 forward 的 token 现在已经有有效 K/V，下一次 Decode 只需为新 token 再追加一个位置。KV 张量本体一直留在 `MHAKVCache` 的相同物理池中。
-
-### 5.5 请求继续、结束与可复用前缀
+### 5.4 请求继续、结束与可复用前缀
 
 Prefill 完成且请求仍需 Decode 时，Scheduler 调用 `cache_req(req, finished=False)`；请求正常结束或取消时，经 `_free_req_resources` 调用 `cache_req(req, finished=True)`：
 
