@@ -196,16 +196,10 @@ def v_cache(self, index: int) -> torch.Tensor:
 
 以读取 K 为例，数据沿着以下层次取出：
 
-```text
-全部 K/V：_kv_buffer
-形状：[2, num_layers, num_pages, page_size, local_kv_heads, head_dim]
-    ↓ 初始化时取第 0 项，得到 K 的视图
-所有层的 K：_k_buffer = _kv_buffer[0]
-形状：[num_layers, num_pages, page_size, local_kv_heads, head_dim]
-    ↓ 读取时按 layer_id 选择层
-指定层的 K：_k_buffer[layer_id]
-形状：[num_pages, page_size, local_kv_heads, head_dim]
-```
+<div align="center">
+  <img src="./images/4-8-KVBuffer读取路径.png" alt="KV Buffer 中按层读取 Key 张量的路径" width="800">
+  <p><em>图 4-8：从完整 KV Buffer 到指定层 K 张量的读取路径</em></p>
+</div>
 
 读取 V 的过程相同，只是从 `_kv_buffer[1]` 得到 `_v_buffer`。`_k_buffer` 和 `_v_buffer` 都是对 `_kv_buffer` 的视图，并不会复制数据；`k_cache(layer_id)` 和 `v_cache(layer_id)` 最终拿到的是该层所有物理页的 K 或 V 张量。
 
