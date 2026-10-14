@@ -81,13 +81,27 @@ class BaseKVCachePool(ABC):
     def store_kv(
         self, k: torch.Tensor, v: torch.Tensor, out_loc: torch.Tensor, layer_id: int
     ) -> None: ...
+
+    @property
+    @abstractmethod
+    def device(self) -> torch.device: ...
+
+    @property
+    @abstractmethod
+    def dtype(self) -> torch.dtype: ...
+
+    @property
+    @abstractmethod
+    def num_layers(self) -> int: ...
 ```
 
-这三个方法分别表示：
+前三个方法描述读写操作：
 
 - `k_cache(layer_id)`：取得指定层的完整 K 缓存视图。
 - `v_cache(layer_id)`：取得指定层的完整 V 缓存视图。
 - `store_kv(k, v, out_loc, layer_id)`：把本轮新计算出的 K/V 写到 Scheduler 已确定的物理 token slot。
+
+后三个属性提供池的运行时元数据：所在的 `device`、K/V 的 `dtype` 和 `num_layers`。本章后续重点仍放在前三个读写操作。
 
 物理 KV 池不理解请求归属、不比较 token ID，也不决定哪些位置能够复用。它只按 `layer_id` 选择层，按 `out_loc` 选择写入位置；具体请求使用哪些位置由 `page_table` 决定。
 
