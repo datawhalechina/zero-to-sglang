@@ -508,7 +508,7 @@ def cache_req(self, req: Req, *, finished: bool) -> None:
 
 ## 6 总结与测试题
 
-### 6.1 KV Cache 的完整读写流程
+### 6.1 课程总结
 
 整条 KV Cache 读写链路可以按下面的顺序回顾：
 
