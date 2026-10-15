@@ -124,6 +124,7 @@ const engSidebar: DefaultTheme.SidebarItem[] = [
       { text: 'Chapter 2 Inside SGLang (Code Walkthrough)', link: '/eng/part2/Chapter2_Inside-SGLang_code' },
       { text: 'Chapter 3 Forward Pass and Generation', link: '/eng/part2/Chapter3_Forward-Pass-and-Generation' },
       { text: 'Chapter 4 KV Cache Optimization', link: '/eng/part2/Chapter4_KV-Cache-Optimization' },
+      { text: 'Chapter 4 KV Cache Optimization (Code Walkthrough)', link: '/eng/part2/Chapter4_KV-Cache-Optimization_code' },
       { text: 'Chapter 5 HTTP and Concurrent Requests (Concepts)', link: '/eng/part2/Chapter5_HTTP-and-Concurrent-Requests' },
       { text: 'Chapter 5 HTTP and Concurrent Requests (Code Walkthrough)', link: '/eng/part2/Chapter5_HTTP-and-Concurrent-Requests_code' },
       { text: 'Chapter 6 Continuous Batching and the Scheduler', link: '/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler' },
