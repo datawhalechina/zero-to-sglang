@@ -74,13 +74,13 @@
 | [5. Introduction to Benchmark](course-material/ch/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | ✅ |
 | <strong>Part II — 从零手搓 Mini SGL</strong> | | |
 | [1. mini-sglang：推理引擎长什么样](course-material/ch/part2/第1章_mini-sglang：推理引擎长什么样.md) | 推理引擎的总体架构、模块划分、本部分的 roadmap | ✅ |
-| [2. **Inside SGLang: The Path of a Request**](course-material/ch/part2/第2章_一个请求的旅程.md) | 一个请求从进入到返回的完整生命周期 | ✅ |
-| [3. Your First 200 Lines: Forward Pass and Generation（概念）](course-material/ch/part2/第3章_前向与生成.md) · [代码走读](course-material/ch/part2/第3章_前向与生成_代码.md) | Embedding、Attention、LM Head 与生成循环的源码走读 | 概念 ✅ / 代码 📝 |
-| 4. KV Cache: From O(n²) to O(n) | 缓存实现与注意力计算优化 | 🚧 |
+| [2. **Inside SGLang: The Path of a Request**（概念）](course-material/ch/part2/第2章_一个请求的旅程.md) · [代码走读](course-material/ch/part2/第2章_一个请求的旅程_代码.md) | 一个请求从进入到返回的完整生命周期 | ✅ |
+| [3. Your First 200 Lines: Forward Pass and Generation（概念）](course-material/ch/part2/第3章_前向与生成.md) · [代码走读](course-material/ch/part2/第3章_前向与生成_代码.md) | Embedding、Attention、LM Head 与生成循环的源码走读 | ✅ |
+| [4. KV Cache: From O(n²) to O(n)（概念）](course-material/ch/part2/第4章_KVCache优化.md) · [代码走读](course-material/ch/part2/第4章_KVCache优化_代码.md) | 缓存实现与注意力计算优化 | ✅ |
 | [5. HTTP 服务与并发（概念）](course-material/ch/part2/第5章_HTTP服务与并发.md) · [代码走读](course-material/ch/part2/第5章_HTTP服务与并发_代码.md) | HTTP 基础与请求流程、并发隔离、流式返回与取消的实现 | ✅ |
 | 6. Continuous Batching and the Scheduler | 连续批处理与调度器设计 | 🚧 |
 | 7. Paged KV Cache and Memory Management | 分页 KV Cache 与显存管理 | 🚧 |
-| [8. RadixAttention and Prefix Caching](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md)  | RadixAttention 与前缀缓存 | ✅ |
+| [8. RadixAttention and Prefix Caching（概念）](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md) | RadixAttention 与前缀缓存 | ✅ |
 | 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
 | 10. Speculative Decoding | 投机解码 | 🚧 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |

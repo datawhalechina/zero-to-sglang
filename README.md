@@ -24,7 +24,7 @@
 
 ---
 
-> **Course status**: Part 0, Part I, Chapters 1–2, 5, and 8 of Part II, and Chapter 3 of Part III (Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: Part 0, Part I, Chapters 1–5 and 8 of Part II, and Chapter 3 of Part III (Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -75,13 +75,13 @@
 | [5. Introduction to Benchmark](course-material/eng/part1/Chapter5_Introduction_to_Benchmark.md) | Core metrics such as TTFT / TPOT / ITL / Goodput, percentiles and tail latency, how to design, run and read a benchmark | ✅ |
 | <strong>Part II — Build Your Own Mini SGL</strong> | | |
 | [1. mini-sglang: What an Inference Engine Looks Like](course-material/eng/part2/Chapter1_mini-sglang-What-an-Inference-Engine-Looks-Like.md) | Overall architecture of an inference engine, module breakdown, roadmap for this part | ✅ |
-| [2. **Inside SGLang: The Path of a Request**](course-material/eng/part2/Chapter2_Inside-SGLang.md) | The full lifecycle of a request from arrival to response | ✅ |
-| [3. Your First 200 Lines: Forward Pass and Generation (Concepts)](course-material/eng/part2/Chapter3_Forward-Pass-and-Generation.md) · [Code Walkthrough](course-material/eng/part2/Chapter3_Forward-Pass-and-Generation_code.md) | A source walkthrough of embeddings, attention, the LM head, and generation | Concepts ✅ / Code 📝 |
-| 4. KV Cache: From O(n²) to O(n) | Implementing the cache and optimizing attention computation | 🚧 |
+| [2. **Inside SGLang: The Path of a Request** (Concepts)](course-material/eng/part2/Chapter2_Inside-SGLang.md) · [Code Walkthrough](course-material/eng/part2/Chapter2_Inside-SGLang_code.md) | The full lifecycle of a request from arrival to response | ✅ |
+| [3. Your First 200 Lines: Forward Pass and Generation (Concepts)](course-material/eng/part2/Chapter3_Forward-Pass-and-Generation.md) · [Code Walkthrough](course-material/eng/part2/Chapter3_Forward-Pass-and-Generation_code.md) | A source walkthrough of embeddings, attention, the LM head, and generation | ✅ |
+| [4. KV Cache: From O(n²) to O(n) (Concepts)](course-material/eng/part2/Chapter4_KV-Cache-Optimization.md) · [Code Walkthrough](course-material/eng/part2/Chapter4_KV-Cache-Optimization_code.md) | Implementing the cache and optimizing attention computation | ✅ |
 | [5. HTTP and Concurrent Requests (Concepts)](course-material/eng/part2/Chapter5_HTTP-and-Concurrent-Requests.md) · [Code Walkthrough](course-material/eng/part2/Chapter5_HTTP-and-Concurrent-Requests_code.md) | HTTP basics and request flow; implementing isolation, streaming, and cancellation | ✅ |
 | 6. Continuous Batching and the Scheduler | Continuous batching and scheduler design | 🚧 |
 | 7. Paged KV Cache and Memory Management | Paged KV Cache and GPU memory management | 🚧 |
-| [8. RadixAttention and Prefix Caching (Concepts)](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching.md) · [Code Walkthrough](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code.md)  | RadixAttention and prefix caching | ✅ |
+| [8. RadixAttention and Prefix Caching (Concepts)](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching.md) · [Code Walkthrough](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code.md) | RadixAttention and prefix caching | ✅ |
 | 9. Multi-process & Tensor Parallelism | Multi-process execution and tensor parallelism | 🚧 |
 | 10. Speculative Decoding | Speculative decoding | 🚧 |
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
