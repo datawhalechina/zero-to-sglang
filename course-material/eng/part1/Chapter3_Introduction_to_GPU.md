@@ -94,18 +94,18 @@ In the AI era, the **matrices** in deep learning pushed the GPU to the altar. Be
 
 ### 2.2 The Composition of the A100 GPU Core
 
-We use the A100 to introduce the specific structure of a GPU.
+This section uses the A100 PCIe 80GB to introduce the board, the GPU and HBM package, and the compute units inside the GPU die.
 
 <div align="center">
-    <img src="./images/3-3-gpu-structure.png" alt="3-3-gpu-structure.png" width="800">
-<p><em>Figure 3. The overall structure of a graphics card (GPU). The board carrying the components is the printed circuit board (PCB).</em></p>
+    <img src="./images/3-3-A100-80GB-PCB.svg" alt="A100 80GB PCIe PCB with labels for the GPU core, HBM, PCIe edge connector and NVLink bridge connectors" width="800">
+<p><em>Figure 3. A100 80GB PCIe PCB with the heat sink removed (photograph: Stas Bekman, 2022; rotated and annotated)</em></p>
 </div>
 
-A cross-sectional diagram of an NVIDIA graphics card is shown in the figure. A graphics card consists of **power supply, GPU core, video memory, display interfaces, and the gold fingers**.
+Figure 3 shows the PCB with the heat sink removed. The GPU die and neighboring HBM stacks are visible inside the central metal reinforcing frame, with power-delivery circuitry around them. The PCIe edge connector along the bottom communicates with the host; the three groups of NVLink bridge connectors along the top provide GPU-to-GPU communication. The A100 is designed for data-center computing and has no video-output connectors for a monitor.
 
-We mainly introduce the GPU core: the GPU core is composed of **CUDA cores, control units, cache units, and so on**. The biggest difference between the CPU and the GPU is that the work the GPU is responsible for is mostly repetitive 3D modeling or rendering, and the streaming processors are responsible for vertex operations or pixel operations, dynamically allocating the number of streaming processors performing vertex and pixel operations to achieve efficient resource utilization.
+The GPU die contains **CUDA cores, Tensor Cores, control units, and caches**. The architecture diagrams below show how these components are organized.
 
-**The A100** is a pure computing GPU that NVIDIA designed for data centers, with no graphics-output capability.
+The photograph comes from [Stas Bekman’s A100 80GB PCIe teardown](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/). See the [NVIDIA A100 80GB PCIe Product Brief](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf) for the board form factor and interfaces.
 
 #### 2.2.1 Product Form Factor
 
@@ -117,14 +117,15 @@ Data source: [NVIDIA A100 Tensor Core GPU Architecture](https://images.nvidia.co
 
 **Dimensions**: dual-slot full-height, 267 mm long. **Power consumption**: 300W (80GB version). **Cooling** is **passive**, with no fan (relying on the server's airflow ducting). **Interface**: PCIe 4.0 x16 gold fingers + NVLink bridge connector; **weight** about 1.4 kg.
 
-#### 2.2.2 PCB Board-Level Components
+#### 2.2.2 GPU and HBM Package
 
 **The GA100 GPU core chip**
 
-**Packaging**: a giant BGA package, about 55 mm × 55 mm. **Location**: at the very center of the board, soldered onto the PCB. 54.2 billion **transistors**, a 7 nm process, with an area of 826 mm².
+The GA100 die contains 54.2 billion transistors, uses a 7 nm process, and has an area of 826 mm². The GPU die and HBM stacks connect through a silicon interposer and form a package mounted on the PCB.
 
-**HBM2e memory stacks** (a revolutionary design)
-Unlike the GDDR memory chips of consumer-grade GPUs, the A100 adopts **3D stacking technology**:
+**HBM2e memory stacks**
+
+The A100 PCIe 80GB uses HBM2e. Each HBM stack contains multiple stacked DRAM dies and sits beside the GPU die within the same package. The HBM label in Figure 3 identifies the location of one stack.
 
 #### 2.2.3 GA100 GPU Core Architecture
 
@@ -132,7 +133,7 @@ The Ampere architecture topology is as follows:
 
 <div align="center">
     <img src="./images/3-4-gpu-core-architecture.png" alt="3-4-gpu-core-architecture.png" width="800">
-<p><em>Figure 4. The architecture of the GPU core</em></p>
+<p><em>Figure 4. Full GA100 chip design (8 GPCs and 128 SMs); the A100 product enables 108 SMs</em></p>
 </div>
 
 The NVIDIA Ampere architecture is a GPU architecture released by NVIDIA in 2020, its eighth-generation GPU architecture. It uses a 7-nanometer process and integrates up to 54.2 billion transistors, making it the largest 7-nanometer chip in the world at the time. This architecture is mainly aimed at data centers, artificial intelligence, high-performance computing, and professional graphics.
@@ -286,7 +287,7 @@ The SIMT model is **the underlying logic of the GPU's high throughput**. It enca
 
 **The closer the memory is to the SM, the faster the access speed.** Therefore there exist **extremely high-speed memory types (such as the L1 cache and shared memory)** that are located inside the SM and have **extremely fast read/write speeds**. The **register file** resides inside the SM and stores thread-private variables and computation results.
 
-As shown in the figure, these green regions are SM clusters, while **the blue region represents the L2 cache adjacent to the SMs**. Although they are not inside the SM, their physical location is still very close, and they are **quite fast** too (although an order of magnitude slower than L1). Outside the chip (take this 3090 or PCIe A100 as an example), **DRAM memory** is actually installed next to the GPU chip, which means the data must physically **leave the chip and travel through physical connections**. You can see these yellow connectors along the edge in this chip diagram. These are the HBM connectors, which connect to the DRAM chips outside the actual GPU.
+The right side of Figure 8 shows the GA100 die: the green regions contain SMs, the blue regions contain the on-chip L2 cache, and the regions labeled HBM2(e) PHY along the edges are the physical interface circuits for HBM communication. The HBM stacks sit outside the GPU die and connect to it through a silicon interposer within the same package. The PHY regions are on-chip circuits, not external board connectors.
 
 You can see on the left side of the figure above the **speed** required to access these memories. The access speed of the memory inside the SM is much faster—it takes only about 20 clock cycles to fetch data from it—whereas accessing the L2 cache or global memory takes 200 to 300 clock cycles. This **gap severely impacts performance**. If a piece of computation needs to access global memory, it may mean that your SM has no work to do—the matrix multiplications are all done, the tasks are exhausted, and it can only spin idle. In this case **utilization will not be high**. This will, to some extent, become the central theme in thinking about memory architecture, and it is also the key to understanding how the GPU works.
 
@@ -493,3 +494,5 @@ Global memory (HBM) has ~2 TB/s bandwidth but high latency; the L2 cache (40MB) 
 - [https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf](https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf)
 - [NVIDIA A100 Tensor Core GPU Datasheet (Chinese version)](https://images.nvidia.cn/aem-dam/en-zz/Solutions/data-center/a100/nvidia-a100-datasheet-nvidia-a4-2188504-r5-zhCN.pdf)
 - [https://ar5iv.labs.arxiv.org/html/2405.11425#1](https://ar5iv.labs.arxiv.org/html/2405.11425#1)
+- [Stas Bekman: A100 80GB PCIe teardown and water-cooling installation (Figure 3 source)](https://stasosphere.com/entrepreneur-being/262-getting-nvidia-a100-80gb-pcie-to-work-on-a-consumer-motherboard-with-custom-water-cooling/)
+- [NVIDIA A100 80GB PCIe Product Brief](https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/PB-10577-001_v02.pdf)
