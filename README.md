@@ -83,7 +83,7 @@
 | 7. Paged KV Cache and Memory Management | Paged KV Cache and GPU memory management | 🚧 |
 | [8. RadixAttention and Prefix Caching (Concepts)](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching.md) · [Code Walkthrough](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code.md) | RadixAttention and prefix caching | ✅ |
 | 9. Multi-process & Tensor Parallelism | Multi-process execution and tensor parallelism | 🚧 |
-| 10. Speculative Decoding | Speculative decoding | 🚧 |
+| [10. Speculative Decoding (Concepts)](course-material/eng/part2/Chapter10_Speculative-Decoding.md) · [Code Walkthrough](course-material/eng/part2/Chapter10_Speculative-Decoding_code.md) | A code walkthrough of drafting, verification, acceptance, and rejection correction | Concepts 🚧 / Code 📝 |
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
 | 1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA) and CUDA Graph** | Comparing mainstream attention backends, and CUDA Graph | 🚧 |
 | 2. **Quantization and Low-Precision Inference** | Quantization and low-precision inference | 🚧 |
