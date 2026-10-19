@@ -62,8 +62,10 @@ A backend receives both model tensors and request state, creating many combinati
 
 | Phase | Queries per request in the current step | Main optimization focus |
 |---|---|---|
-| Prefill | Usually many; may also run in chunks | Compute-bound cases: reuse on-chip data and reduce intermediate matrix traffic |
-| Decode | Usually one during ordinary autoregressive generation | Memory-bound cases: read historical KV efficiently and reduce overhead for small tasks |
+| Prefill | Usually many; may also run in chunks | Commonly compute-bound (limited by compute throughput); reuse on-chip data and reduce intermediate matrix traffic |
+| Decode | Usually one during ordinary autoregressive generation | Commonly memory-bound (limited by GPU memory bandwidth); read historical KV efficiently and reduce overhead for small tasks |
+
+These are common bottlenecks. The actual bottleneck also depends on query count, context length, batch size, GPU, and backend implementation, and should be confirmed through measurement.
 
 <div align="center">
   <img src="./images/1-2-Prefill-and-Decode-Query-Shapes.png" alt="Multiple Prefill queries form a causal Attention matrix; one ordinary Decode query reads visible history" width="800">
@@ -108,7 +110,7 @@ First, consider their positions in the execution stack. The model's Attention op
 
 ### 4.1 The Core Idea: Tiling and Fusion
 
-This idea comes from the [FlashAttention paper](https://arxiv.org/abs/2205.14135), an influential early example of designing Attention computation around hardware I/O. It identified redundant data movement in conventional Attention and optimized the computation to reduce it.
+This idea comes from the [FlashAttention paper](https://arxiv.org/abs/2205.14135). The paper explains that conventional Attention stores the full attention matrix in GPU HBM, causing substantial HBM reads and writes that slow execution. It addresses this problem with an IO-aware exact attention algorithm, an approach that has had a lasting influence.
 
 Start with a straightforward implementation. For each query row, compute its scores against the keys and write the complete score matrix to GPU memory. Read it back for Softmax to turn scores into weights, then use the weights to compute a weighted sum of V. For a sequence of length n, the full score matrix has n × n entries. A causal mask hides future positions, but an implementation that materializes the whole matrix still allocates this space.
 
@@ -218,6 +220,39 @@ In the referenced SGLang implementation, [`FlashMLABackend`](https://github.com/
 | FlashMLA | Organize reads, computation, and scheduling around MLA latent caches | Fits MLA-specific computation and storage | Restricted models and cache formats; Prefill and Decode paths may differ |
 
 When reading this table, ask what problem you need to solve: serving input organization, kernel development, hardware utilization, or MLA-specific computation. The four backends start from different concerns, so a fixed ranking without a workload is not useful.
+
+### 4.7 SGLang Attention Backend Name Reference
+
+Beyond the four implementations discussed above, SGLang provides additional Attention backends. The table lists all 24 built-in `--attention-backend` options in the referenced version (`1d019ce`), including two deprecated aliases. Names follow [`ATTENTION_BACKEND_CHOICES`](https://github.com/sgl-project/sglang/blob/1d019ce1c85e11ff2f425344e66f446b106f6074/python/sglang/srt/arg_groups/choices.py); this is a quick reference rather than a detailed explanation of each implementation.
+
+| Argument value | Implementation or name |
+|---|---|
+| `flashinfer` | FlashInfer |
+| `triton` | Triton Attention kernels |
+| `fa3` | FlashAttention 3 |
+| `fa4` | FlashAttention 4 |
+| `flashmla` | FlashMLA |
+| `torch_native` | PyTorch native SDPA |
+| `flex_attention` | PyTorch FlexAttention |
+| `trtllm_mha` | TRTLLM MHA kernels |
+| `trtllm_mla` | TRTLLM MLA kernels |
+| `cutedsl_mla` | CuTe DSL MLA |
+| `tokenspeed_mla` | TokenSpeed MLA |
+| `hpc_ops` | HPC-Ops Attention |
+| `dsa` | DeepSeek Sparse Attention |
+| `qsa` | Qwen Sparse Attention |
+| `dsv4` | DeepSeek V4 Attention |
+| `minicpm_flashattn` | MiniCPM sparse Attention using FlashAttention |
+| `minicpm_flashinfer` | MiniCPM sparse Attention using FlashInfer |
+| `aiter` | AMD AITER |
+| `wave` | AMD Wave |
+| `ascend` | Ascend NPU Attention |
+| `intel_amx` | Intel AMX Attention |
+| `intel_xpu` | Intel XPU Attention |
+| `nsa` | Deprecated alias for dsa |
+| `compressed` | Deprecated alias for dsv4 |
+
+These options do not all support the same models or hardware; check compatibility before use. Linear and multimodal Attention use separate configuration and are not included in this `--attention-backend` list.
 
 ## 5 Choosing and Validating a Backend
 
