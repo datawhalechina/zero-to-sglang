@@ -82,7 +82,7 @@
 | 7. Paged KV Cache and Memory Management | 分页 KV Cache 与显存管理 | 🚧 |
 | [8. RadixAttention and Prefix Caching（概念）](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md) | RadixAttention 与前缀缓存 | ✅ |
 | 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
-| 10. Speculative Decoding | 投机解码 | 🚧 |
+| [10. Speculative Decoding（概念）](course-material/ch/part2/第10章_投机解码.md) · [代码走读](course-material/ch/part2/第10章_投机解码_代码.md) | 起草、验证、接受与拒绝校正的代码走读 | 概念 🚧 / 代码 📝 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
 | [1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）**](course-material/ch/part3/第1章_注意力后端.md) | Attention 后端职责、分块计算、实现取舍与选择 | ✅ |
 | 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
