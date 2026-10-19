@@ -146,7 +146,7 @@ CI 会检查章节的引言位置、段首缩进、标题层级、结尾结构�
 
 **Part III — Advanced Inference Technique**（深入真实 SGLang）
 
-1. Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）and CUDA Graph
+1. Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）
 2. Quantization and Low-Precision Inference
 3. Hierarchical Caching
 4. Scaling Out: DP Attention, EP, PP
