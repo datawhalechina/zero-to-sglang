@@ -1,4 +1,4 @@
-# Chapter 9 Multi-process & Tensor Parallelism
+# Chapter 9 Multi-process and Tensor Parallelism 
 
 In the previous chapters, we followed a request through the complete end-to-end processing pipeline and examined paged KV Cache, RadixAttention, and prefix caching. These mechanisms explain how to manage and reuse the KV Cache efficiently, but deployment raises a more fundamental question: **if a single GPU does not have enough memory or compute capacity, how can multiple GPUs work together to run the same model?**
 
@@ -22,10 +22,10 @@ Before examining the implementation, we will start with GPU memory requirements 
 Take Qwen2.5-32B as an example. Assuming approximately $3.2 \times 10^{10}$ parameters and BF16 precision (2 bytes per parameter), the weights alone require:
 
 $$
-3.2 \times 10^{10} \times 2 \approx 64\ \mathrm{GB} \approx 59.6\ \mathrm{GiB}
+3.2 \times 10^{10} \times 2 \approx 64\ \mathrm{GB}
 $$
 
-Here, GB uses $10^9$ bytes, while GiB uses $2^{30}$ bytes. An A100 80GB GPU can hold these weights, but the context length and concurrency it can support also depend on other GPU memory overhead.
+An A100 80GB GPU can hold these weights, but the context length and concurrency it can support also depend on other GPU memory overhead.
 
 During model inference, GPU memory is also needed for:
 
@@ -33,20 +33,20 @@ During model inference, GPU memory is also needed for:
 - Temporary activations, operator workspaces, and communication buffers.
 - Capture and execution buffers required when CUDA Graph is enabled.
 
-Therefore, **having enough memory for the weights does not mean the model can run reliably under the target workload**. A model may work normally with low concurrency and short contexts, yet run out of memory (OOM) when concurrency or context length increases. If the parameter count grows further to $1.6 \times 10^{12}$, the BF16 weights alone require approximately $3.2\ \mathrm{TB}$, far beyond the capacity of a single GPU.
+Therefore, **having enough memory for the weights does not mean the model can run reliably under the target workload**. A model may work normally with low concurrency and short contexts, yet run out of memory (OOM) when concurrency or context length increases. 
 
-Distributing most of the weights and some intermediate computation across multiple GPUs reduces the memory pressure on each GPU. With a suitable model, workload, and interconnect, it may also reduce the latency of a single forward pass or leave room for a larger batch.
+If the parameter count grows further to $1.6 \times 10^{12}$ , the BF16 weights alone require approximately $3.2\ \mathrm{TB}$ , far beyond the capacity of a single GPU.Distributing most of the weights and some intermediate computation across multiple GPUs reduces the memory pressure on each GPU. With a suitable model, workload, and interconnect, it may also reduce the latency of a single forward pass or leave room for a larger batch.
 
 However, using multiple GPUs does not necessarily make computation faster. TP introduces frequent communication and synchronization between GPUs, so its benefits depend on factors such as the amount of computation, batch size, and GPU communication bandwidth.
 
-### 2.2 What Does Each One Do?
+### 2.2 How do the two support multi-card parallelism?
 
 **Multi-process execution is a way to organize a system**: multiple processes, each with its own address space, cooperate through mechanisms such as message passing. To work around the Python GIL and support efficient inference, the system uses a multi-process architecture. Typical components include:
 
-- **API Server and Tokenizer**: Receive requests and convert text into tokens.
-- **Detokenizer**: Converts the model's output tokens back into text.
-- **Scheduler**: The core scheduling process. Each Scheduler corresponds to a rank bound to one GPU. It handles request queuing, continuous batching, KV Cache allocation and management, and triggers local computation.
-- **Engine / TpModelWorker / ModelRunner**: Run inside the Scheduler process and handle the actual model forward pass, weight loading, and communication across ranks.
+- **API Server and Tokenizer process**: Receive requests and convert text into tokens.
+- **Detokenizer process**: Converts the model's output tokens back into text.
+- **Scheduler process**: The core scheduling process. Each Scheduler process corresponds to a rank bound to one GPU. It handles request queuing, continuous batching, KV Cache allocation and management, and triggers local computation.
+- **Engine/TpModelWorker/ModelRunner process**: Run inside the Scheduler process and handle the actual model forward pass, weight loading, and communication across ranks.
 
 *Note: In this setup, each rank corresponds to one GPU and runs in a separate process.*
 
@@ -82,6 +82,12 @@ Because ranks may progress at different speeds, allowing every rank to communica
 
 NCCL is NVIDIA's collective communication library for GPUs, and mini-SGLang's PyNCCL wraps NCCL. The default multi-GPU execution path enables PyNCCL; `--disable-pynccl` falls back to PyTorch's NCCL backend. Two common operations are:
 
+
+<div align="center">
+  <img src="./images/9-1-Example of data exchange for TP=8.png" alt="Example of data exchange for TP=8" width="800">
+  <p><em>Figure 1. Example of data exchange for TP=8</em></p>
+</div>
+
 - **All-Reduce**: Reduces tensors from all ranks according to a specified operation and makes the reduced result available to every rank. Row-parallel linear layers use summation:
 
   $$
@@ -103,16 +109,16 @@ Put simply, the control plane ensures that all ranks work on the same task, whil
 In an LLM inference engine, the core goal of **partitioning** is to distribute model weights and computation across multiple GPUs so that a large model fits in GPU memory, while improving throughput through parallel computation.
 
 
-Partitioning across multiple GPUs must preserve mathematical equivalence. The following principles determine what should be partitioned and what should remain complete:
+Multi-GPU partitioning must strictly follow mathematical equivalence. What needs to be partitioned and what should remain intact generally follows these principles:
 
-- **Replicate small parameters**: Parameters such as those in RMSNorm, as well as biases, are small relative to the cost of communicating them, so they are replicated in full on each rank.
-- **Partition large parameters by dimension**: Weight matrices are divided evenly according to `tp_size`.
+- **Replication of retained parts**: Components such as RMSNorm that require synchronization for every segment are fully replicated on each rank.
+- **Dimension-wise partitioning**: Weight matrices and their corresponding biases are evenly split along the output (row) dimension by `tp_size`.
 
 The partitioning methods are illustrated below:
 
 <div align="center">
-  <img src="./images/9-1-Sharded Loading.png" alt="Sharded loading methods" width="800">
-  <p><em>Figure 1. Sharded loading methods</em></p>
+  <img src="./images/9-2-Sharded Loading.png" alt="Sharded loading methods" width="800">
+  <p><em>Figure 2. Sharded loading methods</em></p>
 </div>
 
 - **Column Parallel (partition along the output dimension)**: The weights are partitioned along the output dimension, and the complete input is replicated on every rank. Each rank computes part of the output. Examples include `qkv_proj` in attention and `gate_up_proj` in SwiGLU.
@@ -120,7 +126,7 @@ The partitioning methods are illustrated below:
 - **Vocab Parallel (partition along the vocabulary dimension)**: The Embedding and LM Head are partitioned along the vocabulary dimension. The vocabulary size is first padded to be divisible by `tp_size`, then divided evenly across ranks. The final logits are concatenated through All-Gather to produce the complete vocabulary output.
 - **Attention heads and KV Cache**:
   - **Query heads**: These are almost always partitioned along the head dimension, requiring `num_attention_heads % tp_size == 0`. Each rank holds only a subset of the Q heads.
-  - **Key/Value heads**: If **`num_kv_heads >= tp_size`**, the heads are partitioned along the head dimension, with each rank holding `num_kv_heads / tp_size` KV heads. If **`num_kv_heads < tp_size`**, an individual head cannot be partitioned further in this scheme, so KV heads are replicated, with multiple ranks holding copies of the same head.
+  - **Key/Value heads**: If **`num_kv_heads >= tp_size`**, the heads are partitioned along the head dimension, with each rank holding num_kv_heads//tp_size KV heads. If **`num_kv_heads < tp_size`**, an individual head cannot be partitioned further in this scheme, so KV heads are replicated, with multiple ranks holding copies of the same head.
 
 Partitioning targets large weights; small layers are usually retained in full. When choosing `tp_size`, consider both:
 
