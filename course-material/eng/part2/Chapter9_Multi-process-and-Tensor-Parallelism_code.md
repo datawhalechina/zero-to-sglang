@@ -2,7 +2,7 @@
 
 In the preceding conceptual chapter, we distinguished the responsibilities of **multi-process execution** and **tensor parallelism**: multi-process execution organizes cooperation among multiple processes, while tensor parallelism partitions the model weights and computation of the same layer across multiple ranks. This chapter examines the mini-SGLang source code and connects these two mechanisms through the complete execution path.
 
-We recommend reading the [conceptual chapter](<./Chapter 9_Multi-process and Tensor Parallelism.md>) first to understand the principles, then using this chapter to study the implementation.
+We recommend reading the [conceptual chapter](./Chapter 9_Multi-process and Tensor Parallelism.md) first to understand the principles, then using this chapter to study the implementation.
 
 ## 1 Learning Objectives
 
@@ -38,7 +38,7 @@ Next, we will follow a request through the entire workflow, from system startup 
 
 ### 3.1 Creating Processes
 
-When launching a model for inference from the command line, choose the tensor-parallel size (`tp_size`) based on the model's total parameter count and the available GPU memory. For example, to run Qwen3-32B on two RTX 5090 GPUs:
+When launching a model for inference from the command line, choose the tensor-parallel size (`tp_size`) based on the model's total parameter count and the available GPU memory. For example, to run Qwen3-32B on three RTX 5090 GPUs:
 
 ```bash
 python -m minisgl --model "Qwen/Qwen3-32B" --tp-size 2
