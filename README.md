@@ -82,7 +82,7 @@
 | 6. Continuous Batching and the Scheduler | Continuous batching and scheduler design | 🚧 |
 | 7. Paged KV Cache and Memory Management | Paged KV Cache and GPU memory management | 🚧 |
 | [8. RadixAttention and Prefix Caching (Concepts)](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching.md) · [Code Walkthrough](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code.md) | RadixAttention and prefix caching | ✅ |
-| 9. Multi-process & Tensor Parallelism | Multi-process execution and tensor parallelism | 🚧 |
+| 9. [Multi-process & Tensor Parallelism(Concepts)](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism.md) · [Code Walkthrough](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism_code.md)  | Multi-process execution and tensor parallelism | ✅ |
 | 10. Speculative Decoding | Speculative decoding | 🚧 |
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
 | [1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA)**](course-material/eng/part3/Chapter1_Attention-Backends.md) | Backend responsibilities, tiled Attention, implementation tradeoffs, and selection | ✅ |
