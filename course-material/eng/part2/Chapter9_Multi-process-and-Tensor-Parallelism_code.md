@@ -2,7 +2,7 @@
 
 In the preceding conceptual chapter, we distinguished the responsibilities of **multi-process execution** and **tensor parallelism**: multi-process execution organizes cooperation among multiple processes, while tensor parallelism partitions the model weights and computation of the same layer across multiple ranks. This chapter examines the mini-SGLang source code and connects these two mechanisms through the complete execution path.
 
-We recommend reading the [conceptual chapter](./Chapter 9_Multi-process and Tensor Parallelism.md) first to understand the principles, then using this chapter to study the implementation.
+We recommend reading the [conceptual chapter](./Chapter9_Multi-process and Tensor Parallelism.md) first to understand the principles, then using this chapter to study the implementation.
 
 ## 1 Learning Objectives
 
