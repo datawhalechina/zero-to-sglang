@@ -126,7 +126,7 @@ The partitioning methods are illustrated below:
 - **Vocab Parallel (partition along the vocabulary dimension)**: The Embedding and LM Head are partitioned along the vocabulary dimension. The vocabulary size is first padded to be divisible by `tp_size`, then divided evenly across ranks. The final logits are concatenated through All-Gather to produce the complete vocabulary output.
 - **Attention heads and KV Cache**:
   - **Query heads**: These are almost always partitioned along the head dimension, requiring `num_attention_heads % tp_size == 0`. Each rank holds only a subset of the Q heads.
-  - **Key/Value heads**: If **`num_kv_heads >= tp_size`**, the heads are partitioned along the head dimension, with each rank holding num_kv_heads//tp_size KV heads. If **`num_kv_heads < tp_size`**, an individual head cannot be partitioned further in this scheme, so KV heads are replicated, with multiple ranks holding copies of the same head.
+  - **Key/Value heads**: If **num_kv_heads >= tp_size**, the heads are partitioned along the head dimension, with each rank holding num_kv_heads//tp_size KV heads. If **num_kv_heads < tp_size**, an individual head cannot be partitioned further in this scheme, so KV heads are replicated, with multiple ranks holding copies of the same head.
 
 Partitioning targets large weights; small layers are usually retained in full. When choosing `tp_size`, consider both:
 
