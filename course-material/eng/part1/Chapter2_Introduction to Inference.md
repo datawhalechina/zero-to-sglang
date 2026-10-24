@@ -74,7 +74,7 @@ Based on this analysis, we can quantify the difference between training and infe
 **One training run**:
 
 - According to the [Scaling Law](https://datawhalechina.github.io/diy-llm/chapter9/chapter9_Scaling_Laws.html), the ratio of training data to model parameters is approximately **20:1**. An 8B-parameter model therefore requires about 160B training tokens, or $D = 1.6 \times 10^{11}$.
-- The training computation per token is $\text{forward } 2ND + \text{backward } 4ND$, so the total computation is $6ND = 6 \times 8 \times 10^{9} \times 1.6 \times 10^{11} \approx 7.7 \times 10^{21} \ \mathrm{FLOPs}$.
+- The training computation per token is $\text{forward } 2N + \text{backward } 4N$, so the total computation is $6ND = 6 \times 8 \times 10^{9} \times 1.6 \times 10^{11} \approx 7.7 \times 10^{21} \ \mathrm{FLOPs}$.
 
 Assume an H100 GPU with a peak performance of approximately $990\ \mathrm{TFLOPs}$. At peak throughput, completing this training run would require about $\frac{7.7 \times 10^{21} \ \mathrm{FLOP}}{ (24 \times 3600) \times 990 \times 10^{12} \ \mathrm{FLOPs}} \approx 90$ GPUs for **one day**. Actual hardware utilization is usually below peak, so more GPUs are needed; the one-time cost is on the order of hundreds of thousands of dollars.
 
