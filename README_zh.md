@@ -74,19 +74,19 @@
 | [5. Introduction to Benchmark](course-material/ch/part1/第5章_Benchmark入门.md) | TTFT / TPOT / ITL / Goodput 等核心指标、百分位与尾延迟、怎么设计/跑/读 benchmark | ✅ |
 | <strong>Part II — 从零手搓 Mini SGL</strong> | | |
 | [1. mini-sglang：推理引擎长什么样](course-material/ch/part2/第1章_mini-sglang：推理引擎长什么样.md) | 推理引擎的总体架构、模块划分、本部分的 roadmap | ✅ |
-| [2. **Inside SGLang: The Path of a Request**](course-material/ch/part2/第2章_一个请求的旅程.md) | 一个请求从进入到返回的完整生命周期 | ✅ |
-| 3. Your First 200 Lines: Forward Pass and Generation | 手写前向传播与自回归生成循环 | 🚧 |
-| 4. KV Cache: From O(n²) to O(n) | 缓存实现与注意力计算优化 | 🚧 |
+| [2. **Inside SGLang: The Path of a Request**（概念）](course-material/ch/part2/第2章_一个请求的旅程.md) · [代码走读](course-material/ch/part2/第2章_一个请求的旅程_代码.md) | 一个请求从进入到返回的完整生命周期 | ✅ |
+| [3. Your First 200 Lines: Forward Pass and Generation（概念）](course-material/ch/part2/第3章_前向与生成.md) · [代码走读](course-material/ch/part2/第3章_前向与生成_代码.md) | Embedding、Attention、LM Head 与生成循环的源码走读 | ✅ |
+| [4. KV Cache: From O(n²) to O(n)（概念）](course-material/ch/part2/第4章_KVCache优化.md) · [代码走读](course-material/ch/part2/第4章_KVCache优化_代码.md) | 缓存实现与注意力计算优化 | ✅ |
 | [5. HTTP 服务与并发（概念）](course-material/ch/part2/第5章_HTTP服务与并发.md) · [代码走读](course-material/ch/part2/第5章_HTTP服务与并发_代码.md) | HTTP 基础与请求流程、并发隔离、流式返回与取消的实现 | ✅ |
 | 6. Continuous Batching and the Scheduler | 连续批处理与调度器设计 | 🚧 |
-| 7. Paged KV Cache and Memory Management | 分页 KV Cache 与显存管理 | 🚧 |
-| [8. RadixAttention and Prefix Caching](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md)  | RadixAttention 与前缀缓存 | ✅ |
-| 9. Multi-process & Tensor Parallelism | 多进程与张量并行 | 🚧 |
+| [7. Paged KV Cache and Memory Management（概念）](course-material/ch/part2/第7章_PagedKVCache与显存管理.md) | 分页 KV Cache 与显存管理 | ✅ |
+| [8. RadixAttention and Prefix Caching（概念）](course-material/ch/part2/第8章_RadixAttention与前缀缓存.md) · [代码走读](course-material/ch/part2/第8章_RadixAttention与前缀缓存_代码.md) | RadixAttention 与前缀缓存 | ✅ |
+| [9. Multi-process & Tensor Parallelism（概念）](course-material/ch/part2/第9章_多进程与张量并行.md) · [代码走读](course-material/ch/part2/第9章_多进程与张量并行_代码.md)  | 多进程与张量并行 | ✅ |
 | 10. Speculative Decoding | 投机解码 | 🚧 |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
-| 1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）and CUDA Graph** | 主流 Attention 后端对比与 CUDA Graph | 🚧 |
+| [1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）**](course-material/ch/part3/第1章_注意力后端.md) | Attention 后端职责、分块计算、实现取舍与选择 | ✅ |
 | 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
-| 3. **Hierarchical Caching** | 分层缓存 | 🚧 |
+| [3. **Hierarchical Caching**](course-material/ch/part3/第3章_分层缓存.md) | L1/L2/L3 缓存层级、前缀匹配、备份恢复、预取与性能取舍 | ✅ |
 | 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode 分离 | 🚧 |
 | <strong>Part IV — 如何为 SGLang 做贡献（可选）</strong> | | |
@@ -103,7 +103,7 @@
 | Part 0 — 开课之前 | 已完成 | ✅ |
 | Part I — 基础概念 | 8.24 ~ 9.06 编写，9.07 ~ 9.13 review | ✅ |
 | Part II — 从零手搓 Mini SGL | 9.14 ~ 10.04 编写，10.05 ~ 10.10 review | 🔄 |
-| Part III — 高级推理技术 | 10.10 ~ 11.15 | 🚧 |
+| Part III — 高级推理技术 | 10.10 ~ 11.15 | 🔄 |
 | Part IV — 如何为 SGLang 做贡献 | 11.16 ~ 12.6 | 🚧 |
 
 ## 🚀 快速开始
