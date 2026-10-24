@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="780" viewBox="0 0 1040 780" role="img" aria-labelledby="title desc">
+<title id="title">请求结果：数据与通知分开</title><desc id="desc">Detokenizer sends UserReply over ZMQ to one listener. The listener appends replies to ack_map[A/B] and sets event_map[A/B]. Each consumer waits, clears its event, takes and replaces its list, and yields replies to HTTP.</desc>
+<defs><marker id="data" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#2563eb"/></marker><marker id="event" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#b45309"/></marker></defs>
+<rect width="1040" height="780" fill="#fff"/>
+<g font-family="Arial, 'PingFang SC', sans-serif" fill="#172b4d">
+<text x="36" y="40" font-size="26">请求结果：数据与通知分开</text>
+<rect x="40" y="65" width="210" height="70" rx="12" fill="#edf2f7" stroke="#b8c8db"/><text x="60" y="96" font-size="20">Detokenizer</text><text x="60" y="121" font-size="13">UserReply(uid, text, finished)</text>
+<path d="M145 135 V220" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#data)"/>
+<text x="164" y="168" font-size="17">ZMQ</text><text x="164" y="191" font-size="15">UserReply</text>
+<rect x="40" y="225" width="240" height="385" rx="12" fill="#eff6ff" stroke="#b8c8db"/><text x="58" y="270" font-size="20">共享 listen 协程</text><text x="58" y="306" font-size="18">按 uid 分发</text><text x="58" y="342" font-size="17">数据写入缓冲</text>
+<text x="58" y="420" font-size="17">A1 → B1 → B2 → A2</text><text x="58" y="458" font-size="15">recv_tokenizer.get()</text>
+<rect x="370" y="225" width="220" height="80" rx="12" fill="#eff6ff" stroke="#b8c8db"/><text x="388" y="256" font-size="20">ack_map[A]</text><text x="388" y="285" font-size="18">[A1, A2]</text>
+<rect x="370" y="335" width="220" height="60" rx="12" fill="#fff7ed" stroke="#b8c8db"/><text x="388" y="372" font-size="17">event_map[A].set()</text>
+<rect x="700" y="225" width="305" height="170" rx="12" fill="#f0fdf4" stroke="#b8c8db"/><text x="720" y="255" font-size="20">消费者 A</text><text x="720" y="289" font-size="18">wait() → clear()</text><text x="720" y="325" font-size="18">取出列表，换成 []</text><text x="720" y="363" font-size="18">逐条 yield → HTTP</text>
+<path d="M280 265 H370 M590 265 H700" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#data)"/>
+<path d="M280 365 H370 M590 365 H640 V295 H700" fill="none" stroke="#b45309" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#event)"/>
+<rect x="370" y="440" width="220" height="80" rx="12" fill="#eff6ff" stroke="#b8c8db"/><text x="388" y="471" font-size="20">ack_map[B]</text><text x="388" y="500" font-size="18">[B1, B2]</text>
+<rect x="370" y="550" width="220" height="60" rx="12" fill="#fff7ed" stroke="#b8c8db"/><text x="388" y="587" font-size="17">event_map[B].set()</text>
+<rect x="700" y="440" width="305" height="170" rx="12" fill="#f0fdf4" stroke="#b8c8db"/><text x="720" y="470" font-size="20">消费者 B</text><text x="720" y="504" font-size="18">wait() → clear()</text><text x="720" y="540" font-size="18">取出列表，换成 []</text><text x="720" y="578" font-size="18">逐条 yield → HTTP</text>
+<path d="M280 480 H370 M590 480 H700" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#data)"/>
+<path d="M280 580 H370 M590 580 H640 V510 H700" fill="none" stroke="#b45309" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#event)"/>
+<path d="M40 688 H90" stroke="#2563eb" stroke-width="3" marker-end="url(#data)"/><text x="110" y="694" font-size="18">蓝色实线：数据（跨进程段使用 ZMQ）</text>
+<path d="M40 730 H90" stroke="#b45309" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#event)"/><text x="110" y="736" font-size="18">橙色虚线：进程内 Event 通知，不携带回复</text>
+</g></svg>

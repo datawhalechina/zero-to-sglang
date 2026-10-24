@@ -74,7 +74,7 @@ Based on this analysis, we can quantify the difference between training and infe
 **One training run**:
 
 - According to the [Scaling Law](https://datawhalechina.github.io/diy-llm/chapter9/chapter9_Scaling_Laws.html), the ratio of training data to model parameters is approximately **20:1**. An 8B-parameter model therefore requires about 160B training tokens, or $D = 1.6 \times 10^{11}$.
-- The training computation per token is $\text{forward } 2ND + \text{backward } 4ND$, so the total computation is $6ND = 6 \times 8 \times 10^{9} \times 1.6 \times 10^{11} \approx 7.7 \times 10^{21} \ \mathrm{FLOPs}$.
+- The training computation per token is $\text{forward } 2N + \text{backward } 4N$, so the total computation is $6ND = 6 \times 8 \times 10^{9} \times 1.6 \times 10^{11} \approx 7.7 \times 10^{21} \ \mathrm{FLOPs}$.
 
 Assume an H100 GPU with a peak performance of approximately $990\ \mathrm{TFLOPs}$. At peak throughput, completing this training run would require about $\frac{7.7 \times 10^{21} \ \mathrm{FLOP}}{ (24 \times 3600) \times 990 \times 10^{12} \ \mathrm{FLOPs}} \approx 90$ GPUs for **one day**. Actual hardware utilization is usually below peak, so more GPUs are needed; the one-time cost is on the order of hundreds of thousands of dollars.
 
@@ -361,7 +361,7 @@ $$\text{Bytes}_{\text{prefill}} = L \times (12d^2 + 2Nd) \times 2$$
 
 - Total weight per layer: $(4 + 8)d^2 = 12d^2$.
 - QKV and output projections: each has shape $d \times d$; three reads for QKV plus one output projection read, for $4d^2$ parameters in total.
-- FFN layers: two linear layers of shapes $d \times 4d$ and $4d \times d$, for $8d^2$ parameters in total.
+- FFN layer: The three linear layers have weight matrices of shapes $d\times\frac{8}{3}d$ ,  $d\times\frac{8}{3}d$ , and $\frac{8}{3}d\times d$ , respectively, totaling $3\times d\times\frac{8}{3}d=8d^2$ parameters.
 - Input + output: $N \times d$ (input) + $N \times d$ (output) = $2Nd$.
 
 **Decode stage** (generating one token):
