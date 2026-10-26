@@ -45,6 +45,28 @@ A needs no further computation after the first step, but fixed membership makes 
 
 Generation workloads are particularly prone to this problem: prompt lengths vary, and actual output lengths are unknown in advance. `max_tokens` is only an upper bound; a request may produce an end marker earlier. It is difficult to form groups whose members will all finish together. The main limitation of fixed batching is therefore **unequal request lengths: choosing a fixed batch size cannot make all the requests in a batch finish together**.
 
+### 2.3 How can requests of different lengths compute together?
+
+Consider A, B, and C with no reusable historical KV. Their input token IDs are `[123, 456, 789]`, `[321, 654]`, and `[987]`. mini-sglang packs the valid tokens without first padding the shorter inputs:
+
+```text
+input_ids = [123, 456, 789, 321, 654, 987]  # [6]
+Shape after embedding: [6, d_model]
+```
+
+All six tokens participate in the layers' linear operations together. Arranged by attention head, Q has shape `[6, H_q, D]`, while each new K and V has shape `[6, H_kv, D]`. Here `H_q` and `H_kv` are the query and KV head counts, and `D` is the head dimension. K after positional encoding and V are written into this layer's shared cache pool, logically retaining histories of length 3, 2, and 1 for A, B, and C.
+
+During attention, the backend uses request boundaries, cache indices, and causal constraints so A's queries can access only A's valid context; B and C follow the same rule. The logical visibility pattern is a block-diagonal set of lower-triangular masks. Implementations need not construct the full `[6, 6]` matrix:
+
+<div align="center">
+    <img src="./images/6-2-prefill-packing-and-attention-mask.png" alt="Valid tokens from three requests are packed together; each request has causal visibility within its own block and all cross-request positions are masked." width="800">
+<p><em>Figure 2. Prefill input packing and the logical attention mask</em></p>
+</div>
+
+During decode, each request provides one new token, giving a packed embedding tensor of shape `[3, d_model]`. Attention uses the current Q and each request's own historical KV. Different context lengths can still be processed together using cache indices and lengths. With one query position per request, the combined output is `[3, H_q, D]`; merging heads and applying the output projection restores `[3, d_model]` for the remaining computation.
+
+Batching therefore organizes both inputs and request boundaries. KV stays with its request regardless of the current batch order. The code walkthrough and later cache chapters explain the mappings; the next section considers which requests resource limits allow into the batch.
+
 ## 3 Continuous Batching: Reconsider Membership Every Step
 
 ### 3.1 Schedule one iteration at a time
@@ -71,8 +93,8 @@ Output counts include the first token sampled when prefill finishes. The steps b
 | 5 | Decode: B | 2 / 5 / 2 | B finishes |
 
 <div align="center">
-    <img src="./images/6-2-continuous-batching-schedule.png" alt="6-2-continuous-batching-schedule.png" width="800">
-<p><em>Figure 2. Continuous batching: C takes the slot released by A</em></p>
+    <img src="./images/6-3-continuous-batching-schedule.png" alt="6-3-continuous-batching-schedule.png" width="800">
+<p><em>Figure 3. Continuous batching: C takes the slot released by A</em></p>
 </div>
 
 C starts computing before B finishes, which is the benefit of continuous batching in this example. B also pauses decode for step 2: admitting a new request earlier can affect a request that is already generating. We will return to this tradeoff when discussing scheduling policy.
@@ -97,6 +119,13 @@ For example, step 2 executes only C's prefill, so the current batch contains onl
 
 In mini-sglang, the waiting queue is stored in `PrefillManager.pending_list`, and the decode running set in `DecodeManager.running_reqs`. Once the scheduler has selected the requests for this step, it submits them to the model in a `Batch`.
 
+Figure 4 connects both request pools to the same selector. At the start of step 2 in the earlier example, B remains in the running pool and C is in the waiting pool. Selecting C's prefill for this step does not remove B from the running pool.
+
+<div align="center">
+    <img src="./images/6-4-prefill-and-decode-request-pools.png" alt="Waiting request C and running request B feed one phase selector, followed by a shared batch assembly, forward pass, and state update pipeline." width="800">
+<p><em>Figure 4. Two request pools share one scheduling and execution pipeline</em></p>
+</div>
+
 ### 4.2 How does one scheduling iteration proceed?
 
 The scheduler repeatedly receives messages, chooses a batch, executes the model, and processes results. Step 1 of the earlier example shows how these four stages connect:
@@ -109,8 +138,8 @@ The scheduler repeatedly receives messages, chooses a batch, executes the model,
 In the next iteration, the scheduler checks the waiting queue again. With a slot now available, it can schedule C's prefill. Once C completes prefill, the next decode execution can process B and C together. These repeated checks and updates change batch membership from one step to the next.
 
 <div align="center">
-    <img src="./images/6-3-scheduler-loop-and-request-state.png" alt="6-3-scheduler-loop-and-request-state.png" width="800">
-<p><em>Figure 3. One scheduler iteration and request state transitions</em></p>
+    <img src="./images/6-5-scheduler-loop-and-request-state.png" alt="6-5-scheduler-loop-and-request-state.png" width="800">
+<p><em>Figure 5. One scheduler iteration and request state transitions</em></p>
 </div>
 
 ## 5 What Must Be Checked Before a New Request Joins?
@@ -143,8 +172,8 @@ mini-sglang estimates a new request's demand as **uncached input length plus max
 If the cache manager reports room for only 1800 more token positions, C must wait. Capacity is counted in token positions because each position needs the corresponding K/V stored across the model's layers. The byte count depends on the model and cache precision.
 
 <div align="center">
-    <img src="./images/6-4-admission-checks-and-kv-capacity.png" alt="6-4-admission-checks-and-kv-capacity.png" width="800">
-<p><em>Figure 4. Admission checks and KV capacity estimation</em></p>
+    <img src="./images/6-6-admission-checks-and-kv-capacity.png" alt="6-6-admission-checks-and-kv-capacity.png" width="800">
+<p><em>Figure 6. Admission checks and KV capacity estimation</em></p>
 </div>
 
 This estimate includes the maximum output length even though a request may finish earlier. It limits current admission to leave capacity for subsequent generation. Actual KV pages are allocated as computation needs them; Chapters 7 and 8 cover paging and reclaimable cache accounting.
@@ -158,11 +187,40 @@ To limit the size of one execution, the scheduler sets a **prefill token budget*
 If C has 2500 uncached input tokens, **chunked prefill** can process them over several steps. With a budget of 1024 per step and no other request consuming it, the three steps process 1024, 1024, and 452 tokens.
 
 <div align="center">
-    <img src="./images/6-5-chunked-prefill.png" alt="6-5-chunked-prefill.png" width="800">
-<p><em>Figure 5. Chunked prefill: one prompt over three steps</em></p>
+    <img src="./images/6-7-chunked-prefill.png" alt="6-7-chunked-prefill.png" width="800">
+<p><em>Figure 7. Chunked prefill: one prompt over three steps</em></p>
 </div>
 
 Each chunk boundary gives the scheduler another opportunity to choose the next batch. Whether it processes C's next chunk or lets B decode another token depends on the scheduling policy.
+
+### 5.4 A concrete scheduling example
+
+Now define a new set of five requests, A through E, to connect request slots, the prefill token budget, and changes to the running set. Assume at most two admitted requests, a prefill token budget of 6 per iteration, sufficient KV capacity, and no prefix-cache hits. Keep this chapter's prefill-first policy. The arrivals and work are:
+
+| Request | Arrival position | Input tokens | Generated tokens | Forward passes required |
+| --- | --- | ---: | ---: | --- |
+| A | t0 | 3 | 4 | 1 prefill + 3 decode |
+| B | t0 + 0.4 | 2 | 2 | 1 prefill + 1 decode |
+| C | t1 + 0.4 | 3 | 3 | 1 prefill + 2 decode |
+| D | t3 + 0.4 | 4 | 2 | 1 prefill + 1 decode |
+| E | t5 + 0.4 | 2 | 4 | 1 prefill + 3 decode |
+
+The output lengths are chosen for illustration, with no early EOS or cancellation; the scheduler does not know each request's actual final output length. Counts include the first token sampled after prefill. Labels t0 through t10 mark scheduling boundaries on a schematic axis, and `+ 0.4` places an arrival during that iteration. Equal-width cells do not imply equal forward-pass durations.
+
+<div align="center">
+    <img src="./images/6-8-five-request-continuous-batching.png" alt="Five staggered arrivals share two request slots and a prefill token budget of six. GPU batches run Prefill[A], Prefill[B], Decode[A,B], Prefill[C], Decode[A,C] twice, Prefill[D,E], Decode[D,E], then Decode[E] twice, aligned with each request's execution and waiting intervals." width="800">
+<p><em>Figure 8. Five requests share one continuous-batching pipeline</em></p>
+</div>
+
+P denotes prefill, while D₁, D₂, and D₃ identify a request's successive decode passes. Five transitions explain the timeline:
+
+1. **t0 to t2: A prefills first, then B joins.** Only A has arrived at t0, so `Prefill[A]` starts immediately. B arrives during that execution and cannot enter the submitted batch. At t1 a slot is available, so the selector prioritizes `Prefill[B]`. A remains in the running pool while waiting. Each prefill produces that request's first output token.
+2. **t2 to t3: C has arrived, but A and B occupy both slots.** C cannot be admitted, so prefill cannot form an executable batch. The selector chooses `Decode[A, B]`. Both advance one step; B receives its second output token, finishes, and returns its slot.
+3. **t3 to t6: C enters while A stays active.** `Prefill[C]` takes the freed slot, followed by two `Decode[A, C]` passes. D and E arrive but remain queued because both slots are occupied. At t6, A and C finish and release both slots.
+4. **t6 to t8: D and E prefill together, then decode together.** Their inputs total 6 tokens, exactly meeting the budget, so they form `Prefill[D, E]`. D was waiting for capacity; E had also arrived when capacity became available. The scheduler did not wait deliberately to fill a batch. The next pass is `Decode[D, E]`, after which D finishes.
+5. **t8 to t10: E continues alone.** E is the only running request, so the last two passes are `Decode[E]`. Work continues even though the batch is not full.
+
+The running set changes as requests are admitted and completed; an active request can also pause decode when the current iteration selects prefill. The next section examines how phase selection affects the latency of new and already-running requests.
 
 ## 6 Start a New Request or Continue Generating?
 
@@ -199,6 +257,35 @@ Batch size matters alongside phase selection. Letting more requests participate 
 For prefill chunks, larger chunks generally occupy the GPU longer per execution; smaller chunks require more steps for the same prompt and add scheduling and execution overhead.
 
 Evaluate a scheduling change using three measurements together: total tokens generated per second, new requests' time to first token, and pauses in answers already being generated. For example, a change might produce more tokens per second while making B's answer pause frequently. Throughput improved, but B's ITL worsened. Reporting only the first number would miss this problem for a chat service.
+
+### 6.4 How batching improves GPU execution efficiency
+
+Higher throughput also depends on how efficiently one batched execution runs. Consider a linear layer, ignoring bias and multi-GPU sharding:
+
+```text
+Single-request decode: [1, d_in] × W [d_in, d_out] → [1, d_out]
+B-request decode:      [B, d_in] × W [d_in, d_out] → [B, d_out]
+```
+
+Both use the same weights W. A single-request decode may spend much of its time reading weights for one output row. A batched matrix-multiplication kernel can reuse weight tiles in on-chip storage, increasing arithmetic intensity. A larger matrix also usually exposes more parallel work; this does not imply that all of W is read from device memory only once.
+
+Advancing B requests together can replace B separate forward passes with one batched forward pass, sharing some submission and launch overhead. Each forward pass still contains multiple CUDA kernels. Each request's historical KV must also be accessed separately, so longer contexts and larger batches can increase computation and cache traffic. Judge the benefit by useful work completed per unit time, alongside latency.
+
+> NVIDIA's [matrix-multiplication performance guide](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html) explains the compute and data-movement limits.
+
+### 6.5 Why similar GPU utilization can accompany different throughput
+
+When evaluating batch size or scheduling, we often inspect `nvidia-smi` or a monitoring dashboard backed by NVML. **The 85% discussed here is the GPU-Util / `utilization.gpu` reading.** Suppose two configurations both report around 85%, while the larger batch produces more output tokens per second. How can both observations hold? The percentage is an illustrative monitoring value, not a measurement reported by this chapter.
+
+NVIDIA defines this metric as the fraction of a sampling window during which at least one CUDA kernel executes on the GPU. It measures the duration of kernel activity, not kernel launch counts or the number of concurrently active kernels. In a hypothetical one-second window, about 850 milliseconds of kernel activity corresponds to approximately 85%. Overlapping kernels do not count the same time twice. Actual sampling windows depend on the device and tool.
+
+The reading does not reveal how many SMs are doing work, how much useful computation Tensor Cores perform, or how effectively memory bandwidth is used. A small kernel with limited parallel work, or one limited by memory reads, still contributes active time. Consequently, 85% does not mean 85% of peak compute performance, nor does it establish that only 15% performance headroom remains.
+
+This matters for batched inference. Small-batch decode can keep kernels running while advancing few requests per execution. A larger batch can have similar active time yet advance more requests, reuse weights, and expose more parallel work. Similar GPU-Util can therefore accompany different token throughput. The metric helps identify intervals without kernel execution, but alone cannot assess batching efficiency or serving quality.
+
+Evaluate scheduling with total throughput, per-user token rate, TTFT, and ITL together. For hardware bottlenecks, examine kernel timelines, per-SM activity, memory bandwidth, and compute throughput. Changing only batch size is also insufficient to establish a fixed-versus-continuous-batching comparison: identify the scheduling policy used by each configuration.
+
+> See NVIDIA's [nvidia-smi query definitions](https://nvidia.custhelp.com/app/answers/detail/a_id/3751). This discussion concerns GPU-Util / `utilization.gpu`; other GPU metrics have their own definitions.
 
 ## 7 Filling Slots After Requests Finish
 
@@ -247,6 +334,8 @@ This mini-sglang version prioritizes prefill and supports chunked prefill, but d
 7. A scheduling change increases output-token throughput, but users report more pauses in their answers. Which metrics and phase-selection behavior would you examine together?
 8. Which state must be updated when a request produces EOS early? Why might its computed KV still be present in the cache pool?
 
+9. Why can two configurations both report GPU utilization near 85% while producing different output-token throughput? Which additional metrics would you examine?
+
 ## References
 
 - [mini-sglang: Scheduling loops and request cleanup](https://github.com/sgl-project/mini-sglang/blob/9a91cfafe754aa85daee49998176275667eb58f2/python/minisgl/scheduler/scheduler.py)
@@ -255,3 +344,6 @@ This mini-sglang version prioritizes prefill and supports chunked prefill, but d
 - [mini-sglang: Request state and Batch](https://github.com/sgl-project/mini-sglang/blob/9a91cfafe754aa85daee49998176275667eb58f2/python/minisgl/core.py)
 - [mini-sglang: Request table and slots](https://github.com/sgl-project/mini-sglang/blob/9a91cfafe754aa85daee49998176275667eb58f2/python/minisgl/scheduler/table.py)
 - [mini-sglang: KV allocation and cache lifetime](https://github.com/sgl-project/mini-sglang/blob/9a91cfafe754aa85daee49998176275667eb58f2/python/minisgl/scheduler/cache.py)
+
+- [NVIDIA: Matrix-multiplication performance](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html)
+- [NVIDIA: nvidia-smi queries and utilization.gpu definition](https://nvidia.custhelp.com/app/answers/detail/a_id/3751)
