@@ -175,6 +175,16 @@ python3 -m sglang.launch_server --model-path Qwen/Qwen3-0.6B --attention-backend
 
 **下载卡住**：常见原因是 `HF_ENDPOINT` / `SGLANG_USE_MODELSCOPE` 没有设置在启动 server 的那个终端里。
 
+**下载权重报 401 Unauthorized，或设置了 hf-mirror 仍然很慢、反复超时**：新版 `huggingface_hub` 默认用 Xet 协议下载权重，请求直连 `xethub.hf.co` 域名，不经过 `HF_ENDPOINT`，国内常见 `CAS Client Error ... 401 Unauthorized` 或 `The read operation timed out`。先关闭 Xet 再重新启动：
+
+```bash
+export HF_HUB_DISABLE_XET=1
+```
+
+如果报错或日志里仍出现 `xethub.hf.co`，改用上文的 ModelScope 方式下载。
+
+**第一个请求很慢**：多半不是服务慢，而是 Qwen3 默认先输出思考过程，把 `max_tokens` 用满了。查看返回 JSON 中的 `usage.completion_tokens`，接近 `max_tokens` 即为此原因。在请求里加上 `"chat_template_kwargs": {"enable_thinking": false}` 关闭思考模式后再对比。
+
 **address already in use**：端口被占用。换用其他端口（如 `--port 30001`）即可，请求命令里的端口同步修改。
 
 **WSL2 里找不到 nvidia-smi**：驱动需要装在 Windows 侧（NVIDIA 官网下载），装好后在 PowerShell 执行 `wsl --shutdown` 重启 WSL 即可。
