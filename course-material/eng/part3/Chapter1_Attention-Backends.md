@@ -20,7 +20,7 @@ After completing this chapter, you will be able to:
 As introduced in Part I, the core computation of standard Attention is:
 
 $$
-O = \operatorname{softmax}\left(\frac{QK^\top}{\sqrt{d_h}} + M\right)V
+O = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_h}} + M\right)V
 $$
 
 Here, $Q$ contains the current queries, $K$ and $V$ include the visible keys and values, and $M$ represents constraints such as a causal mask. The formula specifies the mathematical relationship.
