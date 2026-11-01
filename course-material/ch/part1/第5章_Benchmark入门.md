@@ -69,7 +69,7 @@ benchmark 是一组可复现、可对比的测试，其作用体现在三个方�
   <p><em>图 5.4 一次请求的时间轴</em></p>
 </div>
 
-- **TTFT（Time to First Token）**：从请求发出到生成第一个 token 的时间，包含排队、Prefill 与首个 Decode 步。它体现用户从发出请求到看见首个输出之间的等待。
+- **TTFT（Time to First Token）**：从请求发出到生成第一个 token 的时间，包含排队与 Prefill。首个 token 由 Prefill 的前向计算直接产出，因此 TTFT 不含任何 Decode 步。它体现用户从发出请求到看见首个输出之间的等待。
 - **TPOT（Time Per Output Token）**：除首个 token 外，平均每个 token 的生成时间，主要由 Decode 阶段决定，反映生成速率。
 - **ITL（Inter-Token Latency）**：相邻两个 token 之间的间隔。与 TPOT 描述同一现象，区别在于 TPOT 是均值，ITL 可逐次观测，更容易暴露生成过程中的抖动。
 - **E2E Latency（端到端延迟）**：单个请求从发出到全部完成的总时长。
