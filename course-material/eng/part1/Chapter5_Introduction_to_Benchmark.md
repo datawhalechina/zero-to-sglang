@@ -70,7 +70,7 @@ There are four latency metrics. Their positions within a single request are show
   <p><em>Figure 5.4 Timeline of a request</em></p>
 </div>
 
-- **TTFT (Time to First Token)**: the time from sending a request to generating the first token, including queueing and Prefill. The first token is produced by the Prefill forward pass itself, so TTFT does not include any Decode step. It reflects how long the user waits between sending the request and seeing the first output.
+- **TTFT (Time to First Token)**: the time from sending a request to generating the first token, including queueing and Prefill; the first token is produced by the Prefill forward pass. It reflects how long the user waits between sending the request and seeing the first output.
 - **TPOT (Time Per Output Token)**: the average generation time per token after the first token, mainly determined by Decode; it reflects the generation rate.
 - **ITL (Inter-Token Latency)**: the interval between adjacent tokens. It describes the same phenomenon as TPOT; the difference is that TPOT is an average, while ITL is observed token by token and more easily exposes jitter during generation.
 - **E2E latency**: the total time from sending a request until it completes.
