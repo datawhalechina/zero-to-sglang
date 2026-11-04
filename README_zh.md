@@ -85,7 +85,7 @@
 | [10. Speculative Decoding（概念）](course-material/ch/part2/第10章_投机解码.md) · [代码走读](course-material/ch/part2/第10章_投机解码_代码.md) | 起草与验证、贪心和随机采样的接受规则、拒绝校正与性能取舍 | ✅ |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
 | [1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）**](course-material/ch/part3/第1章_注意力后端.md) | Attention 后端职责、分块计算、实现取舍与选择 | ✅ |
-| 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
+| [2. **Quantization and Low-Precision Inference**](course-material/ch/part3/第2章_量化与低精度推理.md) | 数值格式与 scale、Decode 提速与 KV Cache 容量、精度取舍、量化标签与加载 | ✅ |
 | [3. **Hierarchical Caching**](course-material/ch/part3/第3章_分层缓存.md) | L1/L2/L3 缓存层级、前缀匹配、备份恢复、预取与性能取舍 | ✅ |
 | 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode 分离 | 🚧 |
