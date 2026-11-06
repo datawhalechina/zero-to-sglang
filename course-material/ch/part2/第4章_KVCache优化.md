@@ -149,13 +149,12 @@ $$
 生成 $n$ 个 token 的总 K/V 投影量为
 
 $$
+\begin{aligned}
 \sum_{t=1}^{n} O(T_t)
-=
-O\left(\sum_{t=1}^{n} (p+t)\right)
-=
-O\left(np + \frac{n(n+1)}{2}\right)
-=
-O(n^2).
+&= O\left(\sum_{t=1}^{n} (p+t)\right) \\
+&= O\left(np + \frac{n(n+1)}{2}\right) \\
+&= O(n^2).
+\end{aligned}
 $$
 
 这就是无 KV Cache 是 $O(n^2)$的一个来源：历史 token 的 K/V 本来可以复用，却每一步都重新投影了一遍。
@@ -169,11 +168,11 @@ $$
 累计到 $n$ 步：
 
 $$
+\begin{aligned}
 \sum_{t=1}^{n} T_t^2
-=
-\sum_{t=1}^{n} (p+t)^2
-=
-O(n^3).
+&= \sum_{t=1}^{n} (p+t)^2 \\
+&= O(n^3).
+\end{aligned}
 $$
 
 所以从完整注意力矩阵的角度看，无 KV Cache 的总量级是 $O(n^3)$。单步看，第 $t$ 步注意力复杂度是
@@ -211,11 +210,11 @@ $$
 累计 $n$ 步：
 
 $$
+\begin{aligned}
 \sum_{t=1}^{n} O(T_t)
-=
-O\left(\sum_{t=1}^{n} (p+t)\right)
-=
-O(n^2).
+&= O\left(\sum_{t=1}^{n} (p+t)\right) \\
+&= O(n^2).
+\end{aligned}
 $$
 
 单步注意力则从无 Cache 的
