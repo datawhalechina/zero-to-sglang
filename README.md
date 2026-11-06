@@ -26,6 +26,8 @@
 
 > **Course status**: Part 0, Part I, Chapters 1–5 and 8 of Part II, and Chapters 1 and 3 of Part III (Attention Backends and Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
+> 🎬 **Companion videos**: every lesson has a ~3-minute explainer, in Chinese and English. See [videos/](./videos/README.md).
+
 ## 🎯 About
 
 &emsp;&emsp;Large models have moved on from the training race to the inference race. Once applications took off, inference cost and latency became the real bottleneck: on the same GPU, a good inference engine can serve several times more requests. Yet there are few tutorials on inference engines. They either stay at the concept level without touching code, or drop you straight into the SGLang source with no idea where to start.
