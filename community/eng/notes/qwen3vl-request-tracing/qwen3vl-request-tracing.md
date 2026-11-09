@@ -85,12 +85,72 @@ This likely explains much of the improvement, although I didn't measure the tran
 
 **Request counts.** The two experiments above used 3,000 measured requests (3,600 including warm-up), with no request errors.
 
+**Reproduce.**
+
+**1. Start one server per configuration** (a fresh server for every run):
+
 ```bash
-python3 -m sglang.launch_server --model-path Qwen/Qwen3-VL-4B-Instruct \
-  --revision ebb281ec70b05090aa6165b016eac8ec08e71b17 --enable-cache-report
-# embedding cache off:  SGLANG_VLM_CACHE_SIZE_MB=0
-# transport A/B:        --mm-preprocess-cache-size-mb 0 --mm-feature-transport {cpu,cuda_ipc}
+MODEL="--model-path Qwen/Qwen3-VL-4B-Instruct --revision ebb281ec70b05090aa6165b016eac8ec08e71b17 --enable-cache-report"
+
+# Prompt order: embedding cache on (default) / off
+python3 -m sglang.launch_server $MODEL
+SGLANG_VLM_CACHE_SIZE_MB=0 python3 -m sglang.launch_server $MODEL
+
+# Feature transport: cpu / cuda_ipc (preprocessing and embedding caches off)
+SGLANG_VLM_CACHE_SIZE_MB=0 python3 -m sglang.launch_server $MODEL \
+  --mm-preprocess-cache-size-mb 0 --mm-feature-transport cpu
+SGLANG_VLM_CACHE_SIZE_MB=0 python3 -m sglang.launch_server $MODEL \
+  --mm-preprocess-cache-size-mb 0 --mm-feature-transport cuda_ipc
 ```
+
+**2. Send the workload.** The client below generates a 512 × 512 PNG and reports the median TTFT. It is a simplified version of my benchmark client: the request shape and settings match the article, but the images and warm-up are simpler, so absolute numbers can differ slightly.
+
+```python
+# ttft.py  usage: python3 ttft.py {image_first,question_first,new_image,same_image,text}
+import base64, io, json, statistics, sys, time
+import requests
+from PIL import Image, ImageDraw
+
+URL = "http://127.0.0.1:30000/v1/chat/completions"
+Q = "What shape and color is in the image, and what text is written? Answer briefly."
+mode = sys.argv[1]
+
+def png(k):
+    img = Image.new("RGB", (512, 512), "white")
+    ImageDraw.Draw(img).ellipse((128, 128, 384, 384), fill=(40 * (k % 6), 60, 200))
+    ImageDraw.Draw(img).text((200, 450), f"ID {k:03d}", fill="black")
+    buf = io.BytesIO(); img.save(buf, "PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+def content(k):
+    if mode == "text":
+        return "Explain in one sentence what a KV cache is in LLM inference."
+    image = {"type": "image_url", "image_url": {"url": png(k if mode == "new_image" else 0)}}
+    q = f"Q{k:03d}. {Q}" if mode in ("image_first", "question_first") else Q
+    text = {"type": "text", "text": q}
+    return [text, image] if mode == "question_first" else [image, text]
+
+def ttft(k):
+    body = {"model": "Qwen/Qwen3-VL-4B-Instruct", "temperature": 0, "max_tokens": 32,
+            "stream": True, "messages": [{"role": "user", "content": content(k)}]}
+    t0 = time.perf_counter()
+    with requests.post(URL, json=body, stream=True) as r:
+        for line in r.iter_lines():
+            if line.startswith(b"data: {"):
+                delta = json.loads(line[6:])["choices"][0]["delta"]
+                if delta.get("content"):
+                    return (time.perf_counter() - t0) * 1000
+
+for k in range(1000, 1020):  # 20 warm-up requests, not measured
+    ttft(k)
+times = [ttft(k) for k in range(100)]
+print(f"{mode}: median TTFT {statistics.median(times[1:]):.1f} ms")
+```
+
+| Experiment | Server | Client modes |
+|---|---|---|
+| Prompt order | embedding cache on / off | `image_first`, `question_first` |
+| Feature transport | `cpu` / `cuda_ipc` | `same_image`, `new_image`, `text` |
 
 **Limitations:**
 - **Scope:** one A100, 512 px synthetic images, concurrency 1. For Qwen3-VL on Hopper GPUs with ≥60 GB, SGLang turns the embedding cache off by default.
