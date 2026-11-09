@@ -82,14 +82,14 @@
 | [6. Continuous Batching and the Scheduler (Concepts)](course-material/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler.md) · [Code Walkthrough](course-material/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler_code.md) | Continuous batching, scheduler state, resource limits, and latency/throughput tradeoffs | ✅ |
 | [7. Paged KV Cache and Memory Management (Concepts)](course-material/eng/part2/Chapter7_Paged-KV-Cache-and-Memory-Management.md) | Paged KV Cache and GPU memory management | ✅ |
 | [8. RadixAttention and Prefix Caching (Concepts)](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching.md) · [Code Walkthrough](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code.md) | RadixAttention and prefix caching | ✅ |
-| 9. [Multi-process & Tensor Parallelism(Concepts)](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism.md) · [Code Walkthrough](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism_code.md)  | Multi-process execution and tensor parallelism | ✅ |
+| [9. Multi-process & Tensor Parallelism(Concepts)](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism.md) · [Code Walkthrough](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism_code.md)  | Multi-process execution and tensor parallelism | ✅ |
 | [10. Speculative Decoding (Concepts)](course-material/eng/part2/Chapter10_Speculative-Decoding.md) · [Code Walkthrough](course-material/eng/part2/Chapter10_Speculative-Decoding_code.md) | Drafting and verification, greedy and sampling-based acceptance, rejection correction, and performance tradeoffs | ✅ |
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
 | [1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA)**](course-material/eng/part3/Chapter1_Attention-Backends.md) | Backend responsibilities, tiled Attention, implementation tradeoffs, and selection | ✅ |
 | [2. **Quantization and Low-Precision Inference**](course-material/eng/part3/Chapter2_Quantization-and-Low-Precision-Inference.md) | Numeric formats and scales, Decode speedup and KV Cache capacity, accuracy tradeoffs, quantization labels and loading | ✅ |
 | [3. **Hierarchical Caching**](course-material/eng/part3/Chapter3_Hierarchical-Caching.md) | L1/L2/L3 cache tiers, prefix matching, backup and restoration, prefetching and performance tradeoffs | ✅ |
-| 4. **Scaling Out: DP Attention, EP, PP** | Scaling out: DP Attention / EP / PP | 🚧 |
-| 5. **Prefill-Decode Disaggregation** | Prefill-Decode disaggregation | 🚧 |
+| [4. **Scaling Out: DP Attention, EP, PP**](course-material/eng/part3/Chapter4_Scaling-Out.md) | TP scaling limits, DP Attention, EP, PP, and combined parallelism | ✅ |
+| [5. **Prefill-Decode Disaggregation**](course-material/eng/part3/Chapter5_Prefill-Decode-Disaggregation.md) | Prefill interference, request handoff, KV transfer costs, resource allocation, and workload evaluation | ✅ |
 | <strong>Part IV — How to Make Contribution to SGLang (optional)</strong> | | |
 | 1. **Deploying SGLang with the Cookbook** | Deploying SGLang with the Cookbook | 🚧 |
 | 2. **Measuring It All: Profiling and Trace Analysis** | Profiling and trace analysis | 🚧 |
