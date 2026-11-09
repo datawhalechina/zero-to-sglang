@@ -87,7 +87,7 @@
 | [1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）**](course-material/ch/part3/第1章_注意力后端.md) | Attention 后端职责、分块计算、实现取舍与选择 | ✅ |
 | [2. **Quantization and Low-Precision Inference**](course-material/ch/part3/第2章_量化与低精度推理.md) | 数值格式与 scale、Decode 提速与 KV Cache 容量、精度取舍、量化标签与加载 | ✅ |
 | [3. **Hierarchical Caching**](course-material/ch/part3/第3章_分层缓存.md) | L1/L2/L3 缓存层级、前缀匹配、备份恢复、预取与性能取舍 | ✅ |
-| 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
+| [4. **Scaling Out: DP Attention, EP, PP**](course-material/ch/part3/第4章_横向扩展.md) | TP 的扩展限制、DP Attention、EP、PP 与并行方式组合 | ✅ |
 | [5. **Prefill-Decode Disaggregation**](course-material/ch/part3/第5章_PrefillDecode分离.md) | Prefill 干扰、请求交接、KV 传输成本、资源分配与场景评估 | ✅ |
 | <strong>Part IV — 如何为 SGLang 做贡献（可选）</strong> | | |
 | 1. **Deploying SGLang with the Cookbook** | 使用 Cookbook 部署 SGLang | 🚧 |
