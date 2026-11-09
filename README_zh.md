@@ -90,9 +90,9 @@
 | 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode 分离 | 🚧 |
 | <strong>Part IV — 如何为 SGLang 做贡献（可选）</strong> | | |
-| 1. **Deploying SGLang with the Cookbook** | 使用 Cookbook 部署 SGLang | 🚧 |
-| 2. **Measuring It All: Profiling and Trace Analysis** | Profiling 与 Trace 分析 | 🚧 |
-| 3. **SGLang PR Workflow** | SGLang PR 全流程 | 🚧 |
+| [1. **Deploying SGLang with the Cookbook**](course-material/ch/part4/第1章_用Cookbook部署SGLang.md) | recipe 选择、启动配置、服务验证与简单性能测试 | ✅ |
+| [2. **Measuring It All: Profiling and Trace Analysis**](course-material/ch/part4/第2章_Profiling与Trace分析.md) | Profiling 基础与已合并 PR 实例：trace 分析、代码改动与验证 | ✅ |
+| [3. **SGLang PR Workflow**](course-material/ch/part4/第3章_SGLangPR工作流.md) | 开源协作、PR 生命周期、CI 与 Review、首次贡献 | ✅ |
 
 ## 🗓️ 编写进度
 

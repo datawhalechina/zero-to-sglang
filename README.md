@@ -91,9 +91,9 @@
 | 4. **Scaling Out: DP Attention, EP, PP** | Scaling out: DP Attention / EP / PP | 🚧 |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode disaggregation | 🚧 |
 | <strong>Part IV — How to Make Contribution to SGLang (optional)</strong> | | |
-| 1. **Deploying SGLang with the Cookbook** | Deploying SGLang with the Cookbook | 🚧 |
-| 2. **Measuring It All: Profiling and Trace Analysis** | Profiling and trace analysis | 🚧 |
-| 3. **SGLang PR Workflow** | The full SGLang PR workflow | 🚧 |
+| [1. **Deploying SGLang with the Cookbook**](course-material/eng/part4/Chapter1_Deploying-SGLang-with-the-Cookbook.md) | Recipe selection, launch configuration, service validation, and a small benchmark | ✅ |
+| [2. **Measuring It All: Profiling and Trace Analysis**](course-material/eng/part4/Chapter2_Profiling-and-Trace-Analysis.md) | Profiling fundamentals and a merged PR case study: traces, code changes, and validation | ✅ |
+| [3. **SGLang PR Workflow**](course-material/eng/part4/Chapter3_SGLang-PR-Workflow.md) | Open-source collaboration, PR lifecycle, CI and review, and first contributions | ✅ |
 
 ## 🗓️ Writing schedule
 
