@@ -88,7 +88,7 @@
 | [1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA)**](course-material/eng/part3/Chapter1_Attention-Backends.md) | Backend responsibilities, tiled Attention, implementation tradeoffs, and selection | ✅ |
 | [2. **Quantization and Low-Precision Inference**](course-material/eng/part3/Chapter2_Quantization-and-Low-Precision-Inference.md) | Numeric formats and scales, Decode speedup and KV Cache capacity, accuracy tradeoffs, quantization labels and loading | ✅ |
 | [3. **Hierarchical Caching**](course-material/eng/part3/Chapter3_Hierarchical-Caching.md) | L1/L2/L3 cache tiers, prefix matching, backup and restoration, prefetching and performance tradeoffs | ✅ |
-| 4. **Scaling Out: DP Attention, EP, PP** | Scaling out: DP Attention / EP / PP | 🚧 |
+| [4. **Scaling Out: DP Attention, EP, PP**](course-material/eng/part3/Chapter4_Scaling-Out.md) | TP scaling limits, DP Attention, EP, PP, and combined parallelism | ✅ |
 | 5. **Prefill-Decode Disaggregation** | Prefill-Decode disaggregation | 🚧 |
 | <strong>Part IV — How to Make Contribution to SGLang (optional)</strong> | | |
 | 1. **Deploying SGLang with the Cookbook** | Deploying SGLang with the Cookbook | 🚧 |
