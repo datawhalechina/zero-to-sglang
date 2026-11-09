@@ -149,24 +149,18 @@ To keep them busy together, we can split a batch of requests into micro-batches.
 
 The following example divides a batch of requests into micro-batches A, B, C, and D. Assume every stage needs one time slot per micro-batch, and ignore communication:
 
-| Stage | Slot 1 | Slot 2 | Slot 3 | Slot 4 | Slot 5 | Slot 6 |
-|---|---|---|---|---|---|---|
-| Stage 1 | A | B | C | D | Idle | Idle |
-| Stage 2 | Idle | A | B | C | D | Idle |
-| Stage 3 | Idle | Idle | A | B | C | D |
-
 <div align="center">
   <img src="./images/4-5-PP-Stages-and-Pipeline-Bubbles.png" alt="Twenty-four layers form three stages; four micro-batches overlap across six time slots, with gray cells showing bubbles" width="800">
   <p><em>Figure 5. Partition layers into stages and overlap micro-batches of different requests; timing and communication assumptions are illustrative.</em></p>
 </div>
 
-By slot 3, A has reached the third stage, B is in the second, and C is in the first. All three GPUs are computing, and the same is true in slot 4. Sending A, B, C, and D through the entire pipeline one after another would take 12 slots; the schedule in the table takes 6. There are still bubbles at the beginning while data enters each stage, and at the end while the last micro-batches finish.
+By slot 3, A has reached the third stage, B is in the second, and C is in the first. All three GPUs are computing, and the same is true in slot 4. Sending A, B, C, and D through the entire pipeline one after another would take 12 slots; the schedule in Figure 5 takes 6. There are still bubbles at the beginning while data enters each stage, and at the end while the last micro-batches finish.
 
 ### 5.3 Smaller Micro-batches Are Not Always Better
 
 Making micro-batches smaller is not always helpful. If each contains too little computation, it may use the GPU poorly while increasing scheduling and communication operations. Stage runtimes should also be close to one another; otherwise, faster stages finish and wait for the slowest one.
 
-Autoregressive inference adds another constraint: a request must generate its current token before computing the next one. A, B, C, and D in the table therefore contain different requests. We cannot fill the pipeline with future tokens from the same request that have not yet been generated.
+Autoregressive inference adds another constraint: a request must generate its current token before computing the next one. A, B, C, and D in Figure 5 therefore contain different requests. We cannot fill the pipeline with future tokens from the same request that have not yet been generated.
 
 PP distributes a large model across more devices in stages. With enough requests, multiple micro-batches can keep the stages working at the same time. A single request decoding one token at a time still has to pass through every stage, so adding stages does not guarantee lower per-token latency.
 
@@ -204,7 +198,7 @@ Choosing between these approaches means weighing the memory and computation time
 3. In the example in Section 3, removing fourfold KV replication quadruples capacity for equal-length requests. Why does this not guarantee four times the throughput?
 4. GPU 0 handles a token's Attention, but the token selects experts on GPUs 1 and 3. Describe its path through MoE and back. Must its complete historical KV travel with it?
 5. Does placing two experts on every GPU guarantee equal workloads? If not, what else should be measured?
-6. Following the table in Section 5, draw the three-stage pipeline for only two micro-batches, A and B. Where are the bubbles? Why can a request's next, not-yet-generated token not be treated as another independent micro-batch?
+6. Following Figure 5, draw the three-stage pipeline for only two micro-batches, A and B. Where are the bubbles? Why can a request's next, not-yet-generated token not be treated as another independent micro-batch?
 
 ## References
 
