@@ -202,7 +202,7 @@ Join the zero-to-sglang reader community to learn together, ask questions, and s
 
 - Thanks to Datawhale and the SGLang team for supporting the project
   - Datawhale: [@1iyouzhen](https://github.com/1iyouzhen), [@xuhu0115](https://github.com/xuhu0115), [@kangkang-Adam](https://github.com/kangkang-Adam)
-  - SGLang: [@Ccyest](https://github.com/Ccyest), [@fcranzhou](https://github.com/fcranzhou)
+  - SGLang: [@Ccyest](https://github.com/Ccyest), [@fcranzhou](https://github.com/fcranzhou), [@Hayden727](https://github.com/Hayden727)
 - Thanks to [@Sm1les](https://github.com/Sm1les) for the help and support
 - Thanks to every developer who has contributed to this project ❤️
 
