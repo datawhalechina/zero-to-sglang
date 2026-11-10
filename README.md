@@ -24,7 +24,7 @@
 
 ---
 
-> **Course status**: Part 0, Part I, Chapters 1–5 and 8 of Part II, and Chapters 1 and 3 of Part III (Attention Backends and Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: All chapters, from Part 0 through Part IV, are complete in both English and Chinese. The full companion video series is expected to be completed by the end of November 2026, with videos published on YouTube and Bilibili. Links will be added to the Syllabus below as videos are published. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -97,15 +97,16 @@
 
 ## 🗓️ Writing schedule
 
-Start date: Monday, August 24, 2026. About one week per chapter; chapters in bold are written by SGLang core members.
+Writing began on August 24, 2026. All chapters are complete in both English and Chinese as of November 10, 2026.
 
 | Part | Schedule | Status |
 |------|----------|------|
 | Part 0 — Before you learn | Done | ✅ |
-| Part I — Foundations | Writing 8.24 ~ 9.06, review 9.07 ~ 9.13 | ✅ |
-| Part II — Build Your Own Mini SGL | Writing 9.14 ~ 10.04, review 10.05 ~ 10.10 | 🔄 |
-| Part III — Advanced Inference Technique | 10.10 ~ 11.15 | 🔄 |
-| Part IV — How to Make Contribution to SGLang | 11.16 ~ 12.6 | 🚧 |
+| Part I — Foundations | Done | ✅ |
+| Part II — Build Your Own Mini SGL | Done | ✅ |
+| Part III — Advanced Inference Technique | Done | ✅ |
+| Part IV — How to Make Contribution to SGLang | Done | ✅ |
+| Full zero-to-sglang companion video series | Expected completion: end of November 2026. YouTube / Bilibili links will be added to the Syllabus as videos are published. | 🔄 |
 
 ## 🚀 Quick start
 
@@ -131,11 +132,11 @@ zero-to-sglang/
 │   ├── ch/                  # Chinese edition (read online at /ch/)
 │   │   ├── part0/           # Part 0: Before you learn
 │   │   ├── part1/           # Part I: Foundations (complete)
-│   │   ├── part2/           # Part II: Build Your Own Mini SGL (in progress)
-│   │   ├── part3/           # Part III: Advanced Inference Technique (planned)
-│   │   ├── part4/           # Part IV: How to Make Contribution to SGLang (planned)
+│   │   ├── part2/           # Part II: Build Your Own Mini SGL (complete)
+│   │   ├── part3/           # Part III: Advanced Inference Technique (complete)
+│   │   ├── part4/           # Part IV: How to Make Contribution to SGLang (complete)
 │   │   └── WRITING_TEMPLATE.md
-│   └── eng/                 # English edition (read online at /eng/, in progress)
+│   └── eng/                 # English edition (read online at /eng/, complete)
 │       ├── part0/
 │       └── WRITING_TEMPLATE.md
 ├── community/               # Community corner: build logs, pitfalls, study notes
