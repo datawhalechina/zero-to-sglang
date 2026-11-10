@@ -139,5 +139,4 @@ Finally, disable profiling, repeat end-to-end benchmarks under the same conditio
 - [BBuf's SGLang PR #13587: original screenshots, code, and test results](https://github.com/sgl-project/sglang/pull/13587)
 - [The author's DeepSeek-R1 benchmark](https://github.com/sgl-project/sglang/pull/13587#issuecomment-3558359315)
 - [Merge commit: bfcf15a](https://github.com/sgl-project/sglang/commit/bfcf15a129fd4e26ef8d4af140f30cbcf02a6696)
-- [SGLang Kernel maintainer list](https://github.com/sgl-project/sglang/blob/main/.github/MAINTAINER.md#kernel)
 - [SGLang profiling documentation](https://docs.sglang.io/docs/developer_guide/benchmark_and_profiling)

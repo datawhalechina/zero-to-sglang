@@ -135,5 +135,4 @@ Benchmark 确认性能表现，profiling 帮助检验原因；读 trace 时，�
 - [BBuf 的 SGLang PR #13587：原始截图、代码与测试记录](https://github.com/sgl-project/sglang/pull/13587)
 - [作者的 DeepSeek-R1 benchmark](https://github.com/sgl-project/sglang/pull/13587#issuecomment-3558359315)
 - [合并 commit：bfcf15a](https://github.com/sgl-project/sglang/commit/bfcf15a129fd4e26ef8d4af140f30cbcf02a6696)
-- [SGLang maintainer 名单：Kernel](https://github.com/sgl-project/sglang/blob/main/.github/MAINTAINER.md#kernel)
 - [SGLang profiling 文档](https://docs.sglang.io/docs/developer_guide/benchmark_and_profiling)
