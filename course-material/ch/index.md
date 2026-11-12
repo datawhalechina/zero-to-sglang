@@ -10,6 +10,9 @@ hero:
       text: 开始学习
       link: /ch/part0/Part0-编码伦理与开源精神
     - theme: alt
+      text: 下载 PDF
+      link: https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf
+    - theme: alt
       text: English
       link: /eng/
     - theme: alt
