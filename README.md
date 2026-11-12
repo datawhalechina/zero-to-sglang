@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/language-English%20%7C%20Chinese-brightgreen?style=flat" alt="Language"/>
   <a href="https://github.com/datawhalechina/zero-to-sglang"><img src="https://img.shields.io/badge/GitHub-Project-blue?style=flat&logo=github" alt="GitHub Project"></a>
   <a href="https://datawhalechina.github.io/zero-to-sglang/eng/"><img src="https://img.shields.io/badge/Read-Online-green?style=flat&logo=gitbook" alt="Online Reading"></a>
+  <a href="https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf"><img src="https://img.shields.io/badge/Download-PDF-red?style=flat&logo=adobeacrobatreader" alt="Download PDF"></a>
 </div>
 
 <div align="center">
@@ -53,6 +54,7 @@
 ## 🔗 Links
 
 - **Repository**: https://github.com/datawhalechina/zero-to-sglang
+- **PDF download**: [English](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf) · [中文版](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf) ([all releases](https://github.com/datawhalechina/zero-to-sglang/releases))
 - **SGLang**: https://github.com/sgl-project/sglang
 - **mini-sglang reference implementation**: https://github.com/sgl-project/mini-sglang
 

@@ -10,6 +10,9 @@ hero:
       text: Start Learning
       link: /eng/part0/Part0-Coding-Ethics-and-Open-Source-Spirit
     - theme: alt
+      text: Download PDF
+      link: https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf
+    - theme: alt
       text: 简体中文
       link: /ch/
     - theme: alt
