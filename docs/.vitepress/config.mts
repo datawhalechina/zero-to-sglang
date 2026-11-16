@@ -2,7 +2,11 @@ import { defineConfig, type DefaultTheme } from 'vitepress'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
-const base = '/zero-to-sglang/'
+// 1. 获取环境变量并判断
+// 如果环境变量 EDGEONE 等于 '1'，说明在 EdgeOne 环境，使用根路径 '/'
+// 否则默认是 GitHub Pages 环境，使用仓库子路径
+const isEdgeOne = process.env.EDGEONE === '1'
+const base = isEdgeOne ? '/' : '/zero-to-sglang/'
 const repo = 'https://github.com/datawhalechina/zero-to-sglang'
 
 // ---------------------------------------------------------------------------
