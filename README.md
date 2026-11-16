@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/language-English%20%7C%20Chinese-brightgreen?style=flat" alt="Language"/>
   <a href="https://github.com/datawhalechina/zero-to-sglang"><img src="https://img.shields.io/badge/GitHub-Project-blue?style=flat&logo=github" alt="GitHub Project"></a>
   <a href="https://datawhalechina.github.io/zero-to-sglang/eng/"><img src="https://img.shields.io/badge/Read-Online-green?style=flat&logo=gitbook" alt="Online Reading"></a>
+  <a href="https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf"><img src="https://img.shields.io/badge/Download-PDF-red?style=flat&logo=adobeacrobatreader" alt="Download PDF"></a>
 </div>
 
 <div align="center">
@@ -24,7 +25,7 @@
 
 ---
 
-> **Course status**: Part 0, Part I, Chapters 1–5 and 8 of Part II, and Chapters 1 and 3 of Part III (Attention Backends and Hierarchical Caching) are complete in both English and Chinese. The course is still under development. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
+> **Course status**: All chapters, from Part 0 through Part IV, are complete in both English and Chinese. The full companion video series is expected to be completed by the end of November 2026, with videos published on YouTube and Bilibili. Links will be added to the Syllabus below as videos are published. You can switch to [简体中文](./README_zh.md) at any time. Want to help? See [Contributing](#-contributing).
 
 ## 🎯 About
 
@@ -53,6 +54,7 @@
 ## 🔗 Links
 
 - **Repository**: https://github.com/datawhalechina/zero-to-sglang
+- **PDF download**: [English](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf) · [中文版](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf) ([all releases](https://github.com/datawhalechina/zero-to-sglang/releases))
 - **SGLang**: https://github.com/sgl-project/sglang
 - **mini-sglang reference implementation**: https://github.com/sgl-project/mini-sglang
 
@@ -82,30 +84,31 @@
 | [6. Continuous Batching and the Scheduler (Concepts)](course-material/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler.md) · [Code Walkthrough](course-material/eng/part2/Chapter6_Continuous-Batching-and-the-Scheduler_code.md) | Continuous batching, scheduler state, resource limits, and latency/throughput tradeoffs | ✅ |
 | [7. Paged KV Cache and Memory Management (Concepts)](course-material/eng/part2/Chapter7_Paged-KV-Cache-and-Memory-Management.md) | Paged KV Cache and GPU memory management | ✅ |
 | [8. RadixAttention and Prefix Caching (Concepts)](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching.md) · [Code Walkthrough](course-material/eng/part2/Chapter8_RadixAttention-and-Prefix-Caching_code.md) | RadixAttention and prefix caching | ✅ |
-| 9. [Multi-process & Tensor Parallelism(Concepts)](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism.md) · [Code Walkthrough](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism_code.md)  | Multi-process execution and tensor parallelism | ✅ |
+| [9. Multi-process & Tensor Parallelism(Concepts)](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism.md) · [Code Walkthrough](course-material/eng/part2/Chapter9_Multi-process-and-Tensor-Parallelism_code.md)  | Multi-process execution and tensor parallelism | ✅ |
 | [10. Speculative Decoding (Concepts)](course-material/eng/part2/Chapter10_Speculative-Decoding.md) · [Code Walkthrough](course-material/eng/part2/Chapter10_Speculative-Decoding_code.md) | Drafting and verification, greedy and sampling-based acceptance, rejection correction, and performance tradeoffs | ✅ |
 | <strong>Part III — Advanced Inference Technique (deep into the real SGLang)</strong> | | |
 | [1. **Attention Backends (FlashInfer / Triton / FA3 / FlashMLA)**](course-material/eng/part3/Chapter1_Attention-Backends.md) | Backend responsibilities, tiled Attention, implementation tradeoffs, and selection | ✅ |
-| 2. **Quantization and Low-Precision Inference** | Quantization and low-precision inference | 🚧 |
+| [2. **Quantization and Low-Precision Inference**](course-material/eng/part3/Chapter2_Quantization-and-Low-Precision-Inference.md) | Numeric formats and scales, Decode speedup and KV Cache capacity, accuracy tradeoffs, quantization labels and loading | ✅ |
 | [3. **Hierarchical Caching**](course-material/eng/part3/Chapter3_Hierarchical-Caching.md) | L1/L2/L3 cache tiers, prefix matching, backup and restoration, prefetching and performance tradeoffs | ✅ |
-| 4. **Scaling Out: DP Attention, EP, PP** | Scaling out: DP Attention / EP / PP | 🚧 |
-| 5. **Prefill-Decode Disaggregation** | Prefill-Decode disaggregation | 🚧 |
+| [4. **Scaling Out: DP Attention, EP, PP**](course-material/eng/part3/Chapter4_Scaling-Out.md) | TP scaling limits, DP Attention, EP, PP, and combined parallelism | ✅ |
+| [5. **Prefill-Decode Disaggregation**](course-material/eng/part3/Chapter5_Prefill-Decode-Disaggregation.md) | Prefill interference, request handoff, KV transfer costs, resource allocation, and workload evaluation | ✅ |
 | <strong>Part IV — How to Make Contribution to SGLang (optional)</strong> | | |
-| 1. **Deploying SGLang with the Cookbook** | Deploying SGLang with the Cookbook | 🚧 |
-| 2. **Measuring It All: Profiling and Trace Analysis** | Profiling and trace analysis | 🚧 |
-| 3. **SGLang PR Workflow** | The full SGLang PR workflow | 🚧 |
+| [1. **Deploying SGLang with the Cookbook**](course-material/eng/part4/Chapter1_Deploying-SGLang-with-the-Cookbook.md) | Recipe selection, launch configuration, service validation, and a small benchmark | ✅ |
+| [2. **Measuring It All: Profiling and Trace Analysis**](course-material/eng/part4/Chapter2_Profiling-and-Trace-Analysis.md) | Profiling fundamentals and a merged PR case study: traces, code changes, and validation | ✅ |
+| [3. **SGLang PR Workflow**](course-material/eng/part4/Chapter3_SGLang-PR-Workflow.md) | Open-source collaboration, PR lifecycle, CI and review, and first contributions | ✅ |
 
 ## 🗓️ Writing schedule
 
-Start date: Monday, August 24, 2026. About one week per chapter; chapters in bold are written by SGLang core members.
+Writing began on August 24, 2026. All chapters are complete in both English and Chinese as of November 10, 2026.
 
 | Part | Schedule | Status |
 |------|----------|------|
 | Part 0 — Before you learn | Done | ✅ |
-| Part I — Foundations | Writing 8.24 ~ 9.06, review 9.07 ~ 9.13 | ✅ |
-| Part II — Build Your Own Mini SGL | Writing 9.14 ~ 10.04, review 10.05 ~ 10.10 | 🔄 |
-| Part III — Advanced Inference Technique | 10.10 ~ 11.15 | 🔄 |
-| Part IV — How to Make Contribution to SGLang | 11.16 ~ 12.6 | 🚧 |
+| Part I — Foundations | Done | ✅ |
+| Part II — Build Your Own Mini SGL | Done | ✅ |
+| Part III — Advanced Inference Technique | Done | ✅ |
+| Part IV — How to Make Contribution to SGLang | Done | ✅ |
+| Full zero-to-sglang companion video series | Expected completion: end of November 2026. YouTube / Bilibili links will be added to the Syllabus as videos are published. | 🔄 |
 
 ## 🚀 Quick start
 
@@ -131,11 +134,11 @@ zero-to-sglang/
 │   ├── ch/                  # Chinese edition (read online at /ch/)
 │   │   ├── part0/           # Part 0: Before you learn
 │   │   ├── part1/           # Part I: Foundations (complete)
-│   │   ├── part2/           # Part II: Build Your Own Mini SGL (in progress)
-│   │   ├── part3/           # Part III: Advanced Inference Technique (planned)
-│   │   ├── part4/           # Part IV: How to Make Contribution to SGLang (planned)
+│   │   ├── part2/           # Part II: Build Your Own Mini SGL (complete)
+│   │   ├── part3/           # Part III: Advanced Inference Technique (complete)
+│   │   ├── part4/           # Part IV: How to Make Contribution to SGLang (complete)
 │   │   └── WRITING_TEMPLATE.md
-│   └── eng/                 # English edition (read online at /eng/, in progress)
+│   └── eng/                 # English edition (read online at /eng/, complete)
 │       ├── part0/
 │       └── WRITING_TEMPLATE.md
 ├── community/               # Community corner: build logs, pitfalls, study notes
@@ -201,7 +204,7 @@ Join the zero-to-sglang reader community to learn together, ask questions, and s
 
 - Thanks to Datawhale and the SGLang team for supporting the project
   - Datawhale: [@1iyouzhen](https://github.com/1iyouzhen), [@xuhu0115](https://github.com/xuhu0115), [@kangkang-Adam](https://github.com/kangkang-Adam)
-  - SGLang: [@Ccyest](https://github.com/Ccyest), [@fcranzhou](https://github.com/fcranzhou)
+  - SGLang: [@Ccyest](https://github.com/Ccyest), [@fcranzhou](https://github.com/fcranzhou), [@Hayden727](https://github.com/Hayden727)
 - Thanks to [@Sm1les](https://github.com/Sm1les) for the help and support
 - Thanks to every developer who has contributed to this project ❤️
 

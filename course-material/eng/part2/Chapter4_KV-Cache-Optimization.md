@@ -144,13 +144,12 @@ $$
 The total K/V projection work for generating $n$ tokens is
 
 $$
+\begin{aligned}
 \sum_{t=1}^{n} O(T_t)
-=
-O\left(\sum_{t=1}^{n} (p+t)\right)
-=
-O\left(np + \frac{n(n+1)}{2}\right)
-=
-O(n^2).
+&= O\left(\sum_{t=1}^{n} (p+t)\right) \\
+&= O\left(np + \frac{n(n+1)}{2}\right) \\
+&= O(n^2).
+\end{aligned}
 $$
 
 This is one source of the statement that generation without KV Cache is $O(n^2)$: historical K/V could have been reused, but is projected again at every step.
@@ -164,11 +163,11 @@ $$
 elements. Across $n$ steps, this becomes
 
 $$
+\begin{aligned}
 \sum_{t=1}^{n} T_t^2
-=
-\sum_{t=1}^{n} (p+t)^2
-=
-O(n^3).
+&= \sum_{t=1}^{n} (p+t)^2 \\
+&= O(n^3).
+\end{aligned}
 $$
 
 Thus, from the perspective of full attention matrices, the total complexity without KV Cache is $O(n^3)$. At a single step, attention complexity is
@@ -206,11 +205,11 @@ $$
 Across $n$ steps, that is
 
 $$
+\begin{aligned}
 \sum_{t=1}^{n} O(T_t)
-=
-O\left(\sum_{t=1}^{n} (p+t)\right)
-=
-O(n^2).
+&= O\left(\sum_{t=1}^{n} (p+t)\right) \\
+&= O(n^2).
+\end{aligned}
 $$
 
 Per-step attention decreases from

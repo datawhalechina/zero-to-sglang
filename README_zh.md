@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/language-Chinese%20%7C%20English-brightgreen?style=flat" alt="Language"/>
   <a href="https://github.com/datawhalechina/zero-to-sglang"><img src="https://img.shields.io/badge/GitHub-Project-blue?style=flat&logo=github" alt="GitHub Project"></a>
   <a href="https://datawhalechina.github.io/zero-to-sglang/ch/"><img src="https://img.shields.io/badge/在线阅读-Online%20Reading-green?style=flat&logo=gitbook" alt="Online Reading"></a>
+  <a href="https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf"><img src="https://img.shields.io/badge/下载-PDF-red?style=flat&logo=adobeacrobatreader" alt="下载 PDF"></a>
 </div>
 
 <div align="center">
@@ -24,6 +25,8 @@
 </div>
 
 ---
+
+> **课程状态**：Part 0 至 Part IV 的全部章节现已完成，中英文版本均已上线。全套配套讲解视频预计于 2026 年 11 月底全部完成，发布至 YouTube 和哔哩哔哩，链接将随视频发布陆续更新到下方课程目录。
 
 ## 🎯 项目介绍
 
@@ -52,6 +55,7 @@
 ## 🔗 相关链接
 
 - **仓库地址**：https://github.com/datawhalechina/zero-to-sglang
+- **PDF 下载**：[中文版](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf) · [English](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf)（[全部版本](https://github.com/datawhalechina/zero-to-sglang/releases)）
 - **SGLang 官方**：https://github.com/sgl-project/sglang
 - **mini-sglang 参考实现**：https://github.com/sgl-project/mini-sglang
 
@@ -85,26 +89,27 @@
 | [10. Speculative Decoding（概念）](course-material/ch/part2/第10章_投机解码.md) · [代码走读](course-material/ch/part2/第10章_投机解码_代码.md) | 起草与验证、贪心和随机采样的接受规则、拒绝校正与性能取舍 | ✅ |
 | <strong>Part III — 高级推理技术（深入真实 SGLang）</strong> | | |
 | [1. **Attention Backends（FlashInfer / Triton / FA3 / FlashMLA）**](course-material/ch/part3/第1章_注意力后端.md) | Attention 后端职责、分块计算、实现取舍与选择 | ✅ |
-| 2. **Quantization and Low-Precision Inference** | 量化与低精度推理 | 🚧 |
+| [2. **Quantization and Low-Precision Inference**](course-material/ch/part3/第2章_量化与低精度推理.md) | 数值格式与 scale、Decode 提速与 KV Cache 容量、精度取舍、量化标签与加载 | ✅ |
 | [3. **Hierarchical Caching**](course-material/ch/part3/第3章_分层缓存.md) | L1/L2/L3 缓存层级、前缀匹配、备份恢复、预取与性能取舍 | ✅ |
-| 4. **Scaling Out: DP Attention, EP, PP** | 横向扩展：DP Attention / EP / PP | 🚧 |
-| 5. **Prefill-Decode Disaggregation** | Prefill-Decode 分离 | 🚧 |
+| [4. **Scaling Out: DP Attention, EP, PP**](course-material/ch/part3/第4章_横向扩展.md) | TP 的扩展限制、DP Attention、EP、PP 与并行方式组合 | ✅ |
+| [5. **Prefill-Decode Disaggregation**](course-material/ch/part3/第5章_PrefillDecode分离.md) | Prefill 干扰、请求交接、KV 传输成本、资源分配与场景评估 | ✅ |
 | <strong>Part IV — 如何为 SGLang 做贡献（可选）</strong> | | |
-| 1. **Deploying SGLang with the Cookbook** | 使用 Cookbook 部署 SGLang | 🚧 |
-| 2. **Measuring It All: Profiling and Trace Analysis** | Profiling 与 Trace 分析 | 🚧 |
-| 3. **SGLang PR Workflow** | SGLang PR 全流程 | 🚧 |
+| [1. **Deploying SGLang with the Cookbook**](course-material/ch/part4/第1章_用Cookbook部署SGLang.md) | recipe 选择、启动配置、服务验证与简单性能测试 | ✅ |
+| [2. **Measuring It All: Profiling and Trace Analysis**](course-material/ch/part4/第2章_Profiling与Trace分析.md) | Profiling 基础与已合并 PR 实例：trace 分析、代码改动与验证 | ✅ |
+| [3. **SGLang PR Workflow**](course-material/ch/part4/第3章_SGLangPR工作流.md) | 开源协作、PR 生命周期、CI 与 Review、首次贡献 | ✅ |
 
 ## 🗓️ 编写进度
 
-起始日期：2026 年 8 月 24 日（周一）。每章约一周，加粗章节由 SGLang 官方成员编写。
+编写始于 2026 年 8 月 24 日。截至 2026 年 11 月 10 日，全部章节的中英文版本均已完成。
 
 | 部分 | 时间安排 | 状态 |
 |------|----------|------|
 | Part 0 — 开课之前 | 已完成 | ✅ |
-| Part I — 基础概念 | 8.24 ~ 9.06 编写，9.07 ~ 9.13 review | ✅ |
-| Part II — 从零手搓 Mini SGL | 9.14 ~ 10.04 编写，10.05 ~ 10.10 review | 🔄 |
-| Part III — 高级推理技术 | 10.10 ~ 11.15 | 🔄 |
-| Part IV — 如何为 SGLang 做贡献 | 11.16 ~ 12.6 | 🚧 |
+| Part I — 基础概念 | 已完成 | ✅ |
+| Part II — 从零手搓 Mini SGL | 已完成 | ✅ |
+| Part III — 高级推理技术 | 已完成 | ✅ |
+| Part IV — 如何为 SGLang 做贡献 | 已完成 | ✅ |
+| zero-to-sglang 全套配套讲解视频 | 预计 2026 年 11 月底全部完成，发布至 YouTube / 哔哩哔哩；链接将随视频发布陆续更新到课程目录。 | 🔄 |
 
 ## 🚀 快速开始
 
@@ -130,11 +135,11 @@ zero-to-sglang/
 │   ├── ch/                  # 中文（在线阅读 /ch/）
 │   │   ├── part0/           # Part 0：开课之前
 │   │   ├── part1/           # Part I：基础概念（已完成）
-│   │   ├── part2/           # Part II：从零手搓 Mini SGL（更新中）
-│   │   ├── part3/           # Part III：高级推理技术（规划中）
-│   │   ├── part4/           # Part IV：如何为 SGLang 做贡献（规划中）
+│   │   ├── part2/           # Part II：从零手搓 Mini SGL（已完成）
+│   │   ├── part3/           # Part III：高级推理技术（已完成）
+│   │   ├── part4/           # Part IV：如何为 SGLang 做贡献（已完成）
 │   │   └── WRITING_TEMPLATE.md
-│   └── eng/                 # English（在线阅读 /eng/，翻译中）
+│   └── eng/                 # English（在线阅读 /eng/，已完成）
 │       ├── part0/
 │       └── WRITING_TEMPLATE.md
 ├── community/               # 社区贡献专区：手搓记录、踩坑、学习笔记
@@ -212,7 +217,7 @@ zero-to-sglang/
 
 - 感谢 Datawhale 和 SGLang 团队对项目的支持
   - Datawhale：[@1iyouzhen](https://github.com/1iyouzhen)、[@xuhu0115](https://github.com/xuhu0115)、[@kangkang-Adam](https://github.com/kangkang-Adam)
-  - SGLang：[@Ccyest](https://github.com/Ccyest)、[@fcranzhou](https://github.com/fcranzhou)
+  - SGLang：[@Ccyest](https://github.com/Ccyest)、[@fcranzhou](https://github.com/fcranzhou)、[@Hayden727](https://github.com/Hayden727)
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
 - 感谢所有为本项目做出贡献的开发者们 ❤️
 

@@ -23,3 +23,4 @@ Fork, branch from `main`, write, open a PR. Go through the [PR requirements](./P
 | Date | Directory | Title | Author |
 |------|------|------|------|
 | 2026-09-14 | `notes/` | [Learning SGLang: an illustrated, step-by-step tour of an inference engine](./notes/learning-sglang/learning-sglang.md) | [WilsonZheng0327](https://github.com/WilsonZheng0327) |
+| 2026-11-06 | `notes/` | [From Image Bytes to the First Token: Tracing a Qwen3-VL Request Through SGLang](./notes/qwen3vl-request-tracing/qwen3vl-request-tracing.md) | [ChihTsungLu](https://github.com/ChihTsungLu) |
