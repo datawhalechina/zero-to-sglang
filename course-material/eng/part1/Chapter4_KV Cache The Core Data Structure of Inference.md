@@ -298,7 +298,7 @@ $$
 KV_{bytes} = B \times (T + l) \times L \times 2 \times n_{\mathrm{kv}} \times d_h \times s
 $$
 
-If the generated request sequences have different lengths, replace $T+l$ with $\sum_{b=1}^{B} l_b + T$.
+If the generated request sequences have different lengths, replace $T+l$ with $\sum_{b=1}^{B} (l_b + T_b)$.
 
 *Note: The factor of 2 in these formulas already accounts for both the K and V tensors. In actual engines, Prompt Caching, Prefix Caching, and other factors also affect GPU memory usage in both stages. For simplicity, these optimizations are not considered here, and all values above represent theoretical usage.*
 
