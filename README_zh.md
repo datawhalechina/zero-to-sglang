@@ -26,7 +26,7 @@
 
 ---
 
-> **课程状态**：Part 0 至 Part IV 的全部章节现已完成，中英文版本均已上线。全套配套讲解视频预计于 2026 年 11 月底全部完成，发布至 YouTube 和哔哩哔哩，链接将随视频发布陆续更新到下方课程目录。
+> **课程状态**：Part 0 至 Part IV 的全部章节现已完成，中英文版本均已上线。全套配套讲解视频预计于 2026 年 11 月底全部完成，发布至 YouTube 和[哔哩哔哩](https://www.bilibili.com/video/BV1Dg4w6tExD?buvid=YB48B7BB625CF90D41C5B3255E891DDA3704&from_spmid=search.search-result.0.0&is_story_h5=false&mid=LPStszkHNI0Rxip92WewIA%3D%3D&plat_id=114&share_from=ugc&share_medium=iphone&share_plat=ios&share_session_id=4AED0A72-900C-47B6-A3B0-A8B3BD649AC8&share_source=WEIXIN&share_tag=s_i&timestamp=1794920321&unique_k=UmR2h9f&up_id=3707049376484212&spm_id_from=333.788.videopod.sections)，链接将随视频发布陆续更新到下方课程目录。
 
 ## 🎯 项目介绍
 
@@ -54,7 +54,7 @@
 
 ## 🔗 相关链接
 
-- **仓库地址**：https://github.com/datawhalechina/zero-to-sglang
+- **仓库地址**：https://zero-to-sglang.datawhale.cc/ch/
 - **PDF 下载**：[中文版](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf) · [English](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf)（[全部版本](https://github.com/datawhalechina/zero-to-sglang/releases)）
 - **SGLang 官方**：https://github.com/sgl-project/sglang
 - **mini-sglang 参考实现**：https://github.com/sgl-project/mini-sglang

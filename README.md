@@ -53,7 +53,7 @@
 
 ## 🔗 Links
 
-- **Repository**: https://github.com/datawhalechina/zero-to-sglang
+- **Repository**: https://zero-to-sglang.datawhale.cc/
 - **PDF download**: [English](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf) · [中文版](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf) ([all releases](https://github.com/datawhalechina/zero-to-sglang/releases))
 - **SGLang**: https://github.com/sgl-project/sglang
 - **mini-sglang reference implementation**: https://github.com/sgl-project/mini-sglang
