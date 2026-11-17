@@ -54,7 +54,7 @@
 
 ## 🔗 相关链接
 
-- **仓库地址**：https://github.com/datawhalechina/zero-to-sglang
+- **仓库地址**：https://zero-to-sglang.datawhale.cc/ch/
 - **PDF 下载**：[中文版](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_Chinese.pdf) · [English](https://github.com/datawhalechina/zero-to-sglang/releases/latest/download/zero-to-SGLang_English.pdf)（[全部版本](https://github.com/datawhalechina/zero-to-sglang/releases)）
 - **SGLang 官方**：https://github.com/sgl-project/sglang
 - **mini-sglang 参考实现**：https://github.com/sgl-project/mini-sglang
