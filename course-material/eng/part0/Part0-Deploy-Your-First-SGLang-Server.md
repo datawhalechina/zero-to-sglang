@@ -15,11 +15,11 @@ In this lesson you will use SGLang to run Qwen3-0.6B on your own GPU and send yo
 nvidia-smi
 ```
 
-If it shows your GPU and the CUDA Version in the top-right corner is ≥ 12.x, you are good. That version number decides which set of install commands to use below. You do not need to install the CUDA Toolkit separately: SGLang's dependencies ship their own CUDA runtime. On WSL2 the driver is installed on the Windows side; nothing extra is needed inside WSL2.
+For the pinned SGLang 0.5.23 recipe below, use a CUDA 13-compatible driver. Check the CUDA Version shown in the top-right corner; a CUDA 12.x driver is not sufficient for the packages in this recipe. You do not need to install the CUDA Toolkit separately: SGLang's dependencies ship their own CUDA runtime. On WSL2 the driver is installed on the Windows side; nothing extra is needed inside WSL2.
 
 ### Python environment
 
-Python ≥ 3.10 is required. We recommend a dedicated environment:
+This recipe pins SGLang 0.5.23 and uses CPython 3.12 on Linux x86_64 with a CUDA 13-compatible NVIDIA environment. The selected SGLang wheel is tagged manylinux_2_34_x86_64 (glibc 2.34+); this is not a guarantee that every dependency or GPU supports this environment. We recommend a dedicated environment:
 
 ```bash
 conda create -n sglang python=3.12 -y
@@ -29,7 +29,7 @@ conda activate sglang
 Without conda, venv works the same:
 
 ```bash
-python3 -m venv ~/sglang-env
+python3.12 -m venv ~/sglang-env
 source ~/sglang-env/bin/activate
 ```
 
@@ -44,21 +44,16 @@ SGLang is built against CUDA 13 by default. Pick the install commands by the CUD
 ```bash
 pip install --upgrade pip
 pip install uv
-uv pip install --prerelease=allow sglang
+uv pip install --prerelease=allow "sglang==0.5.23"
 ```
 
 **CUDA Version 12.x**:
 
-```bash
-pip install --upgrade pip
-pip install uv
-uv pip install --prerelease=allow sglang
-uv pip install --force-reinstall torch==2.13.0 torchaudio==2.11.0 torchvision --index-url https://download.pytorch.org/whl/cu129
-uv pip install --force-reinstall sglang-kernel --index-url https://docs.sglang.ai/whl/cu129/
-uv pip install --force-reinstall sgl-deep-gemm --index-url https://docs.sglang.ai/whl/cu129/ --no-deps
-```
-
-The last three commands swap torch and the kernels for CUDA 12 builds. Alternatively, upgrade the driver to ≥ 580 and use the CUDA 13 commands directly.
+CUDA 12 environments are outside this SGLang 0.5.23 recipe. Do not install
+this pinned package and force-reinstall a different release's PyTorch or kernels
+over it. Use an environment supported by the release you choose and follow its
+matching tagged installation guide; the [SGLang 0.5.23 guide](https://github.com/sgl-project/sglang/blob/v0.5.23/docs/docs/get-started/install.mdx)
+documents the CUDA 13 lane used here.
 
 Verify:
 
@@ -66,7 +61,7 @@ Verify:
 python3 -c "import sglang; print(sglang.__version__)"
 ```
 
-If it prints a version number, the install succeeded. Install steps change between releases; if you hit errors, the [official installation docs](https://docs.sglang.io/get_started/install.html) are the source of truth.
+Printing a version number only confirms that the package imports; it does not verify dependency, GPU or driver compatibility. Install steps change between releases; if you hit errors, the [official installation docs](https://docs.sglang.io/docs/get-started/install) are the source of truth.
 
 ### Faster model downloads (users in mainland China)
 
@@ -171,7 +166,7 @@ python3 -m sglang.launch_server --model-path Qwen/Qwen3-0.6B --mem-fraction-stat
 python3 -m sglang.launch_server --model-path Qwen/Qwen3-0.6B --attention-backend triton --port 30000
 ```
 
-**CUDA errors at startup (such as "CUDA driver version is insufficient" / "no kernel image is available")**: the driver is CUDA 12.x but the default CUDA 13 dependencies were installed. Fix: run the three force-reinstall commands from the CUDA 12 part of "Installing SGLang".
+**CUDA errors at startup (such as "CUDA driver version is insufficient" / "no kernel image is available")**: the driver is CUDA 12.x but the default CUDA 13 dependencies were installed. Check that your driver supports the CUDA 13 environment for the pinned SGLang 0.5.23 recipe. For another release, follow its matching tagged installation guide rather than overriding this package with CUDA 12 dependencies.
 
 **Download hangs**: the usual cause is that `HF_ENDPOINT` / `SGLANG_USE_MODELSCOPE` was not set in the terminal that launched the server.
 
