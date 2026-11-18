@@ -175,6 +175,16 @@ python3 -m sglang.launch_server --model-path Qwen/Qwen3-0.6B --attention-backend
 
 **Download hangs**: the usual cause is that `HF_ENDPOINT` / `SGLANG_USE_MODELSCOPE` was not set in the terminal that launched the server.
 
+**Weight download fails with 401 Unauthorized, or stays slow and keeps timing out even with hf-mirror**: recent versions of `huggingface_hub` download weights over the Xet protocol, which connects directly to `xethub.hf.co` domains and bypasses `HF_ENDPOINT`. From mainland China this often ends in `CAS Client Error ... 401 Unauthorized` or `The read operation timed out`. Disable Xet and restart the server:
+
+```bash
+export HF_HUB_DISABLE_XET=1
+```
+
+If the error persists or `xethub.hf.co` still shows up in the log, download from ModelScope as described above.
+
+**The first request is very slow**: usually the server is not slow; Qwen3 outputs its thinking process first and uses up `max_tokens`. Check `usage.completion_tokens` in the returned JSON; if it is close to `max_tokens`, that is the cause. Add `"chat_template_kwargs": {"enable_thinking": false}` to the request to turn thinking off and compare.
+
 **address already in use**: the port is taken. Use another port (such as `--port 30001`) and change the port in your request commands to match.
 
 **nvidia-smi not found in WSL2**: the driver has to be installed on the Windows side (download it from NVIDIA's website). After installing, run `wsl --shutdown` in PowerShell to restart WSL.
