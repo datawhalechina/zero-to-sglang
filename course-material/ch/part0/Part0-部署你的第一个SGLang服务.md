@@ -15,11 +15,11 @@
 nvidia-smi
 ```
 
-能显示显卡信息且右上角 CUDA Version ≥ 12.x 即为正常。这个版本号决定后文安装 SGLang 时选哪组命令。CUDA Toolkit 无需单独安装，SGLang 的依赖自带 CUDA 运行时。WSL2 环境下驱动安装在 Windows 侧，WSL2 内无需再装。
+下文固定版本的 SGLang 0.5.23 示例需要兼容 CUDA 13 的驱动。请检查右上角 CUDA Version；仅兼容 CUDA 12.x 的驱动不足以运行本示例所选安装包。CUDA Toolkit 无需单独安装，SGLang 的依赖自带 CUDA 运行时。WSL2 环境下驱动安装在 Windows 侧，WSL2 内无需再装。
 
 ### Python 环境
 
-要求 Python ≥ 3.10，建议在独立环境中安装：
+本示例固定 SGLang 0.5.23，使用 Linux x86_64、CPython 3.12 和兼容 CUDA 13 的 NVIDIA 环境。所选 SGLang wheel 的标签为 manylinux_2_34_x86_64（glibc 2.34+）；这不保证所有依赖或 GPU 均支持该环境。建议使用独立环境：
 
 ```bash
 conda create -n sglang python=3.12 -y
@@ -29,7 +29,7 @@ conda activate sglang
 没有 conda 时用 venv 效果相同：
 
 ```bash
-python3 -m venv ~/sglang-env
+python3.12 -m venv ~/sglang-env
 source ~/sglang-env/bin/activate
 ```
 
@@ -44,21 +44,15 @@ SGLang 默认按 CUDA 13 构建，安装命令按 `nvidia-smi` 右上角的 CUDA
 ```bash
 pip install --upgrade pip
 pip install uv
-uv pip install --prerelease=allow sglang
+uv pip install --prerelease=allow "sglang==0.5.23"
 ```
 
 **CUDA Version 12.x**：
 
-```bash
-pip install --upgrade pip
-pip install uv
-uv pip install --prerelease=allow sglang
-uv pip install --force-reinstall torch==2.13.0 torchaudio==2.11.0 torchvision --index-url https://download.pytorch.org/whl/cu129
-uv pip install --force-reinstall sglang-kernel --index-url https://docs.sglang.ai/whl/cu129/
-uv pip install --force-reinstall sgl-deep-gemm --index-url https://docs.sglang.ai/whl/cu129/ --no-deps
-```
-
-后三条把 torch 和 kernel 换成 CUDA 12 构建。也可以把驱动升级到 ≥ 580 后直接走 CUDA 13 命令。
+CUDA 12 环境不在此 SGLang 0.5.23 示例范围内。不要安装该固定版本后，再强制覆盖其他版本的 PyTorch 或 kernel。
+请使用你所选发布版本支持的环境，并遵循其对应 tag 的安装指南；
+[SGLang 0.5.23 指南](https://github.com/sgl-project/sglang/blob/v0.5.23/docs/docs/get-started/install.mdx)
+说明了本示例使用的 CUDA 13 路线。
 
 验证：
 
@@ -66,7 +60,7 @@ uv pip install --force-reinstall sgl-deep-gemm --index-url https://docs.sglang.a
 python3 -c "import sglang; print(sglang.__version__)"
 ```
 
-能打印版本号即安装成功。安装方式随版本更新，报错时以[官方安装文档](https://docs.sglang.io/get_started/install.html)为准。
+能打印版本号仅说明该包可导入，不代表依赖、GPU 或驱动兼容性已验证。安装方式随版本更新，报错时以[官方安装文档](https://docs.sglang.io/docs/get-started/install)为准。
 
 ### 模型下载加速（国内用户）
 
@@ -171,7 +165,7 @@ python3 -m sglang.launch_server --model-path Qwen/Qwen3-0.6B --mem-fraction-stat
 python3 -m sglang.launch_server --model-path Qwen/Qwen3-0.6B --attention-backend triton --port 30000
 ```
 
-**启动报 CUDA 相关错误（如 "CUDA driver version is insufficient" / "no kernel image is available"）**：驱动是 CUDA 12.x 但装了默认的 CUDA 13 依赖。解决办法是补跑"安装 SGLang"一节 CUDA 12 的三条 force-reinstall 命令。
+**启动报 CUDA 相关错误（如 "CUDA driver version is insufficient" / "no kernel image is available"）**：驱动是 CUDA 12.x 但装了默认的 CUDA 13 依赖。请检查驱动是否兼容此固定 SGLang 0.5.23 示例的 CUDA 13 环境。其他发布版本应遵循对应 tag 的安装指南，不要在本示例包上强制覆盖 CUDA 12 依赖。
 
 **下载卡住**：常见原因是 `HF_ENDPOINT` / `SGLANG_USE_MODELSCOPE` 没有设置在启动 server 的那个终端里。
 
